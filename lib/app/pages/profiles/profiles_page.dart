@@ -61,7 +61,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("配置"),
+        title: Text("订阅"),
       ),
       drawer: AppDrawer(),
       body: Container(

@@ -44,7 +44,7 @@ class _AppDrawerState extends State<AppDrawer> {
           ListTile(
             selected: _controller.currentIndex == 2,
             leading: Icon(Icons.code),
-            title: Text("配置"),
+            title: Text("订阅"),
             onTap: () {
               _controller.changePage(2);
               Navigator.of(context).pop();

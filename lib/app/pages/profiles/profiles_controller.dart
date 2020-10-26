@@ -33,7 +33,7 @@ class ProfileController extends Disposable {
     return _request
         .downFile(
       urlPath: url,
-      savePath: "${_config.libDir.path}${Constant.profilesPath}/$file",
+      savePath: "${_config.configDir.path}${Constant.profilesPath}/$file",
     )
         .then(
       (_) {
@@ -69,7 +69,8 @@ class ProfileController extends Disposable {
     } else {
       _setCFM(list: tempList);
     }
-    await File("${_config.libDir.path}${Constant.profilesPath}/$file").delete();
+    await File("${_config.configDir.path}${Constant.profilesPath}/$file")
+        .delete();
   }
 
   /// 更新源
@@ -80,7 +81,7 @@ class ProfileController extends Disposable {
     var newFile = "${DateTime.now().millisecondsSinceEpoch}.yaml";
     await _request.downFile(
       urlPath: tempList[i].url,
-      savePath: "${_config.libDir.path}${Constant.profilesPath}/$newFile",
+      savePath: "${_config.configDir.path}${Constant.profilesPath}/$newFile",
     );
 
     tempList[i].file = newFile;
@@ -91,6 +92,7 @@ class ProfileController extends Disposable {
     } else {
       _setCFM(list: tempList);
     }
-    await File("${_config.libDir.path}${Constant.profilesPath}/$file").delete();
+    await File("${_config.configDir.path}${Constant.profilesPath}/$file")
+        .delete();
   }
 }
