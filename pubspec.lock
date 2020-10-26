@@ -231,9 +231,11 @@ packages:
   go_flutter_clash:
     dependency: "direct main"
     description:
-      path: "../go_flutter_clash"
-      relative: true
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "44c5da0b76e741dbce6ce9d6598f5628c6035ce8"
+      url: "git://github.com/fanlide/go-flutter-clash.git"
+    source: git
     version: "0.0.1"
   graphs:
     dependency: transitive

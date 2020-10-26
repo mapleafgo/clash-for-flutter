@@ -41,6 +41,7 @@ app.*.symbols
 app.*.map.json
 
 # this project
+packaging/
 /.config/*.json
 /profiles/
 *.g.dart
