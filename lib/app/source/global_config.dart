@@ -9,6 +9,7 @@ import 'package:clash_for_flutter/app/utils/constant.dart';
 import 'package:go_flutter_clash/go_flutter_clash.dart';
 import 'package:go_flutter_clash/model/flutter_clash_config_model.dart';
 import 'package:mobx/mobx.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:yaml/yaml.dart';
 
 part 'global_config.g.dart';
@@ -17,6 +18,7 @@ class GlobalConfig = _ConfigFileBase with _$GlobalConfig;
 
 abstract class _ConfigFileBase extends Disposable with Store {
   final _request = Modular.get<Request>();
+  Directory libDir;
 
   List<ReactionDisposer> _disposers = [];
   @observable
@@ -32,8 +34,9 @@ abstract class _ConfigFileBase extends Disposable with Store {
   }
 
   Future<void> init() async {
-    var clashConfigFile = File(Constant.clashConfig);
-    var clashForMeFile = File(Constant.clashForMe);
+    libDir = await getLibraryDirectory();
+    var clashConfigFile = File(libDir.path + Constant.clashConfig);
+    var clashForMeFile = File(libDir.path + Constant.clashForMe);
     this.clashConfig = await clashConfigFile.exists()
         ? FlutterClashConfig.fromJson(
             jsonDecode(await clashConfigFile.readAsString()),
@@ -47,10 +50,22 @@ abstract class _ConfigFileBase extends Disposable with Store {
           )
         : ClashForMeConfig.defaultConfig();
 
-    // 初始化clash
-    await GoFlutterClash.init(Constant.configDir);
+    await _initClash();
 
     _initDispose();
+  }
+
+  // 初始化clash
+  Future<void> _initClash() async {
+    var dbFile = File(libDir.path + Constant.db);
+    if (!dbFile.existsSync()) {
+      await _request.downFile(
+        urlPath:
+            "https://hub.fastgit.org/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb",
+        savePath: dbFile.path,
+      );
+    }
+    return GoFlutterClash.init(libDir.path);
   }
 
   _initDispose() {
@@ -58,7 +73,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       reaction(
         (_) => clashConfig,
         (FlutterClashConfig config) {
-          File(Constant.clashConfig).create(recursive: true).then(
+          File(libDir.path + Constant.clashConfig).create(recursive: true).then(
                 (file) => file.writeAsString(jsonEncode(config)),
               );
         },
@@ -67,7 +82,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       reaction(
         (_) => clashForMe,
         (ClashForMeConfig config) {
-          File(Constant.clashForMe).create(recursive: true).then(
+          File(libDir.path + Constant.clashForMe).create(recursive: true).then(
                 (file) => file.writeAsString(jsonEncode(config)),
               );
         },
@@ -78,7 +93,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
   /// 校验本地配置文件
   Future<ClashForMeConfig> _profilesInitCheck(ClashForMeConfig config) async {
-    var profilesDir = Directory(Constant.profilesPath);
+    var profilesDir = Directory(libDir.path + Constant.profilesPath);
     var fileList = <String>[];
     if (await profilesDir.exists()) {
       fileList = await profilesDir.list().where((e) => e is File).map((file) {
@@ -120,7 +135,9 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
   /// 启动clash
   Future<void> start() async {
-    var file = File("${Constant.profilesPath}/${clashForMe.selectedFile}");
+    var file = File(
+      "${libDir.path}${Constant.profilesPath}/${clashForMe.selectedFile}",
+    );
     var profile = jsonEncode(loadYaml(await file.readAsString()));
     return GoFlutterClash.start(profile, clashConfig).then((_) {
       active.selected?.forEach((key, value) {
