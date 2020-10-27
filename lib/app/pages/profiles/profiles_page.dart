@@ -32,10 +32,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           content: TextField(
             controller: textController,
             onSubmitted: (value) {
-              if (value.length > 0) {
-                Navigator.of(dialogContext).pop();
-                controller.rename(file, value);
-              }
+              if (value.length == 0) return;
+              Navigator.of(dialogContext).pop();
+              controller.rename(file, value);
             },
           ),
           actions: [
@@ -47,10 +46,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
               child: Text("确认"),
               onPressed: () {
                 var value = textController.text;
-                if (value.length > 0) {
-                  Navigator.of(dialogContext).pop();
-                  controller.rename(file, value);
-                }
+                if (value.length == 0) return;
+                Navigator.of(dialogContext).pop();
+                controller.rename(file, value);
               },
             ),
           ],
@@ -121,6 +119,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                   content: TextField(
                     controller: textController,
                     onSubmitted: (value) {
+                      if (value.length == 0) return;
                       Navigator.of(dialogContext).pop();
                       download(value);
                     },
@@ -134,10 +133,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                       child: Text("确认"),
                       onPressed: () {
                         var value = textController.text;
-                        if (value.length > 0) {
-                          Navigator.of(dialogContext).pop();
-                          download(value);
-                        }
+                        if (value.length == 0) return;
+                        Navigator.of(dialogContext).pop();
+                        download(value);
                       },
                     ),
                   ],
