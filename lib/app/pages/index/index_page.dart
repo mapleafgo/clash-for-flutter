@@ -25,12 +25,12 @@ class _IndexPageState extends ModularState<IndexPage, IndexController> {
   @override
   Widget build(BuildContext context) {
     return RouterOutletList(
+      controller: controller.router,
       modules: [
         HomeModule(),
         ProxysModule(),
         ProfilesModule(),
       ],
-      controller: controller.router,
     );
   }
 }

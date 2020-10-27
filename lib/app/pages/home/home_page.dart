@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:asuka/asuka.dart' as asuka;
 
 class HomePage extends StatefulWidget {
   @override
@@ -12,6 +13,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   GlobalConfig _config = Modular.get<GlobalConfig>();
   bool _isOpen = false;
+  bool _loading = false;
 
   Future<void> changeStatus() async {
     bool isOpen;
@@ -26,6 +28,15 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isOpen = isOpen);
   }
 
+  click() {
+    setState(() => _loading = true);
+    changeStatus()
+        .catchError(
+          (_) => asuka.showSnackBar(SnackBar(content: Text("初始化尚未完成，请稍后再试"))),
+        )
+        .then((_) => setState(() => _loading = false));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,27 +47,38 @@ class _HomePageState extends State<HomePage> {
       body: Center(
         child: Card(
           elevation: 1,
-          child: InkWell(
-            onTap: changeStatus,
-            child: Container(
-              child: _isOpen
-                  ? Text(
-                      "关闭",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    )
-                  : Text(
-                      "开启",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
+          child: _loading
+              ? Container(
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 5),
+                  ),
+                  width: 200,
+                  height: 60,
+                )
+              : InkWell(
+                  onTap: click,
+                  child: Container(
+                    child: Center(
+                      child: _isOpen
+                          ? Text(
+                              "关闭",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            )
+                          : Text(
+                              "开启",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
                     ),
-              padding: EdgeInsets.fromLTRB(100, 20, 100, 20),
-            ),
-          ),
+                    width: 200,
+                    height: 60,
+                  ),
+                ),
         ),
       ),
     );
