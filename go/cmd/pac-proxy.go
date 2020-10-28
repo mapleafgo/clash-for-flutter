@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	flutter "github.com/go-flutter-desktop/go-flutter"
 	"github.com/go-flutter-desktop/go-flutter/plugin"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 const channelName = "pac-proxy"
@@ -38,6 +39,15 @@ func (p *PACProxy) InitPlugin(messenger plugin.BinaryMessenger) error {
 	})
 	go router.Run(fmt.Sprintf(":%s", port))
 
+	return nil
+}
+
+// InitPluginGLFW is called after the call to InitPlugin. When an error is
+// returned it is printend the application is stopped.
+func (p *PACProxy) InitPluginGLFW(window *glfw.Window) error {
+	window.SetCloseCallback(func(window *glfw.Window) {
+		pacProxyClose()
+	})
 	return nil
 }
 

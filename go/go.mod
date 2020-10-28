@@ -10,6 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-flutter-desktop/go-flutter v0.42.0
 	github.com/go-flutter-desktop/plugins/path_provider v0.4.0
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200707082815-5321531c36a2
 	github.com/pkg/errors v0.9.1
-	golang.org/x/sys v0.0.0-20201024232916-9f70ab9862d5 // indirect
+	golang.org/x/sys v0.0.0-20201028094953-708e7fb298ac // indirect
 )
