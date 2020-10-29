@@ -169,6 +169,20 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.0"
+  dart_json_mapper:
+    dependency: "direct main"
+    description:
+      name: dart_json_mapper
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.7.0"
+  dart_json_mapper_mobx:
+    dependency: "direct main"
+    description:
+      name: dart_json_mapper_mobx
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.2.2"
   dart_style:
     dependency: transitive
     description:
@@ -301,19 +315,12 @@ packages:
     source: hosted
     version: "1.0.1"
   json_annotation:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: json_annotation
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.1.0"
-  json_serializable:
-    dependency: "direct dev"
-    description:
-      name: json_serializable
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "3.5.0"
   logging:
     dependency: transitive
     description:
@@ -475,6 +482,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.1.3"
+  reflectable:
+    dependency: transitive
+    description:
+      name: reflectable
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.2.8"
   shelf:
     dependency: transitive
     description:

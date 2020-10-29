@@ -1,24 +1,36 @@
-import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import '../enum/type_enum.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 import 'group_bean.dart';
 import 'proxy_bean.dart';
 
+@JsonSerializable()
 class Proxies {
+  @JsonProperty(converter: ProxiesConverter())
   Map<String, dynamic> proxies;
 
   Proxies({this.proxies});
+}
 
-  static Proxies fromJson(Map<String, dynamic> json) {
-    var _proxies = json["proxies"] as Map<String, dynamic>;
-    return Proxies(proxies: _proxies.map((key, value) {
+class ProxiesConverter implements ICustomConverter<Map<String, dynamic>> {
+  const ProxiesConverter() : super();
+
+  @override
+  Map<String, dynamic> fromJSON(jsonValue, [JsonProperty jsonProperty]) {
+    return jsonValue.map((key, e) {
       return MapEntry(
-          key,
-          GroupTypeMap.values.contains(value["type"])
-              ? Group.fromJson(value)
-              : Proxy.fromJson(value));
-    }));
+        key,
+        GroupTypeMap.values.contains(e["type"])
+            ? JsonMapper.deserialize<Group>(e)
+            : JsonMapper.deserialize<Proxy>(e),
+      );
+    });
   }
 
-  Map<String, dynamic> toJson() =>
-      proxies.map((key, value) => MapEntry(key, value.toJson()));
+  @override
+  toJSON(Map<String, dynamic> object, [JsonProperty jsonProperty]) {
+    return object.map(
+      (key, value) => MapEntry(key, JsonMapper.serialize(value)),
+    );
+  }
 }

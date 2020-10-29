@@ -1,6 +1,4 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'history_bean.g.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 @JsonSerializable()
 class History {
@@ -8,8 +6,4 @@ class History {
   int delay;
 
   History({this.time, this.delay});
-
-  factory History.fromJson(Map<String, dynamic> json) =>
-      _$HistoryFromJson(json);
-  Map<String, dynamic> toJson() => _$HistoryToJson(this);
 }

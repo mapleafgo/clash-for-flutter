@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:dio/dio.dart';
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
@@ -21,7 +22,7 @@ class Request {
   /// 获取所有代理
   Future<Proxies> getProxies() async {
     var res = await _dio.get("/proxies");
-    var proxies = Proxies.fromJson(res.data);
+    var proxies = JsonMapper.deserialize<Proxies>(res.data);
     return proxies;
   }
 
@@ -30,13 +31,13 @@ class Request {
     var res = await _dio.get("/proxies/$name");
     var data = res.data;
     return data.containsKey("now")
-        ? Group.fromJson(data)
-        : Proxy.fromJson(data);
+        ? JsonMapper.deserialize<Group>(data)
+        : JsonMapper.deserialize<Proxy>(data);
   }
 
   Future<ProxyProviders> getProxyProviders() async {
     var res = await _dio.get("/providers/proxies");
-    var providers = ProxyProviders.fromJson(res.data);
+    var providers = JsonMapper.deserialize<ProxyProviders>(res.data);
     return providers;
   }
 
@@ -56,11 +57,11 @@ class Request {
   /// 获得当前的基础设置
   Future<Config> getConfigs() async {
     var res = await _dio.get("/configs");
-    return Config.fromJson(res.data);
+    return JsonMapper.deserialize<Config>(res.data);
   }
 
   /// 增量修改配置
   Future<Response<void>> updateConfig(Config config) {
-    return _dio.patch<void>("/configs", data: config.toJson());
+    return _dio.patch<void>("/configs", data: JsonMapper.serialize(config));
   }
 }

@@ -1,6 +1,4 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'profile_bean.g.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 /// 配置文件
 @JsonSerializable()
@@ -18,12 +16,7 @@ class Profile {
   int interval = 0;
 
   /// 当前各分组的选择
-  var selected = <String, String>{};
+  Map<String, String> selected = {};
 
   Profile({this.url, this.file, this.name, this.interval, this.selected});
-
-  factory Profile.fromJson(Map<String, dynamic> json) =>
-      _$ProfileFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ProfileToJson(this);
 }

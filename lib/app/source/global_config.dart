@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_bean.dart';
@@ -44,8 +45,8 @@ abstract class _ConfigFileBase extends Disposable with Store {
         : FlutterClashConfig.defaultConfig();
     this.clashForMe = await clashForMeFile.exists()
         ? await _profilesInitCheck(
-            ClashForMeConfig.fromJson(
-              jsonDecode(await clashForMeFile.readAsString()),
+            JsonMapper.deserialize<ClashForMeConfig>(
+              await clashForMeFile.readAsString(),
             ),
           )
         : ClashForMeConfig.defaultConfig();
@@ -152,13 +153,14 @@ abstract class _ConfigFileBase extends Disposable with Store {
   /// 切换代理
   proxySelect({String name, String select}) {
     var i = clashForMe.profiles.indexOf(active);
-    var profile = Profile.fromJson(jsonDecode(jsonEncode(active)));
+    var profile = JsonMapper.deserialize<Profile>(JsonMapper.serialize(active));
 
     profile.selected != null
         ? profile.selected[name] = select
         : profile.selected = Map.fromEntries([MapEntry(name, select)]);
 
-    var config = ClashForMeConfig.fromJson(jsonDecode(jsonEncode(clashForMe)));
+    var config = JsonMapper.deserialize<ClashForMeConfig>(
+        JsonMapper.serialize(clashForMe));
     config.profiles[i] = profile;
     setState(clashForMe: config);
   }

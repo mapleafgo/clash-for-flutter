@@ -1,20 +1,18 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'config_bean.g.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 @JsonSerializable()
 class Config {
   int port;
-  @JsonKey(name: "socks-port")
+  @JsonProperty(name: "socks-port")
   int socksPort;
-  @JsonKey(name: "redir-port")
+  @JsonProperty(name: "redir-port")
   int redirPort;
-  @JsonKey(name: "mixed-port")
+  @JsonProperty(name: "mixed-port")
   int mixedPort;
-  @JsonKey(name: "allow-lan")
+  @JsonProperty(name: "allow-lan")
   bool allowLan;
   String mode;
-  @JsonKey(name: "log-level")
+  @JsonProperty(name: "log-level")
   String logLevel;
 
   Config(
@@ -25,7 +23,4 @@ class Config {
       this.allowLan,
       this.mode,
       this.logLevel});
-
-  factory Config.fromJson(Map<String, dynamic> json) => _$ConfigFromJson(json);
-  Map<String, dynamic> toJson() => _$ConfigToJson(this);
 }
