@@ -59,7 +59,7 @@ extension ProxieTypeExtension on ProxieType {
     "Http",
     "Snell",
   ];
-  static ProxieType toObject(String value) =>
+  ProxieType toObject(String value) =>
       ProxieType.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
@@ -75,7 +75,7 @@ extension GroupTypeExtension on GroupType {
     "Fallback",
     "LoadBalance",
   ];
-  static GroupType toObject(String value) =>
+  GroupType toObject(String value) =>
       GroupType.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
@@ -89,7 +89,7 @@ extension VehicleTypeExtension on VehicleType {
     "File",
     "Compatible",
   ];
-  static VehicleType toObject(String value) =>
+  VehicleType toObject(String value) =>
       VehicleType.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
@@ -104,7 +104,7 @@ extension UsedProxyExtension on UsedProxy {
     "REJECT",
     "GLOBAL",
   ];
-  static UsedProxy toObject(String value) =>
+  UsedProxy toObject(String value) =>
       UsedProxy.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
@@ -118,7 +118,7 @@ extension ModeExtension on Mode {
     "Global",
     "Direct",
   ];
-  static Mode toObject(String value) =>
+  Mode toObject(String value) =>
       Mode.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
