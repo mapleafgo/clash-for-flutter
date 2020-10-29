@@ -1,7 +1,31 @@
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 
-class Name implements ICustomConverter, ICustomEnumConverter {
-  Name() : super();
+const customEnumConverter = ConstCustomEnumConverter();
+
+class ConstCustomEnumConverter
+    implements ICustomConverter, ICustomEnumConverter {
+  const ConstCustomEnumConverter();
+
+  @override
+  void setEnumValues(Iterable<dynamic> enumValues) {
+    _customEnumConverter.setEnumValues(enumValues);
+  }
+
+  @override
+  fromJSON(jsonValue, [JsonProperty jsonProperty]) {
+    return _customEnumConverter.fromJSON(jsonValue, jsonProperty);
+  }
+
+  @override
+  toJSON(object, [JsonProperty jsonProperty]) {
+    return _customEnumConverter.toJSON(object, jsonProperty);
+  }
+}
+
+final _customEnumConverter = CustomEnumConverter();
+
+class CustomEnumConverter implements ICustomConverter, ICustomEnumConverter {
+  CustomEnumConverter() : super();
 
   var _enumValues = [];
 
@@ -51,20 +75,22 @@ extension GroupTypeExtension on GroupType {
     "Fallback",
     "LoadBalance",
   ];
-  static GroupType toObject(int i) => GroupType.values[i];
+  static GroupType toObject(String value) =>
+      GroupType.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
 
 @jsonSerializable
 enum VehicleType { HTTP, File, Compatible }
 
-extension VehicleTypeExtension on GroupType {
+extension VehicleTypeExtension on VehicleType {
   static const stringList = [
     "HTTP",
     "File",
     "Compatible",
   ];
-  static VehicleType toObject(int i) => VehicleType.values[i];
+  static VehicleType toObject(String value) =>
+      VehicleType.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
 
@@ -72,25 +98,27 @@ extension VehicleTypeExtension on GroupType {
 @jsonSerializable
 enum UsedProxy { DIRECT, REJECT, GLOBAL }
 
-extension UsedProxyExtension on GroupType {
+extension UsedProxyExtension on UsedProxy {
   static const stringList = [
     "DIRECT",
     "REJECT",
     "GLOBAL",
   ];
-  static UsedProxy toObject(int i) => UsedProxy.values[i];
+  static UsedProxy toObject(String value) =>
+      UsedProxy.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }
 
 @jsonSerializable
 enum Mode { Rule, Global, Direct }
 
-extension ModeExtension on GroupType {
+extension ModeExtension on Mode {
   static const stringList = [
     "Rule",
     "Global",
     "Direct",
   ];
-  static Mode toObject(int i) => Mode.values[i];
+  static Mode toObject(String value) =>
+      Mode.values[stringList.indexWhere((e) => e == value)];
   String get value => stringList[this.index];
 }

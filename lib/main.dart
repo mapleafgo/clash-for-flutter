@@ -1,9 +1,10 @@
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:clash_for_flutter/app/app_module.dart';
 import 'package:dart_json_mapper_mobx/dart_json_mapper_mobx.dart';
 
+import 'app/app_module.dart';
+import 'app/enum/type_enum.dart';
 import 'main.mapper.g.dart' show initializeJsonMapper;
 
 void main() {
@@ -13,7 +14,7 @@ void main() {
       return Map.castFrom<dynamic, dynamic, String, String>(value);
     },
   }, converters: {
-    Enum: enumConverterNumeric
+    Enum: customEnumConverter
   }));
   runApp(ModularApp(module: AppModule()));
 }
