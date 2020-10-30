@@ -30,11 +30,12 @@ class _HomePageState extends State<HomePage> {
 
   click() {
     setState(() => _loading = true);
-    changeStatus()
-        .catchError(
-          (_) => asuka.showSnackBar(SnackBar(content: Text("初始化尚未完成，请稍后再试"))),
-        )
-        .then((_) => setState(() => _loading = false));
+    changeStatus().catchError(
+      (err) {
+        print(err);
+        asuka.showSnackBar(SnackBar(content: Text("初始化尚未完成，请稍后再试")));
+      },
+    ).then((_) => setState(() => _loading = false));
   }
 
   @override

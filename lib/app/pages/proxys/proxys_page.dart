@@ -1,3 +1,5 @@
+import 'package:clash_for_flutter/app/bean/group_bean.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -5,7 +7,6 @@ import 'package:clash_for_flutter/app/bean/history_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
-import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:asuka/asuka.dart' as asuka;
 
@@ -61,8 +62,8 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                         )
                       : null;
                   var subText = proxie is Proxy
-                      ? ProxieTypeMap[proxie.type]
-                      : "${GroupTypeMap[proxie.type]} [${proxie.now}]";
+                      ? proxie.type.value
+                      : "${(proxie as Group).type.value} [${proxie.now}]";
                   return ListTile(
                     visualDensity:
                         VisualDensity(vertical: VisualDensity.minimumDensity),

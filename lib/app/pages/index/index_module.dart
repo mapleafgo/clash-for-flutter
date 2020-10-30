@@ -1,4 +1,3 @@
-import 'package:clash_for_flutter/app/pages/home/home_page.dart';
 import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
 import 'package:clash_for_flutter/app/pages/index/index_page.dart';
 import 'package:flutter_modular/flutter_modular.dart';

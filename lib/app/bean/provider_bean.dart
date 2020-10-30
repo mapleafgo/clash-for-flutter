@@ -27,9 +27,11 @@ class ProviderProxiesConverter implements ICustomConverter<List<dynamic>> {
   @override
   List<dynamic> fromJSON(jsonValue, [JsonProperty jsonProperty]) {
     return jsonValue
-        .map((e) => GroupTypeMap.values.contains(e["type"])
-            ? JsonMapper.deserialize<Group>(e)
-            : JsonMapper.deserialize<Proxy>(e))
+        .map(
+          (e) => GroupTypeValue.valueList.contains(e["type"])
+              ? JsonMapper.deserialize<Group>(e)
+              : JsonMapper.deserialize<Proxy>(e),
+        )
         .toList();
   }
 

@@ -39,8 +39,8 @@ abstract class _ConfigFileBase extends Disposable with Store {
     var clashConfigFile = File(configDir.path + Constant.clashConfig);
     var clashForMeFile = File(configDir.path + Constant.clashForMe);
     this.clashConfig = await clashConfigFile.exists()
-        ? FlutterClashConfig.fromJson(
-            jsonDecode(await clashConfigFile.readAsString()),
+        ? JsonMapper.deserialize<FlutterClashConfig>(
+            await clashConfigFile.readAsString(),
           )
         : FlutterClashConfig.defaultConfig();
     this.clashForMe = await clashForMeFile.exists()
@@ -76,7 +76,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
           File(configDir.path + Constant.clashConfig)
               .create(recursive: true)
               .then(
-                (file) => file.writeAsString(jsonEncode(config)),
+                (file) => file.writeAsString(JsonMapper.serialize(config)),
               );
         },
         delay: 2000,
@@ -87,7 +87,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
           File(configDir.path + Constant.clashForMe)
               .create(recursive: true)
               .then(
-                (file) => file.writeAsString(jsonEncode(config)),
+                (file) => file.writeAsString(JsonMapper.serialize(config)),
               );
         },
         delay: 2000,
@@ -142,7 +142,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
     var file = File(
       "${configDir.path}${Constant.profilesPath}/${clashForMe.selectedFile}",
     );
-    var profile = jsonEncode(loadYaml(await file.readAsString()));
+    var profile = json.encode(loadYaml(await file.readAsString()));
     return GoFlutterClash.start(profile, clashConfig).then((_) {
       active.selected?.forEach((key, value) {
         _request.changeProxy(name: key, select: value);

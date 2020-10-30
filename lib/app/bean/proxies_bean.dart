@@ -17,10 +17,11 @@ class ProxiesConverter implements ICustomConverter<Map<String, dynamic>> {
 
   @override
   Map<String, dynamic> fromJSON(jsonValue, [JsonProperty jsonProperty]) {
-    return jsonValue.map((key, e) {
+    return Map.castFrom<dynamic, dynamic, String, dynamic>(jsonValue)
+        .map((key, e) {
       return MapEntry(
         key,
-        GroupTypeMap.values.contains(e["type"])
+        GroupTypeValue.valueList.contains(e["type"])
             ? JsonMapper.deserialize<Group>(e)
             : JsonMapper.deserialize<Proxy>(e),
       );

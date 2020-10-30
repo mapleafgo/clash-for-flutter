@@ -37,10 +37,10 @@ class ProxysController extends Disposable {
 
   Future<void> getProxies() async {
     var proxies = await _request.getProxies();
-    var global = proxies.proxies[UsedProxyMap[UsedProxy.GLOBAL]] as Group;
+    var global = proxies.proxies[UsedProxy.GLOBAL.value] as Group;
 
     var list = global.all
-        .where((name) => !UsedProxyMap.values.contains(name))
+        .where((name) => !UsedProxyValue.valueList.contains(name))
         .map((key) => proxies.proxies[key])
         .toList();
 
