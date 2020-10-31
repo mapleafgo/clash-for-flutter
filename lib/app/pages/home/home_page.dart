@@ -1,5 +1,5 @@
-import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
@@ -12,25 +12,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   GlobalConfig _config = Modular.get<GlobalConfig>();
-  bool _isOpen = false;
   bool _loading = false;
-
-  Future<void> changeStatus() async {
-    bool isOpen;
-    if (_isOpen) {
-      await PACProxy.close();
-      isOpen = false;
-    } else {
-      await _config.start();
-      await PACProxy.open("7890");
-      isOpen = true;
-    }
-    setState(() => _isOpen = isOpen);
-  }
 
   click() {
     setState(() => _loading = true);
-    changeStatus().catchError(
+    Future(() async {
+      if (_config.systemProxy) {
+        await _config.closeProxy();
+        return;
+      }
+      await _config.openProxy();
+    }).catchError(
       (err) {
         print(err);
         asuka.showSnackBar(SnackBar(content: Text("初始化尚未完成，请稍后再试")));
@@ -59,22 +51,24 @@ class _HomePageState extends State<HomePage> {
               : InkWell(
                   onTap: click,
                   child: Container(
-                    child: Center(
-                      child: _isOpen
-                          ? Text(
-                              "关闭",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
+                    child: Observer(
+                      builder: (_) => Center(
+                        child: _config.systemProxy
+                            ? Text(
+                                "关闭",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              )
+                            : Text(
+                                "开启",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
                               ),
-                            )
-                          : Text(
-                              "开启",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                              ),
-                            ),
+                      ),
                     ),
                     width: 200,
                     height: 60,

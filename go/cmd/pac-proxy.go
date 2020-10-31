@@ -45,8 +45,14 @@ func (p *PACProxy) InitPlugin(messenger plugin.BinaryMessenger) error {
 // InitPluginGLFW is called after the call to InitPlugin. When an error is
 // returned it is printend the application is stopped.
 func (p *PACProxy) InitPluginGLFW(window *glfw.Window) error {
-	window.SetCloseCallback(func(window *glfw.Window) {
-		pacProxyClose()
+	var previousCloseCallback glfw.CloseCallback
+	previousCloseCallback = window.SetCloseCallback(func(w *glfw.Window) {
+		if previousCloseCallback != nil {
+			previousCloseCallback(w)
+		}
+		if w.ShouldClose() {
+			pacProxyClose()
+		}
 	})
 	return nil
 }

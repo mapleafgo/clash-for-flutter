@@ -10,29 +10,32 @@ import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 
 class ProxysController extends Disposable {
-  final _indexCtl = Modular.get<IndexController>();
+  IndexController _indexCtl = Modular.get<IndexController>();
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();
   final model = Modular.get<ProxysModel>();
 
-  void _linter(value) {
-    if (value == 1) {
-      init();
-    }
+  ProxysController() {
+    _indexCtl.addListener(listener);
   }
 
-  ProxysController() {
-    _indexCtl.addNotifiler(_linter);
+  @override
+  void dispose() {
+    _indexCtl.removeListener(listener);
+  }
+
+  /// 变更监听
+  void listener() {
+    final newIndexCtl = Modular.get<IndexController>();
+    if (_indexCtl.currentIndex != 1 && newIndexCtl.currentIndex == 1) {
+      _indexCtl = newIndexCtl;
+      init();
+    }
   }
 
   Future<void> init() async {
     await getProviders();
     await getProxies();
-  }
-
-  @override
-  void dispose() {
-    _indexCtl.removeNotifiler(_linter);
   }
 
   Future<void> getProxies() async {

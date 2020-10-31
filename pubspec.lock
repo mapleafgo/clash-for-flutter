@@ -265,6 +265,15 @@ packages:
       url: "git://github.com/fanlide/go-flutter-clash.git"
     source: git
     version: "0.0.1"
+  go_flutter_systray:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "35fe7e43c470732ca96458aa8878a06262b0c72a"
+      url: "git://github.com/fanlide/go-flutter-systray.git"
+    source: git
+    version: "0.0.1"
   graphs:
     dependency: transitive
     description:

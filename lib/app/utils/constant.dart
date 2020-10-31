@@ -15,4 +15,8 @@ class Constant {
   /// 数据库URL
   static const dbUrl =
       "https://hub.fastgit.org/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb";
+
+  static const systrayWinKey = "showWindow";
+
+  static const systrayProxyKey = "changeProxy";
 }

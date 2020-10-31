@@ -40,6 +40,9 @@ dependencies:
   go_flutter_clash:
     git:
       url: git://github.com/fanlide/go-flutter-clash.git
+  go_flutter_systray:
+    git:
+      url: git://github.com/fanlide/go-flutter-systray.git
 
 dev_dependencies:
   flutter_test:

@@ -6,6 +6,7 @@ require (
 	github.com/Xuanwo/go-locale v1.0.0 // indirect
 	github.com/adrg/xdg v0.2.2 // indirect
 	github.com/fanlide/go-flutter-clash/go v0.0.0-20201025055438-44c5da0b76e7
+	github.com/fanlide/go-flutter-systray/go v0.0.0-20201029042743-35fe7e43c470
 	github.com/fanlide/sysproxy v0.0.0-20201024132447-a0915cc12b51
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-flutter-desktop/go-flutter v0.42.0
@@ -14,3 +15,5 @@ require (
 	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.0.0-20201028094953-708e7fb298ac // indirect
 )
+
+replace github.com/fanlide/go-flutter-systray/go => ..\..\go-flutter-systray\go

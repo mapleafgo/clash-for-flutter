@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
@@ -9,6 +10,7 @@ import 'package:clash_for_flutter/app/bean/profile_bean.dart';
 import 'package:clash_for_flutter/app/utils/constant.dart';
 import 'package:go_flutter_clash/go_flutter_clash.dart';
 import 'package:go_flutter_clash/model/flutter_clash_config_model.dart';
+import 'package:go_flutter_systray/go_flutter_systray.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:yaml/yaml.dart';
@@ -22,6 +24,8 @@ abstract class _ConfigFileBase extends Disposable with Store {
   Directory configDir;
 
   List<ReactionDisposer> _disposers = [];
+  @observable
+  bool systemProxy = false;
   @observable
   FlutterClashConfig clashConfig;
   @observable
@@ -148,6 +152,23 @@ abstract class _ConfigFileBase extends Disposable with Store {
         _request.changeProxy(name: key, select: value);
       });
     });
+  }
+
+  /// 打开代理
+  @action
+  Future<void> openProxy() async {
+    await start();
+    await PACProxy.open("7890");
+    GoFlutterSystray.itemCheck(Constant.systrayProxyKey);
+    systemProxy = true;
+  }
+
+  /// 关闭代理
+  @action
+  Future<void> closeProxy() async {
+    await PACProxy.close();
+    GoFlutterSystray.itemUncheck(Constant.systrayProxyKey);
+    systemProxy = false;
   }
 
   /// 切换代理

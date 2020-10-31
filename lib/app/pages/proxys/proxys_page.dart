@@ -17,6 +17,12 @@ class ProxysPage extends StatefulWidget {
 }
 
 class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
+  @override
+  void initState() {
+    controller.init();
+    super.initState();
+  }
+
   void testDelay(TabController _tabController) async {
     var overlay = Loading.builder();
     asuka.addOverlay(overlay);
