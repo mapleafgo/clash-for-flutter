@@ -51,13 +51,13 @@ class _AppWidgetState extends State<AppWidget> {
       );
       GoFlutterSystray.registerCallBack(
         Constant.systrayProxyKey,
-        () {
+        () => Future(() {
           if (_config.systemProxy) {
             _config.closeProxy();
             return;
           }
           _config.openProxy();
-        },
+        }).catchError((err) => print(err)),
       );
     });
     super.initState();
