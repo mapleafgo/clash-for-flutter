@@ -38,7 +38,7 @@ class ProfileController extends Disposable {
         .then(
       (_) {
         var tempList = profiles.toList();
-        tempList.add(Profile(url: url, file: file, name: file));
+        tempList.add(Profile.defalut(url: url, file: file, name: file));
         if (tempList.length == 1)
           _setCFM(select: file, list: tempList);
         else

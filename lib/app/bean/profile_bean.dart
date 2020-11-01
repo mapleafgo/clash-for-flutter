@@ -13,10 +13,13 @@ class Profile {
   String name;
 
   /// 更新间隔(h)
-  int interval = 0;
+  int interval;
 
   /// 当前各分组的选择
-  Map<String, String> selected = {};
+  Map<String, String> selected;
 
   Profile({this.url, this.file, this.name, this.interval, this.selected});
+
+  factory Profile.defalut({url, file, name}) =>
+      Profile(url: url, file: file, name: name, interval: 0, selected: {});
 }

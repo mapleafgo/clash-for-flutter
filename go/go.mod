@@ -15,5 +15,3 @@ require (
 	github.com/pkg/errors v0.9.1
 	golang.org/x/sys v0.0.0-20201028094953-708e7fb298ac // indirect
 )
-
-replace github.com/fanlide/go-flutter-systray/go => ..\..\go-flutter-systray\go

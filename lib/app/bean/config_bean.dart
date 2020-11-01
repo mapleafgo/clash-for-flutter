@@ -15,12 +15,13 @@ class Config {
   @JsonProperty(name: "log-level")
   String logLevel;
 
-  Config(
-      {this.port,
-      this.socksPort,
-      this.redirPort,
-      this.mixedPort,
-      this.allowLan,
-      this.mode,
-      this.logLevel});
+  Config({
+    this.port,
+    this.socksPort,
+    this.redirPort,
+    this.mixedPort,
+    this.allowLan,
+    this.mode,
+    this.logLevel,
+  });
 }
