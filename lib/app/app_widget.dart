@@ -65,6 +65,7 @@ class _AppWidgetState extends State<AppWidget> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+        theme: ThemeData(fontFamily: "NotoSansCJK"),
         initialRoute: "/",
         builder: asuka.builder,
         navigatorKey: Modular.navigatorKey,

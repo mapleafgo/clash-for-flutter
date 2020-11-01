@@ -27,7 +27,7 @@ class ProxysController extends Disposable {
   /// 变更监听
   void listener() {
     final newIndexCtl = Modular.get<IndexController>();
-    if (_indexCtl.currentIndex != 1 && newIndexCtl.currentIndex == 1) {
+    if (newIndexCtl.currentIndex == 1) {
       _indexCtl = newIndexCtl;
       init();
     }
