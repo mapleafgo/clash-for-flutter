@@ -1,3 +1,4 @@
+import '../../exceptions/message_exception.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -14,20 +15,32 @@ class _HomePageState extends State<HomePage> {
   GlobalConfig _config = Modular.get<GlobalConfig>();
   bool _loading = false;
 
-  click() {
+  click() async {
     setState(() => _loading = true);
-    Future(() async {
+    try {
       if (_config.systemProxy) {
         await _config.closeProxy();
-        return;
+      } else {
+        await _config.openProxy();
       }
-      await _config.openProxy();
-    }).catchError(
-      (err) {
-        print(err);
-        asuka.showSnackBar(SnackBar(content: Text("初始化尚未完成，请稍后再试")));
-      },
-    ).then((_) => setState(() => _loading = false));
+    } on MessageException catch (e) {
+      asuka.showSnackBar(SnackBar(
+        content: Text(
+          e.getMessage(),
+          style: TextStyle(fontFamily: "NotoSansCJK"),
+        ),
+      ));
+    } catch (e) {
+      print(e);
+      asuka.showSnackBar(SnackBar(
+        content: Text(
+          "发生未知错误",
+          style: TextStyle(fontFamily: "NotoSansCJK"),
+        ),
+      ));
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
   @override

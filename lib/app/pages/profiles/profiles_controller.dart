@@ -64,8 +64,13 @@ class ProfileController extends Disposable {
     var tempList = profiles.toList();
     tempList.removeWhere((e) => e.file == file);
     if (isActive) {
-      _setCFM(select: tempList.first?.file, list: tempList);
-      tempList.first ?? _config.start();
+      if (tempList.isNotEmpty) {
+        _setCFM(select: tempList.first?.file, list: tempList);
+        tempList.first ?? _config.start();
+      } else {
+        _config.closeProxy();
+        _setCFM(select: "", list: tempList);
+      }
     } else {
       _setCFM(list: tempList);
     }

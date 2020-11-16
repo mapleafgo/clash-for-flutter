@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_bean.dart';
@@ -143,11 +145,25 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
   /// 启动clash
   Future<void> start() async {
+    // 判断是否有订阅
+    if (clashForMe.profiles.isEmpty) {
+      throw new MessageException("暂无任何订阅可用，请先添加订阅");
+    }
+    // 判断是否已选择订阅
+    if (clashForMe.selectedFile == "") {
+      throw new MessageException("未指定订阅");
+    }
     var file = File(
       "${configDir.path}${Constant.profilesPath}/${clashForMe.selectedFile}",
     );
-    var profile = json.encode(loadYaml(await file.readAsString()));
-    return GoFlutterClash.start(profile, clashConfig).then((_) {
+    // 判断订阅的配置文件是否存在
+    if (!file.existsSync()) {
+      throw new MessageException("订阅文件已不存在，请更新订阅");
+    }
+    return GoFlutterClash.start(
+      json.encode(loadYaml(await file.readAsString())),
+      clashConfig,
+    ).then((_) {
       active.selected?.forEach((key, value) {
         _request.changeProxy(name: key, select: value);
       });
@@ -158,7 +174,11 @@ abstract class _ConfigFileBase extends Disposable with Store {
   @action
   Future<void> openProxy() async {
     await start();
-    await PACProxy.open("7890");
+    try {
+      await PACProxy.open("7890");
+    } on PlatformException catch (e) {
+      throw new MessageException(e.message);
+    }
     GoFlutterSystray.itemCheck(Constant.systrayProxyKey);
     systemProxy = true;
   }
