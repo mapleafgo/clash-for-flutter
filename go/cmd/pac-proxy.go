@@ -58,14 +58,12 @@ func (p *PACProxy) InitPluginGLFW(window *glfw.Window) error {
 }
 
 func (p *PACProxy) initPac(arguments interface{}) (reply interface{}, err error) {
-	if params, ok := arguments.([]interface{}); ok {
-		if params[0] != nil && params[0] != "" {
-			pacStr := params[0].(string)
-			p.PacStr = pacStr
-			return nil, nil
-		}
+	if arguments != nil && arguments != "" {
+		pacStr := arguments.(string)
+		p.PacStr = pacStr
+		return nil, nil
 	}
-	resp, err := http.Get("https://hub.fastgit.org/iBug/pac/releases/latest/download/pac-gfwlist-17mon.txt")
+	resp, err := http.Get("https://hub.fastgit.org/iBug/pac/releases/latest/download/pac-17mon.txt")
 	if err != nil {
 		return nil, err
 	}
@@ -77,15 +75,10 @@ func (p *PACProxy) initPac(arguments interface{}) (reply interface{}, err error)
 
 func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
 	if p.PacStr == "" {
-		return nil, errors.New("pac文件尚未初始化")
+		return nil, errors.New("pac初始化尚未完成")
 	}
-	if params, ok := arguments.([]interface{}); ok {
-		if params[0] != nil {
-			cport := params[0].(string)
-			return nil, cmd.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
-		}
-	}
-	return nil, errors.New("参数错误")
+	cport := arguments.(string)
+	return nil, cmd.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
 }
 
 func (p *PACProxy) close(arguments interface{}) (reply interface{}, err error) {

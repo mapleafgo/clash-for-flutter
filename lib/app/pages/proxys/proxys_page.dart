@@ -62,9 +62,9 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   var historys = proxie.history as List<History>;
                   var delay = historys.isNotEmpty
                       ? Text(
-                          (historys.last.delay > 0
+                          historys.last.delay > 0
                               ? historys.last.delay.toString()
-                              : "timeout"),
+                              : "timeout",
                         )
                       : null;
                   var subText = proxie is Proxy
