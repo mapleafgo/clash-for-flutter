@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Clash For Flutter"
-#define MyAppVersion "0.0.2"
+#define MyAppVersion "0.0.3"
 #define MyAppPublisher "MuFeng"
 #define MyAppURL "https://github.com/fanlide/clash-for-flutter"
 #define MyAppExeName "clash_for_flutter.exe"
