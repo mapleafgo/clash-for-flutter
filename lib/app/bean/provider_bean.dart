@@ -25,7 +25,7 @@ class ProviderProxiesConverter implements ICustomConverter<List<dynamic>> {
   const ProviderProxiesConverter() : super();
 
   @override
-  List<dynamic> fromJSON(jsonValue, [JsonProperty jsonProperty]) {
+  List<dynamic> fromJSON(jsonValue, [DeserializationContext context]) {
     return jsonValue
         .map(
           (e) => GroupTypeValue.valueList.contains(e["type"])
@@ -36,7 +36,7 @@ class ProviderProxiesConverter implements ICustomConverter<List<dynamic>> {
   }
 
   @override
-  toJSON(List<dynamic> object, [JsonProperty jsonProperty]) {
+  toJSON(List<dynamic> object, [SerializationContext context]) {
     return object.map((e) => e.toJson()).toList();
   }
 }
