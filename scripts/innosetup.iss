@@ -6,7 +6,7 @@
 #define MyAppPublisher "MuFeng"
 #define MyAppURL "https://github.com/fanlide/clash-for-flutter"
 #define MyAppExeName "clash_for_flutter.exe"
-#define SourceDir "C:\Users\Casbin\Project\clash-for-flutter\go\build\outputs\windows-release"
+#define SourceDir "..\go\build\outputs\windows-release"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
