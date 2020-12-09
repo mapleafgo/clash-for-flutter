@@ -5,8 +5,10 @@
 ## 说明
 
 - Linux
+
   linux 版本可能需要先安装`gtk3`和`libappindicator3`。对于 Debian 系的发行版可执行下面的命令：
-  `sudo apt-get install gcc libgtk-3-dev libappindicator3-dev`
+
+  > `sudo apt-get install gcc libgtk-3-dev libappindicator3-dev`
 
 ## 界面
 
