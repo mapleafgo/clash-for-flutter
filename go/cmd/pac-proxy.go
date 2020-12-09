@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,6 +15,22 @@ import (
 
 const channelName = "pac-proxy"
 const port = "10080"
+const defaultPac = `// Default PAC
+var proxy = __PROXY__;
+var direct = "DIRECT";
+
+function FindProxyForURL(url, host) {
+  if (isPlainHostName(host) ||
+      shExpMatch(host, "*.local") ||
+      isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
+      isInNet(dnsResolve(host), "172.16.0.0",  "255.240.0.0") ||
+      isInNet(dnsResolve(host), "192.168.0.0",  "255.255.0.0") ||
+      isInNet(dnsResolve(host), "127.0.0.0", "255.255.255.0")) {
+    return direct;
+  }
+  return proxy + direct;
+}
+`
 
 type PACProxy struct {
 	PacStr string
@@ -63,13 +78,7 @@ func (p *PACProxy) initPac(arguments interface{}) (reply interface{}, err error)
 		p.PacStr = pacStr
 		return nil, nil
 	}
-	resp, err := http.Get("https://hub.fastgit.org/iBug/pac/releases/latest/download/pac-17mon.txt")
-	if err != nil {
-		return nil, err
-	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
-	p.PacStr = strings.ReplaceAll(buf.String(), "__PROXY__", "\"SOCKS5 127.0.0.1:%s;\"")
+	p.PacStr = strings.ReplaceAll(defaultPac, "__PROXY__", `"SOCKS5 127.0.0.1:%s;"`)
 	return nil, nil
 }
 

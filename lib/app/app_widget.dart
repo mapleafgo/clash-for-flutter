@@ -31,7 +31,12 @@ class _AppWidgetState extends State<AppWidget> {
         child: [
           MenuItem(key: Constant.systrayWinKey, title: "显示窗口", tooltip: "显示窗口"),
           MenuItem.separator(),
-          MenuItem(key: Constant.systrayProxyKey, title: "代理", tooltip: "代理"),
+          MenuItem(
+            key: Constant.systrayProxyKey,
+            title: "代理",
+            tooltip: "代理",
+            isCheckbox: true,
+          ),
           MenuItem.separator(),
           MenuItem(
             key: GoFlutterSystray.quitCallMethod,
