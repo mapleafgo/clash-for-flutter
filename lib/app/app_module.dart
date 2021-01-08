@@ -1,4 +1,5 @@
 import 'package:clash_for_flutter/app/pages/index/index_module.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/app_widget.dart';
@@ -13,7 +14,10 @@ class AppModule extends MainModule {
       ];
 
   @override
-  Widget get bootstrap => AppWidget();
+  Widget get bootstrap => DevicePreview(
+        enabled: true,
+        builder: (ctx) => AppWidget(),
+      );
 
   @override
   List<ModularRouter> get routers => [

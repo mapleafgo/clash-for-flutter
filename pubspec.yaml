@@ -37,6 +37,7 @@ dependencies:
   yaml: ^2.2.1
   json2yaml: ^1.0.1
   path_provider: ^1.6.22
+  device_preview: ^0.5.5
   go_flutter_clash:
     git:
       url: git://github.com/fanlide/go-flutter-clash.git

@@ -101,7 +101,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
     ];
   }
 
-  /// 校验本地配置文件
+  /// 校验本地订阅文件与配置里对应
   Future<ClashForMeConfig> _profilesInitCheck(ClashForMeConfig config) async {
     var profilesDir = Directory(configDir.path + Constant.profilesPath);
     var fileList = <String>[];
@@ -175,7 +175,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
   Future<void> openProxy() async {
     await start();
     try {
-      await PACProxy.open("7890");
+      await PACProxy.open(this.clashConfig.mixedPort.toString());
     } on PlatformException catch (e) {
       throw new MessageException(e.message);
     }
