@@ -66,7 +66,7 @@ func (p *PACProxy) InitPluginGLFW(window *glfw.Window) error {
 			previousCloseCallback(w)
 		}
 		if w.ShouldClose() {
-			pacProxyClose()
+			_ = pacProxyClose()
 		}
 	})
 	return nil
@@ -90,7 +90,7 @@ func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
 	return nil, cmd.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
 }
 
-func (p *PACProxy) close(arguments interface{}) (reply interface{}, err error) {
+func (p *PACProxy) close(interface{}) (reply interface{}, err error) {
 	return nil, cmd.TurnOffSystemProxy()
 }
 

@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/utils/constant.dart';
-import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -72,12 +71,8 @@ class _AppWidgetState extends State<AppWidget> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         theme: ThemeData(fontFamily: "NotoSansCJK"),
-        locale: DevicePreview.locale(context),
         initialRoute: "/",
-        builder: (ctx, w) {
-          // return DevicePreview.appBuilder(ctx, w);
-          return asuka.builder(ctx, w);
-        },
+        builder: asuka.builder,
         navigatorKey: Modular.navigatorKey,
         onGenerateRoute: Modular.generateRoute,
       );

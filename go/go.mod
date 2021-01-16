@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/fanlide/go-flutter-clash/go v0.0.0-20201031020441-1b7abfa13fef
-	github.com/fanlide/go-flutter-systray/go v0.0.0-20201128163207-f3415eca7adf
+	github.com/fanlide/go-flutter-systray/go v0.0.0-20210116170524-c8e627893b72
 	github.com/fanlide/sysproxy v0.0.0-20201024132447-a0915cc12b51
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-flutter-desktop/go-flutter v0.42.0

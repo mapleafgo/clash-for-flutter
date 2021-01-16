@@ -23,7 +23,7 @@ func main() {
 	}
 	err := flutter.Run(append(options, mainOptions...)...)
 	// 暂时在主线程退出时关闭代理（窗口关闭回调有点问题）
-	pacProxyClose()
+	_ = pacProxyClose()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

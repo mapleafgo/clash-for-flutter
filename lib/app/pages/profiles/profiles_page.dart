@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:flutter_modular/flutter_modular.dart';
+import 'package:asuka/asuka.dart' as asuka;
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
-import 'package:asuka/asuka.dart' as asuka;
+import 'package:responsive_scaffold/templates/layout/scaffold.dart';
 
 enum MenuType { Update, Remove, Rename }
 
@@ -57,10 +58,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("订阅"),
-      ),
+    return ResponsiveScaffold(
+      kDesktopBreakpoint: 860,
+      title: Text("订阅"),
       drawer: AppDrawer(),
       body: Container(
         child: Observer(

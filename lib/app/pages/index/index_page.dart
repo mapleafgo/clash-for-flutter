@@ -1,3 +1,4 @@
+import 'package:asuka/asuka.dart' as asuka;
 import 'package:clash_for_flutter/app/pages/home/home_module.dart';
 import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_module.dart';
@@ -7,7 +8,6 @@ import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:asuka/asuka.dart' as asuka;
 
 class IndexPage extends StatefulWidget {
   @override

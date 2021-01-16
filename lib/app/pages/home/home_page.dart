@@ -1,10 +1,12 @@
-import '../../exceptions/message_exception.dart';
+import 'package:asuka/asuka.dart' as asuka;
+import 'package:clash_for_flutter/app/component/drawer_component.dart';
+import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:clash_for_flutter/app/component/drawer_component.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
-import 'package:asuka/asuka.dart' as asuka;
+import 'package:responsive_scaffold/templates/layout/scaffold.dart';
+
+import '../../exceptions/message_exception.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -45,10 +47,9 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Clash For Flutter"),
-      ),
+    return ResponsiveScaffold(
+      kDesktopBreakpoint: 860,
+      title: Text("Clash For Flutter"),
       drawer: AppDrawer(),
       body: Center(
         child: Card(
