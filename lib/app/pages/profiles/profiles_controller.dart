@@ -29,7 +29,8 @@ class ProfileController extends Disposable {
   }
 
   Future<dynamic> getNewProfile(String url) {
-    var file = "${DateTime.now().millisecondsSinceEpoch}.yaml";
+    var time = DateTime.now();
+    var file = "${time.millisecondsSinceEpoch}.yaml";
     return _request
         .downFile(
       urlPath: url,
@@ -38,7 +39,9 @@ class ProfileController extends Disposable {
         .then(
       (_) {
         var tempList = profiles.toList();
-        tempList.add(Profile.defalut(url: url, file: file, name: file));
+        tempList.add(
+          Profile.defaultBean(url: url, file: file, name: file, time: time),
+        );
         if (tempList.length == 1)
           _setCFM(select: file, list: tempList);
         else
@@ -83,12 +86,14 @@ class ProfileController extends Disposable {
     var tempList = profiles.toList();
     var i = tempList.indexWhere((element) => element.file == file);
 
-    var newFile = "${DateTime.now().millisecondsSinceEpoch}.yaml";
+    var time = DateTime.now();
+    var newFile = "${time.millisecondsSinceEpoch}.yaml";
     await _request.downFile(
       urlPath: tempList[i].url,
       savePath: "${_config.configDir.path}${Constant.profilesPath}/$newFile",
     );
 
+    tempList[i].time = time;
     tempList[i].file = newFile;
 
     if (selectedFile == file) {

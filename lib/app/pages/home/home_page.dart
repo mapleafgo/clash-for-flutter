@@ -33,7 +33,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ));
     } catch (e) {
-      print(e);
       asuka.showSnackBar(SnackBar(
         content: Text(
           "发生未知错误",

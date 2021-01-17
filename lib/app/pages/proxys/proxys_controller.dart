@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
+import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class ProxysController extends Disposable {
   IndexController _indexCtl = Modular.get<IndexController>();
@@ -34,8 +34,10 @@ class ProxysController extends Disposable {
   }
 
   Future<void> init() async {
-    await getProviders();
-    await getProxies();
+    if (_config.systemProxy) {
+      await getProviders();
+      await getProxies();
+    }
   }
 
   Future<void> getProxies() async {

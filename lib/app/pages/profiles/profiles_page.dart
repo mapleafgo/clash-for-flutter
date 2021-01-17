@@ -5,6 +5,7 @@ import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:intl/intl.dart';
 import 'package:mobx/mobx.dart';
 import 'package:responsive_scaffold/templates/layout/scaffold.dart';
 
@@ -71,6 +72,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
               children: profiles
                   .map((e) => ListTile(
                         title: Text(e.name),
+                        subtitle: Text(
+                          DateFormat("yyyy/MM/dd HH:mm").format(e.time),
+                        ),
                         selected: e.file == selectedFile,
                         onTap: () => controller.select(e.file),
                         trailing: PopupMenuButton(

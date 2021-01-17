@@ -12,14 +12,29 @@ class Profile {
   /// 名称
   String name;
 
+  /// 更新的时间
+  DateTime time;
+
   /// 更新间隔(h)
   int interval;
 
   /// 当前各分组的选择
   Map<String, String> selected;
 
-  Profile({this.url, this.file, this.name, this.interval, this.selected});
+  Profile(
+      {this.url,
+      this.file,
+      this.name,
+      this.time,
+      this.interval,
+      this.selected});
 
-  factory Profile.defalut({url, file, name}) =>
-      Profile(url: url, file: file, name: name, interval: 0, selected: {});
+  factory Profile.defaultBean({url, file, name, time}) => Profile(
+        url: url,
+        file: file,
+        name: name,
+        time: time,
+        interval: 0,
+        selected: {},
+      );
 }
