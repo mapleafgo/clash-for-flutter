@@ -113,6 +113,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+          tooltip: "新增订阅",
           child: Icon(Icons.add),
           onPressed: () {
             asuka.showDialog(builder: (dialogContext) {
