@@ -4,7 +4,7 @@ package main
 
 import (
 	flutter "github.com/go-flutter-desktop/go-flutter"
-	go_flutter_clash "github.com/fanlide/go-flutter-clash/go"
+	go_flutter_clash "github.com/mapleafgo/go-flutter-clash/go"
 )
 
 func init() {

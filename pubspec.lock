@@ -254,8 +254,8 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: e200f494fe210f5f698cf9ebc3e1942f9ea320b4
-      url: "git://github.com/fanlide/go-flutter-clash.git"
+      resolved-ref: "7b0252324244ccee4bc23592059de1b378df77f9"
+      url: "git://github.com/mapleafgo/go-flutter-clash.git"
     source: git
     version: "0.0.1"
   go_flutter_systray:
@@ -638,4 +638,4 @@ packages:
     version: "2.2.1"
 sdks:
   dart: ">=2.10.0 <2.11.0"
-  flutter: ">=1.20.0 <2.0.0"
+  flutter: ">=1.22.0 <2.0.0"

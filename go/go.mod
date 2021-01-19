@@ -1,9 +1,9 @@
-module github.com/fanlide/clash_for_flutter/go
+module github.com/mapleafgo/clash_for_flutter/go
 
 go 1.15
 
 require (
-	github.com/fanlide/go-flutter-clash/go v0.0.0-20201031020441-1b7abfa13fef
+	github.com/mapleafgo/go-flutter-clash/go v0.0.0-20210118063811-7b0252324244
 	github.com/fanlide/go-flutter-systray/go v0.0.0-20210116170524-c8e627893b72
 	github.com/fanlide/sysproxy v0.0.0-20201024132447-a0915cc12b51
 	github.com/gin-gonic/gin v1.6.3
