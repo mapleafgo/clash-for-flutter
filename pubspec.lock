@@ -254,7 +254,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "6bc6ad5803223c4fb583fef5585f499aafb028cd"
+      resolved-ref: d29bb7f135f037f551ec9e4691adf413da129a37
       url: "git://github.com/mapleafgo/go-flutter-clash.git"
     source: git
     version: "0.0.2"

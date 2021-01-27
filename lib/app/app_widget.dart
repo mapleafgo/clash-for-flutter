@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:clash_for_flutter/app/bean/net_speed.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/utils/constant.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:go_flutter_clash/go_flutter_clash.dart';
 import 'package:go_flutter_systray/go_flutter_systray.dart';
 import 'package:go_flutter_systray/model/menu_item.dart';
 import 'package:asuka/asuka.dart' as asuka;
@@ -64,6 +67,10 @@ class _AppWidgetState extends State<AppWidget> {
           _config.openProxy();
         }).catchError((err) => print(err)),
       );
+    });
+    GoFlutterClash.trafficHandler((ret) {
+      var speed = JsonMapper.deserialize<NetSpeed>(ret);
+      print("网速: ${speed.up} ${speed.down}");
     });
     super.initState();
   }
