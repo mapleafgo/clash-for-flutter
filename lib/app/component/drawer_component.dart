@@ -1,6 +1,9 @@
+import 'package:clash_for_flutter/app/bean/net_speed.dart';
 import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:go_flutter_clash/go_flutter_clash.dart';
 
 class AppDrawer extends StatefulWidget {
   @override
@@ -10,17 +13,28 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   final _controller = Modular.get<IndexController>();
 
+  NetSpeed _speed = NetSpeed();
+
+  @override
+  void initState() {
+    super.initState();
+    GoFlutterClash.trafficHandler((ret) {
+      setState(() => _speed = JsonMapper.deserialize<NetSpeed>(ret));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
         DrawerHeader(
           padding: EdgeInsets.zero,
-          child: Image.asset(
-            "assets/darwer_img.jpg",
-            filterQuality: FilterQuality.high,
-            fit: BoxFit.fitWidth,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+                fit: BoxFit.fitWidth,
+                image: AssetImage("assets/darwer_img.jpg")),
           ),
+          child: Text("${_speed.up} / ${_speed.down}"),
         ),
         ListTile(
           selected: _controller.currentIndex == 0,
