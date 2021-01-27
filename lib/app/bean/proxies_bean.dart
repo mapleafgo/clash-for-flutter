@@ -22,8 +22,8 @@ class ProxiesConverter implements ICustomConverter<Map<String, dynamic>> {
       return MapEntry(
         key,
         GroupTypeValue.valueList.contains(e["type"])
-            ? JsonMapper.deserialize<Group>(e)
-            : JsonMapper.deserialize<Proxy>(e),
+            ? JsonMapper.fromMap<Group>(e)
+            : JsonMapper.fromMap<Proxy>(e),
       );
     });
   }

@@ -77,7 +77,7 @@ packages:
       name: build_runner
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.10.13"
+    version: "1.11.0"
   build_runner_core:
     dependency: transitive
     description:
@@ -168,7 +168,7 @@ packages:
       name: dart_json_mapper
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.7.6"
+    version: "1.7.9"
   dart_json_mapper_mobx:
     dependency: "direct main"
     description:
@@ -254,10 +254,10 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "7b0252324244ccee4bc23592059de1b378df77f9"
+      resolved-ref: "6bc6ad5803223c4fb583fef5585f499aafb028cd"
       url: "git://github.com/mapleafgo/go-flutter-clash.git"
     source: git
-    version: "0.0.1"
+    version: "0.0.2"
   go_flutter_systray:
     dependency: "direct main"
     description:
@@ -614,7 +614,7 @@ packages:
       name: web_socket_channel
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.1.0"
+    version: "1.2.0"
   win32:
     dependency: transitive
     description:

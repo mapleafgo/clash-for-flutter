@@ -21,29 +21,29 @@ class Request {
 
   /// 获取所有代理
   Future<Proxies> getProxies() async {
-    var res = await _dio.get("/proxies");
-    var proxies = JsonMapper.deserialize<Proxies>(res.data);
+    var res = await _dio.get<Map>("/proxies");
+    var proxies = JsonMapper.fromMap<Proxies>(res.data);
     return proxies;
   }
 
   /// 获取单个代理
   Future<dynamic> oneProxie(String name) async {
-    var res = await _dio.get("/proxies/$name");
+    var res = await _dio.get<Map>("/proxies/$name");
     var data = res.data;
     return data.containsKey("now")
-        ? JsonMapper.deserialize<Group>(data)
-        : JsonMapper.deserialize<Proxy>(data);
+        ? JsonMapper.fromMap<Group>(data)
+        : JsonMapper.fromMap<Proxy>(data);
   }
 
   Future<ProxyProviders> getProxyProviders() async {
-    var res = await _dio.get("/providers/proxies");
-    var providers = JsonMapper.deserialize<ProxyProviders>(res.data);
+    var res = await _dio.get<Map>("/providers/proxies");
+    var providers = JsonMapper.fromMap<ProxyProviders>(res.data);
     return providers;
   }
 
   /// 获取单个代理的延迟
   Future<int> getProxyDelay(String name) {
-    return _dio.get("/proxies/$name/delay", queryParameters: {
+    return _dio.get<Map>("/proxies/$name/delay", queryParameters: {
       "timeout": 3000,
       "url": 'http://www.gstatic.com/generate_204'
     }).then((res) => res.data["delay"]);
@@ -56,8 +56,8 @@ class Request {
 
   /// 获得当前的基础设置
   Future<Config> getConfigs() async {
-    var res = await _dio.get("/configs");
-    return JsonMapper.deserialize<Config>(res.data);
+    var res = await _dio.get<Map>("/configs");
+    return JsonMapper.fromMap<Config>(res.data);
   }
 
   /// 增量修改配置
