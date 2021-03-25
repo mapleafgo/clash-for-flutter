@@ -1,3 +1,4 @@
+import 'package:clash_for_flutter/app/app_widget.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -13,5 +14,8 @@ void main() {
       return Map.castFrom<dynamic, dynamic, String, String>(value);
     },
   }));
-  runApp(ModularApp(module: AppModule()));
+  runApp(ModularApp(
+    module: AppModule(),
+    child: AppWidget(),
+  ));
 }

@@ -3,15 +3,15 @@ import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_page.dart';
 
-class ProxysModule extends ChildModule {
+class ProxysModule extends Module {
   @override
-  List<Bind> get binds => [
-        Bind((_) => ProxysController(), singleton: false),
-        Bind((_) => ProxysModel()),
-      ];
+  final List<Bind> binds = [
+    Bind.factory((_) => ProxysController()),
+    Bind.singleton((_) => ProxysModel()),
+  ];
 
   @override
-  List<ModularRouter> get routers => [
-        ModularRouter("/", child: (_, __) => ProxysPage()),
-      ];
+  final List<ModularRoute> routes = [
+    ChildRoute("/", child: (_, __) => ProxysPage()),
+  ];
 }

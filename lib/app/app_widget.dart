@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:go_flutter_systray/go_flutter_systray.dart';
 import 'package:go_flutter_systray/model/menu_item.dart';
-import 'package:asuka/asuka.dart' as asuka;
 
 class AppWidget extends StatefulWidget {
   @override
@@ -71,9 +70,5 @@ class _AppWidgetState extends State<AppWidget> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         theme: ThemeData(fontFamily: "NotoSansCJK"),
-        initialRoute: "/",
-        builder: asuka.builder,
-        navigatorKey: Modular.navigatorKey,
-        onGenerateRoute: Modular.generateRoute,
-      );
+      ).modular();
 }

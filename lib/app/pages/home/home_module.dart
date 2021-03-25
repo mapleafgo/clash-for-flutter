@@ -1,12 +1,9 @@
 import 'package:clash_for_flutter/app/pages/home/home_page.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class HomeModule extends ChildModule {
+class HomeModule extends Module {
   @override
-  List<Bind> get binds => [];
-
-  @override
-  List<ModularRouter> get routers => [
-        ModularRouter("/", child: (_, __) => HomePage()),
-      ];
+  final List<ModularRoute> routes = [
+    ChildRoute("/", child: (_, __) => HomePage()),
+  ];
 }
