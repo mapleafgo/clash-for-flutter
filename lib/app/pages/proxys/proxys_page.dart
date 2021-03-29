@@ -102,7 +102,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
               var _tabController = DefaultTabController.of(con);
               return FloatingActionButton(
                 tooltip: "测延迟",
-                onPressed: () => testDelay(_tabController),
+                onPressed: () => testDelay(_tabController!),
                 child: Icon(Icons.flash_on),
               );
             },

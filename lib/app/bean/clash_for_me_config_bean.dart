@@ -6,13 +6,13 @@ import 'package:dart_json_mapper/dart_json_mapper.dart';
 class ClashForMeConfig {
   /// 选择的配置文件
   @JsonProperty(name: "selected-file")
-  String selectedFile;
+  String? selectedFile;
 
   /// 源配置
   List<Profile> profiles;
 
-  ClashForMeConfig({this.selectedFile, this.profiles});
+  ClashForMeConfig({this.selectedFile, required this.profiles});
 
   factory ClashForMeConfig.defaultConfig() =>
-      ClashForMeConfig(selectedFile: "", profiles: []);
+      ClashForMeConfig(selectedFile: null, profiles: []);
 }

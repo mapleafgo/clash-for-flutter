@@ -24,33 +24,24 @@ class _IndexPageState extends ModularState<IndexPage, IndexController> {
         .catchError((err) {
       asuka.showSnackBar(SnackBar(
         content: Text(
-          err is PlatformException ? err.message : "发生未知错误",
+          err is PlatformException ? err.message ?? "未知错误" : "发生未知错误",
           style: TextStyle(fontFamily: "NotoSansCJK"),
         ),
       ));
-      controller.status = 2;
+      controller.status = -1;
     });
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<IndexController>(builder: (_, __) {
-      switch (controller.status) {
-        case 0:
-          return Center(child: CircularProgressIndicator());
-        case 2:
-          return Center(child: Text("初始化失败"));
-        default:
-          return RouterOutletList(
-            controller: controller.router,
-            modules: [
-              HomeModule(),
-              ProxysModule(),
-              ProfilesModule(),
-            ],
-          );
-      }
-    });
+    switch (controller.status) {
+      case 0:
+        return Center(child: CircularProgressIndicator());
+      case -1:
+        return Center(child: Text("初始化失败"));
+      default:
+        return RouterOutlet();
+    }
   }
 }

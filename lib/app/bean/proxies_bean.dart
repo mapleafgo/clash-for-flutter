@@ -9,14 +9,14 @@ class Proxies {
   @JsonProperty(converter: ProxiesConverter())
   Map<String, dynamic> proxies;
 
-  Proxies({this.proxies});
+  Proxies({required this.proxies});
 }
 
 class ProxiesConverter implements ICustomConverter<Map<String, dynamic>> {
   const ProxiesConverter() : super();
 
   @override
-  Map<String, dynamic> fromJSON(jsonValue, [DeserializationContext context]) {
+  Map<String, dynamic> fromJSON(jsonValue, [DeserializationContext? context]) {
     return Map.castFrom<dynamic, dynamic, String, dynamic>(jsonValue)
         .map((key, e) {
       return MapEntry(
@@ -29,7 +29,7 @@ class ProxiesConverter implements ICustomConverter<Map<String, dynamic>> {
   }
 
   @override
-  toJSON(Map<String, dynamic> object, [SerializationContext context]) {
+  toJSON(Map<String, dynamic> object, [SerializationContext? context]) {
     return object.map(
       (key, value) => MapEntry(key, JsonMapper.serialize(value)),
     );

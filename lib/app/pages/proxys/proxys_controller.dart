@@ -67,7 +67,10 @@ class ProxysController extends Disposable {
     model.setState(providers: providers.providers);
   }
 
-  Future<void> select({String name, String select}) async {
+  Future<void> select({
+    required String name,
+    required String select,
+  }) async {
     await _request.changeProxy(name: name, select: select);
     _config.proxySelect(name: name, select: select);
     await getProxies();

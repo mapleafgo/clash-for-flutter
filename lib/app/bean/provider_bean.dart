@@ -13,11 +13,11 @@ class Provider {
   String updatedAt;
 
   Provider({
-    this.name,
-    this.proxies,
-    this.type,
-    this.vehicleType,
-    this.updatedAt,
+    required this.name,
+    required this.proxies,
+    required this.type,
+    required this.vehicleType,
+    required this.updatedAt,
   });
 }
 
@@ -25,7 +25,7 @@ class ProviderProxiesConverter implements ICustomConverter<List<dynamic>> {
   const ProviderProxiesConverter() : super();
 
   @override
-  List<dynamic> fromJSON(jsonValue, [DeserializationContext context]) {
+  List<dynamic> fromJSON(jsonValue, [DeserializationContext? context]) {
     return jsonValue
         .map(
           (e) => GroupTypeValue.valueList.contains(e["type"])
@@ -36,7 +36,7 @@ class ProviderProxiesConverter implements ICustomConverter<List<dynamic>> {
   }
 
   @override
-  toJSON(List<dynamic> object, [SerializationContext context]) {
+  toJSON(List<dynamic> object, [SerializationContext? context]) {
     return object.map((e) => e.toJson()).toList();
   }
 }

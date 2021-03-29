@@ -21,19 +21,35 @@ class Profile {
   /// 当前各分组的选择
   Map<String, String> selected;
 
-  Profile(
-      {this.url,
-      this.file,
-      this.name,
-      this.time,
-      this.interval,
-      this.selected});
+  Profile({
+    required this.url,
+    required this.file,
+    required this.name,
+    required this.time,
+    required this.interval,
+    required this.selected,
+  });
 
-  factory Profile.defaultBean({url, file, name, time}) => Profile(
+  factory Profile.defaultBean({
+    required String url,
+    required String file,
+    required String name,
+    required DateTime time,
+  }) =>
+      Profile(
         url: url,
         file: file,
         name: name,
         time: time,
+        interval: 0,
+        selected: {},
+      );
+
+  factory Profile.emptyBean() => Profile(
+        url: "",
+        file: "",
+        name: "",
+        time: DateTime.now(),
         interval: 0,
         selected: {},
       );

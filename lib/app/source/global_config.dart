@@ -23,15 +23,15 @@ class GlobalConfig = _ConfigFileBase with _$GlobalConfig;
 
 abstract class _ConfigFileBase extends Disposable with Store {
   final _request = Modular.get<Request>();
-  Directory configDir;
+  late Directory configDir;
 
   List<ReactionDisposer> _disposers = [];
   @observable
   bool systemProxy = false;
   @observable
-  FlutterClashConfig clashConfig;
+  late FlutterClashConfig clashConfig;
   @observable
-  ClashForMeConfig clashForMe;
+  late ClashForMeConfig clashForMe;
 
   @override
   dispose() async {
@@ -44,18 +44,20 @@ abstract class _ConfigFileBase extends Disposable with Store {
     configDir = await getApplicationSupportDirectory();
     var clashConfigFile = File(configDir.path + Constant.clashConfig);
     var clashForMeFile = File(configDir.path + Constant.clashForMe);
-    this.clashConfig = await clashConfigFile.exists()
-        ? JsonMapper.deserialize<FlutterClashConfig>(
+    if (await clashConfigFile.exists()) {
+      this.clashConfig = JsonMapper.deserialize<FlutterClashConfig>(
             await clashConfigFile.readAsString(),
-          )
-        : FlutterClashConfig.defaultConfig();
-    this.clashForMe = await clashForMeFile.exists()
-        ? await _profilesInitCheck(
+          ) ??
+          FlutterClashConfig.defaultConfig();
+    }
+    if (await clashForMeFile.exists()) {
+      this.clashForMe = await _profilesInitCheck(
             JsonMapper.deserialize<ClashForMeConfig>(
               await clashForMeFile.readAsString(),
             ),
-          )
-        : ClashForMeConfig.defaultConfig();
+          ) ??
+          ClashForMeConfig.defaultConfig();
+    }
 
     await _initClash();
 
@@ -102,7 +104,9 @@ abstract class _ConfigFileBase extends Disposable with Store {
   }
 
   /// 校验本地订阅文件与配置里对应
-  Future<ClashForMeConfig> _profilesInitCheck(ClashForMeConfig config) async {
+  Future<ClashForMeConfig?> _profilesInitCheck(ClashForMeConfig? config) async {
+    if (config == null) return null;
+
     var profilesDir = Directory(configDir.path + Constant.profilesPath);
     var fileList = <String>[];
     if (await profilesDir.exists()) {
@@ -115,30 +119,29 @@ abstract class _ConfigFileBase extends Disposable with Store {
     List<Profile> profiles =
         config.profiles.where((e) => fileList.contains(e.file)).toList();
 
-    var selectFile = profiles
-        .firstWhere(
-          (e) => e.file == config.selectedFile,
-          orElse: () => null,
-        )
-        ?.file;
-
-    return ClashForMeConfig(selectedFile: selectFile, profiles: profiles);
+    var selectElements = profiles.where((e) => e.file == config.selectedFile);
+    if (selectElements.isNotEmpty) {
+      return ClashForMeConfig(
+        selectedFile: selectElements.first.file,
+        profiles: profiles,
+      );
+    }
+    return ClashForMeConfig(profiles: profiles);
   }
 
   /// 当前应用中的配置文件
   @computed
-  Profile get active {
+  Profile? get active {
     var selectedFile = clashForMe.selectedFile;
     var profiles = clashForMe.profiles;
-    if (selectedFile.isNotEmpty) {
+    if (selectedFile != null) {
       return profiles.firstWhere((item) => item.file == selectedFile);
-    } else {
-      return null;
     }
+    return null;
   }
 
   @action
-  setState({ClashForMeConfig clashForMe, FlutterClashConfig clashConfig}) {
+  setState({ClashForMeConfig? clashForMe, FlutterClashConfig? clashConfig}) {
     if (clashForMe != null) this.clashForMe = clashForMe;
     if (clashConfig != null) this.clashConfig = clashConfig;
   }
@@ -164,7 +167,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       json.encode(loadYaml(await file.readAsString())),
       clashConfig,
     ).then((_) {
-      active.selected?.forEach((key, value) {
+      active?.selected.forEach((key, value) {
         _request.changeProxy(name: key, select: value);
       });
     });
@@ -177,7 +180,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
     try {
       await PACProxy.open(this.clashConfig.mixedPort.toString());
     } on PlatformException catch (e) {
-      throw new MessageException(e.message);
+      throw new MessageException(e.message ?? "开启代理异常");
     }
     GoFlutterSystray.itemCheck(Constant.systrayProxyKey);
     systemProxy = true;
@@ -192,17 +195,17 @@ abstract class _ConfigFileBase extends Disposable with Store {
   }
 
   /// 切换代理
-  proxySelect({String name, String select}) {
-    var i = clashForMe.profiles.indexOf(active);
-    var profile = JsonMapper.deserialize<Profile>(JsonMapper.serialize(active));
+  proxySelect({required String name, required String select}) {
+    if (active == null) return;
 
-    profile.selected != null
-        ? profile.selected[name] = select
-        : profile.selected = Map.fromEntries([MapEntry(name, select)]);
+    var index = clashForMe.profiles.indexOf(active!);
+    var profile = JsonMapper.deserialize<Profile>(JsonMapper.serialize(active));
+    profile!.selected[name] = select;
 
     var config = JsonMapper.deserialize<ClashForMeConfig>(
-        JsonMapper.serialize(clashForMe));
-    config.profiles[i] = profile;
+      JsonMapper.serialize(clashForMe),
+    );
+    config!.profiles[index] = profile;
     setState(clashForMe: config);
   }
 }

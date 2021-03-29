@@ -7,7 +7,7 @@ import '../enum/type_enum.dart';
 class Proxy {
   String name;
   ProxieType type;
-  List<History> history;
+  List<History>? history;
 
-  Proxy({this.name, this.type});
+  Proxy({required this.name, required this.type});
 }

@@ -12,5 +12,5 @@ class ProxyProviders {
 
   Map<String, Provider> providers;
 
-  ProxyProviders({this.providers});
+  ProxyProviders({required this.providers});
 }

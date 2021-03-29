@@ -9,7 +9,12 @@ class Group {
   GroupType type;
   List<String> all;
   String now;
-  List<History> history;
+  List<History>? history;
 
-  Group({this.name, this.type, this.all, this.now});
+  Group({
+    required this.name,
+    required this.type,
+    required this.all,
+    required this.now,
+  });
 }

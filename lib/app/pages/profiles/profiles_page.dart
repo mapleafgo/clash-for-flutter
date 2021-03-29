@@ -18,7 +18,7 @@ class ProfilesPage extends StatefulWidget {
 }
 
 class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
-  List<ReactionDisposer> disposerList;
+  late List<ReactionDisposer> disposerList;
 
   download(String url) async {
     var loading = Loading.builder();
@@ -40,11 +40,11 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
             },
           ),
           actions: [
-            FlatButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+            TextButton(
               child: Text("取消"),
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
-            RaisedButton(
+            ElevatedButton(
               child: Text("确认"),
               onPressed: () {
                 var value = textController.text;

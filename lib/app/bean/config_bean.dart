@@ -16,12 +16,12 @@ class Config {
   String logLevel;
 
   Config({
-    this.port,
-    this.socksPort,
-    this.redirPort,
-    this.mixedPort,
-    this.allowLan,
-    this.mode,
-    this.logLevel,
+    required this.port,
+    required this.socksPort,
+    required this.redirPort,
+    required this.mixedPort,
+    required this.allowLan,
+    required this.mode,
+    required this.logLevel,
   });
 }

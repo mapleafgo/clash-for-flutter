@@ -15,48 +15,55 @@ class Request {
     receiveTimeout: 5000,
   ));
 
-  Future<dynamic> downFile({String urlPath, String savePath}) {
+  Future<dynamic> downFile({
+    required String urlPath,
+    required String savePath,
+  }) {
     return Dio().download(urlPath, savePath);
   }
 
   /// 获取所有代理
-  Future<Proxies> getProxies() async {
-    var res = await _dio.get<Map>("/proxies");
-    var proxies = JsonMapper.fromMap<Proxies>(res.data);
-    return proxies;
+  Future<Proxies?> getProxies() async {
+    var res = await _dio.get<Map<String, dynamic>>("/proxies");
+    return JsonMapper.fromMap<Proxies>(res.data);
   }
 
   /// 获取单个代理
-  Future<dynamic> oneProxie(String name) async {
-    var res = await _dio.get<Map>("/proxies/$name");
+  Future<dynamic?> oneProxie(String name) async {
+    var res = await _dio.get<Map<String, dynamic>>("/proxies/$name");
     var data = res.data;
-    return data.containsKey("now")
-        ? JsonMapper.fromMap<Group>(data)
-        : JsonMapper.fromMap<Proxy>(data);
+    if (data != null) {
+      return data.containsKey("now")
+          ? JsonMapper.fromMap<Group>(data)
+          : JsonMapper.fromMap<Proxy>(data);
+    }
+    return null;
   }
 
-  Future<ProxyProviders> getProxyProviders() async {
-    var res = await _dio.get<Map>("/providers/proxies");
-    var providers = JsonMapper.fromMap<ProxyProviders>(res.data);
-    return providers;
+  Future<ProxyProviders?> getProxyProviders() async {
+    var res = await _dio.get<Map<String, dynamic>>("/providers/proxies");
+    return JsonMapper.fromMap<ProxyProviders>(res.data);
   }
 
   /// 获取单个代理的延迟
-  Future<int> getProxyDelay(String name) {
+  Future<int?> getProxyDelay(String name) {
     return _dio.get<Map>("/proxies/$name/delay", queryParameters: {
       "timeout": 3000,
       "url": 'http://www.gstatic.com/generate_204'
-    }).then((res) => res.data["delay"]);
+    }).then((res) => res.data?["delay"]);
   }
 
   /// 切换 Selector 中选中的代理
-  Future<Response<void>> changeProxy({String name, String select}) {
+  Future<Response<void>> changeProxy({
+    required String name,
+    required String select,
+  }) {
     return _dio.put<void>("/proxies/$name", data: {"name": select});
   }
 
   /// 获得当前的基础设置
-  Future<Config> getConfigs() async {
-    var res = await _dio.get<Map>("/configs");
+  Future<Config?> getConfigs() async {
+    var res = await _dio.get<Map<String, dynamic>>("/configs");
     return JsonMapper.fromMap<Config>(res.data);
   }
 

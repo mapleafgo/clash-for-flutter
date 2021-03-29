@@ -1,5 +1,4 @@
 import 'package:clash_for_flutter/app/bean/net_speed.dart';
-import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -11,15 +10,15 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  final _controller = Modular.get<IndexController>();
-
   NetSpeed _speed = NetSpeed();
 
   @override
   void initState() {
     super.initState();
     GoFlutterClash.trafficHandler((ret) {
-      setState(() => _speed = JsonMapper.deserialize<NetSpeed>(ret));
+      setState(
+        () => _speed = JsonMapper.deserialize<NetSpeed>(ret) ?? NetSpeed(),
+      );
     });
   }
 
@@ -37,33 +36,33 @@ class _AppDrawerState extends State<AppDrawer> {
           child: Text("${_speed.up} / ${_speed.down}"),
         ),
         ListTile(
-          selected: _controller.currentIndex == 0,
+          selected: Modular.initialRoute.endsWith("/home"),
           leading: Icon(Icons.home),
           title: Text("主页"),
           onTap: () {
-            _controller.changePage(0);
+            Modular.to.navigate("/home");
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             }
           },
         ),
         ListTile(
-          selected: _controller.currentIndex == 1,
+          selected: Modular.initialRoute.endsWith("/profiles"),
           leading: Icon(Icons.cloud),
           title: Text("代理"),
           onTap: () {
-            _controller.changePage(1);
+            Modular.to.navigate("/profiles");
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             }
           },
         ),
         ListTile(
-          selected: _controller.currentIndex == 2,
+          selected: Modular.initialRoute.endsWith("/proxys"),
           leading: Icon(Icons.code),
           title: Text("订阅"),
           onTap: () {
-            _controller.changePage(2);
+            Modular.to.navigate("/proxys");
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             }

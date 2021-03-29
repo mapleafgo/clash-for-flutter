@@ -12,14 +12,14 @@ class ProfileController extends Disposable {
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();
 
-  String get selectedFile => _config.clashForMe.selectedFile;
+  String? get selectedFile => _config.clashForMe.selectedFile;
 
   List<Profile> get profiles => _config.clashForMe.profiles;
 
   @override
   void dispose() => _config.dispose();
 
-  _setCFM({String select, List<Profile> list}) {
+  _setCFM({String? select, List<Profile>? list}) {
     _config.setState(
       clashForMe: ClashForMeConfig(
         selectedFile: select ?? selectedFile,
@@ -62,14 +62,14 @@ class ProfileController extends Disposable {
   }
 
   /// 移除源
-  Future<void> removeProfile(String file) async {
+  void removeProfile(String file) {
     var isActive = selectedFile == file;
     var tempList = profiles.toList();
     tempList.removeWhere((e) => e.file == file);
     if (isActive) {
       if (tempList.isNotEmpty) {
-        _setCFM(select: tempList.first?.file, list: tempList);
-        tempList.first ?? _config.start();
+        _setCFM(select: tempList.first.file, list: tempList);
+        _config.start();
       } else {
         _config.closeProxy();
         _setCFM(select: "", list: tempList);
@@ -77,24 +77,23 @@ class ProfileController extends Disposable {
     } else {
       _setCFM(list: tempList);
     }
-    await File("${_config.configDir.path}${Constant.profilesPath}/$file")
-        .delete();
+    File("${_config.configDir.path}${Constant.profilesPath}/$file").delete();
   }
 
   /// 更新源
   Future<void> updateProfile(String file) async {
     var tempList = profiles.toList();
-    var i = tempList.indexWhere((element) => element.file == file);
+    var index = tempList.indexWhere((e) => e.file == file);
 
     var time = DateTime.now();
     var newFile = "${time.millisecondsSinceEpoch}.yaml";
     await _request.downFile(
-      urlPath: tempList[i].url,
+      urlPath: tempList[index].url,
       savePath: "${_config.configDir.path}${Constant.profilesPath}/$newFile",
     );
 
-    tempList[i].time = time;
-    tempList[i].file = newFile;
+    tempList[index].time = time;
+    tempList[index].file = newFile;
 
     if (selectedFile == file) {
       _setCFM(select: newFile, list: tempList);
@@ -102,7 +101,6 @@ class ProfileController extends Disposable {
     } else {
       _setCFM(list: tempList);
     }
-    await File("${_config.configDir.path}${Constant.profilesPath}/$file")
-        .delete();
+    File("${_config.configDir.path}${Constant.profilesPath}/$file").delete();
   }
 }

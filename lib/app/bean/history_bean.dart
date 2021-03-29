@@ -5,5 +5,5 @@ class History {
   String time;
   int delay;
 
-  History({this.time, this.delay});
+  History({required this.time, required this.delay});
 }
