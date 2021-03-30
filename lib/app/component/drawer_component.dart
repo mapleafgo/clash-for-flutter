@@ -1,4 +1,5 @@
 import 'package:clash_for_flutter/app/bean/net_speed.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -20,6 +21,15 @@ class _AppDrawerState extends State<AppDrawer> {
         () => _speed = JsonMapper.deserialize<NetSpeed>(ret) ?? NetSpeed(),
       );
     });
+  }
+
+  String format(int value) {
+    double num = value.toDouble();
+    var leval = 0;
+    for (; num.compareTo(1024) > 0; leval++) {
+      num /= 1024;
+    }
+    return "${num.toStringAsFixed(1)} ${DataUnit.values[leval].value}/s";
   }
 
   @override
@@ -46,7 +56,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "↑ ${_speed.up} byte/s ┃ ↓${_speed.down} byte/s",
+                      "↑ ${format(_speed.up)} ┃ ↓ ${format(_speed.down)}",
                       style: TextStyle(
                         color: Colors.black,
                         fontWeight: FontWeight.bold,

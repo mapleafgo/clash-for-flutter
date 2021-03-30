@@ -52,3 +52,12 @@ extension ModeValue on Mode {
 
   String get value => ModeValue.valueList[this.index];
 }
+
+enum DataUnit { Byte, KB, MB, GB }
+
+extension DataUnitValue on DataUnit {
+  static List<String> get valueList =>
+      DataUnit.values.map((e) => e.toString().split("\.").last).toList();
+
+  String get value => DataUnitValue.valueList[this.index];
+}
