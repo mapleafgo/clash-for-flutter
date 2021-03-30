@@ -13,7 +13,7 @@ abstract class _ProxysModel with Store {
   @observable
   var groups = <Group>[];
   @observable
-  Group global;
+  Group? global;
 
   /// 代理列表
   @observable
@@ -23,10 +23,10 @@ abstract class _ProxysModel with Store {
 
   @action
   setState({
-    Group global,
-    List<Group> groups,
-    List<Proxy> proxies,
-    Map<String, Provider> providers,
+    Group? global,
+    List<Group>? groups,
+    List<Proxy>? proxies,
+    Map<String, Provider>? providers,
   }) {
     if (global != null) this.global = global;
     if (groups != null) this.groups = groups;

@@ -4,7 +4,6 @@ import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:responsive_scaffold/templates/layout/scaffold.dart';
 
 import '../../exceptions/message_exception.dart';
 
@@ -46,10 +45,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveScaffold(
-      kDesktopBreakpoint: 860,
-      title: Text("Clash For Flutter"),
-      drawer: AppDrawer(),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Clash For Flutter"),
+      ),
+      drawer: Drawer(child: AppDrawer()),
       body: Center(
         child: Card(
           elevation: 1,

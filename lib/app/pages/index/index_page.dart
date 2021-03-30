@@ -1,8 +1,7 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:asuka/asuka.dart' as asuka;
-import 'package:clash_for_flutter/app/pages/home/home_module.dart';
-import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
-import 'package:clash_for_flutter/app/pages/profiles/profiles_module.dart';
-import 'package:clash_for_flutter/app/pages/proxys/proxys_module.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:flutter/material.dart';
@@ -14,34 +13,32 @@ class IndexPage extends StatefulWidget {
   _IndexPageState createState() => _IndexPageState();
 }
 
-class _IndexPageState extends ModularState<IndexPage, IndexController> {
+class _IndexPageState extends State<IndexPage> {
   GlobalConfig _config = Modular.get<GlobalConfig>();
+
+  _IndexPageState() {
+    Modular.to.navigate("/loading");
+  }
 
   @override
   void initState() {
-    Future.wait([_config.init(), PACProxy.init()])
-        .then((_) => controller.status = 1)
-        .catchError((err) {
+    Future.wait([_config.init(), PACProxy.init()]).then((_) {
+      Modular.to.navigate("/home");
+    }).catchError((err) {
+      Modular.to.navigate("/error");
+      log("初始化失败", error: err);
       asuka.showSnackBar(SnackBar(
         content: Text(
           err is PlatformException ? err.message ?? "未知错误" : "发生未知错误",
           style: TextStyle(fontFamily: "NotoSansCJK"),
         ),
       ));
-      controller.status = -1;
     });
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    switch (controller.status) {
-      case 0:
-        return Center(child: CircularProgressIndicator());
-      case -1:
-        return Center(child: Text("初始化失败"));
-      default:
-        return RouterOutlet();
-    }
+    return RouterOutlet();
   }
 }

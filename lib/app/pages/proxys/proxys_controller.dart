@@ -3,37 +3,17 @@ import 'dart:async';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
-import 'package:clash_for_flutter/app/pages/index/index_controller.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class ProxysController extends Disposable {
-  IndexController _indexCtl = Modular.get<IndexController>();
+class ProxysController {
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();
   final model = Modular.get<ProxysModel>();
 
-  ProxysController() {
-    _indexCtl.addListener(listener);
-  }
-
-  @override
-  void dispose() {
-    _indexCtl.removeListener(listener);
-  }
-
-  /// 变更监听
-  void listener() {
-    final newIndexCtl = Modular.get<IndexController>();
-    if (newIndexCtl.currentIndex == 1) {
-      _indexCtl = newIndexCtl;
-      init();
-    }
-  }
-
-  Future<void> init() async {
+  Future<void> initState() async {
     if (_config.systemProxy) {
       await getProviders();
       await getProxies();
@@ -42,11 +22,11 @@ class ProxysController extends Disposable {
 
   Future<void> getProxies() async {
     var proxies = await _request.getProxies();
-    var global = proxies.proxies[UsedProxy.GLOBAL.value] as Group;
+    var global = proxies?.proxies[UsedProxy.GLOBAL.value] as Group;
 
     var list = global.all
         .where((name) => !UsedProxyValue.valueList.contains(name))
-        .map((key) => proxies.proxies[key])
+        .map((key) => proxies?.proxies[key])
         .toList();
 
     List<Group> groupList = [];
@@ -64,7 +44,7 @@ class ProxysController extends Disposable {
 
   Future<void> getProviders() async {
     var providers = await _request.getProxyProviders();
-    model.setState(providers: providers.providers);
+    model.setState(providers: providers?.providers);
   }
 
   Future<void> select({

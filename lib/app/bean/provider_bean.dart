@@ -10,14 +10,14 @@ class Provider {
   List<dynamic> proxies;
   String type;
   VehicleType vehicleType;
-  String updatedAt;
+  String? updatedAt;
 
   Provider({
     required this.name,
     required this.proxies,
     required this.type,
     required this.vehicleType,
-    required this.updatedAt,
+    this.updatedAt,
   });
 }
 

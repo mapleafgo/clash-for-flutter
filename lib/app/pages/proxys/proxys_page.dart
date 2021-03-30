@@ -9,7 +9,6 @@ import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:responsive_scaffold/templates/layout/scaffold.dart';
 
 /// 代理配置页
 class ProxysPage extends StatefulWidget {
@@ -20,7 +19,7 @@ class ProxysPage extends StatefulWidget {
 class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   @override
   void initState() {
-    controller.init();
+    controller.initState();
     super.initState();
   }
 
@@ -40,15 +39,16 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
       var providers = controller.model.providers;
       return DefaultTabController(
         length: groups.length,
-        child: ResponsiveScaffold(
-          kDesktopBreakpoint: 860,
-          title: groups.length > 1
-              ? TabBar(
-                  tabs: groups.map((e) => Tab(text: e.name)).toList(),
-                  isScrollable: true,
-                )
-              : Text("代理"),
-          drawer: AppDrawer(),
+        child: Scaffold(
+          appBar: AppBar(
+            title: groups.isNotEmpty
+                ? TabBar(
+                    tabs: groups.map((e) => Tab(text: e.name)).toList(),
+                    isScrollable: true,
+                  )
+                : Text("代理"),
+          ),
+          drawer: Drawer(child: AppDrawer()),
           body: groups.length > 0
               ? TabBarView(
                   children: groups.map((group) {

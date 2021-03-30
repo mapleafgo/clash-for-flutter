@@ -1,5 +1,7 @@
+import 'dart:developer';
 import 'dart:typed_data';
 
+import 'package:asuka/asuka.dart' as asuka;
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/utils/constant.dart';
 import 'package:flutter/material.dart';
@@ -61,7 +63,9 @@ class _AppWidgetState extends State<AppWidget> {
             return;
           }
           _config.openProxy();
-        }).catchError((err) => print(err)),
+        }).catchError((err) {
+          log("开启代理失败", error: err);
+        }),
       );
     });
     super.initState();
@@ -70,5 +74,6 @@ class _AppWidgetState extends State<AppWidget> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         theme: ThemeData(fontFamily: "NotoSansCJK"),
+        builder: asuka.builder,
       ).modular();
 }

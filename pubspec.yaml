@@ -26,7 +26,7 @@ dependencies:
   dio: ^4.0.0-prev3
   dart_json_mapper: ^2.0.5
   dart_json_mapper_mobx: ^2.0.0
-  mobx: ^2.0.0-nullsafety.5
+  mobx: ^2.0.0-nullsafety.6
   flutter_mobx: ^2.0.0-nullsafety.3
   flutter_modular: ^3.0.2
   asuka: ^2.0.0-nullsafety.2

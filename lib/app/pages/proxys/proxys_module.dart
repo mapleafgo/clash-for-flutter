@@ -6,8 +6,8 @@ import 'package:clash_for_flutter/app/pages/proxys/proxys_page.dart';
 class ProxysModule extends Module {
   @override
   final List<Bind> binds = [
-    Bind.factory((_) => ProxysController()),
     Bind.singleton((_) => ProxysModel()),
+    Bind.factory((_) => ProxysController()),
   ];
 
   @override

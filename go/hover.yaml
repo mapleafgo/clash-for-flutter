@@ -6,3 +6,4 @@ target: lib/main_desktop.dart
 # opengl: "none" # Uncomment this line if you have trouble with your OpenGL driver (https://github.com/go-flutter-desktop/go-flutter/issues/272)
 docker: false
 engine-version: "" # change to a engine version commit
+organization-name: "mapleafgo"

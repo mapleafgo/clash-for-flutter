@@ -7,7 +7,6 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 import 'package:mobx/mobx.dart';
-import 'package:responsive_scaffold/templates/layout/scaffold.dart';
 
 enum MenuType { Update, Remove, Rename }
 
@@ -18,6 +17,7 @@ class ProfilesPage extends StatefulWidget {
 }
 
 class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
+  bool _loading = false;
   late List<ReactionDisposer> disposerList;
 
   download(String url) async {
@@ -57,12 +57,32 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
         );
       });
 
+  upgradeProfile(String file) {
+    setState(() => _loading = true);
+    controller.updateProfile(file).then(
+          (_) => setState(
+            () => _loading = false,
+          ),
+        );
+  }
+
+  removeProfile(String file) {
+    asuka.showSnackBar(SnackBar(
+      content: Text("确定移除？"),
+      action: SnackBarAction(
+        label: "确定",
+        onPressed: () => controller.removeProfile(file),
+      ),
+    ));
+  }
+
   @override
-  Widget build(BuildContext context) {
-    return ResponsiveScaffold(
-      kDesktopBreakpoint: 860,
-      title: Text("订阅"),
-      drawer: AppDrawer(),
+  Widget build(_) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("订阅"),
+      ),
+      drawer: Drawer(child: AppDrawer()),
       body: Container(
         child: Observer(
           builder: (_) {
@@ -77,35 +97,39 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                         ),
                         selected: e.file == selectedFile,
                         onTap: () => controller.select(e.file),
-                        trailing: PopupMenuButton(
-                          onSelected: (type) {
-                            switch (type) {
-                              case MenuType.Rename:
-                                renameDialog(e.file);
-                                break;
-                              case MenuType.Update:
-                                controller.updateProfile(e.file);
-                                break;
-                              case MenuType.Remove:
-                                controller.removeProfile(e.file);
-                                break;
-                            }
-                          },
-                          itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
-                            PopupMenuItem(
-                              child: Text("重命名"),
-                              value: MenuType.Rename,
-                            ),
-                            PopupMenuItem(
-                              child: Text("更新"),
-                              value: MenuType.Update,
-                            ),
-                            PopupMenuItem(
-                              child: Text("移除"),
-                              value: MenuType.Remove,
-                            ),
-                          ],
-                        ),
+                        trailing: _loading
+                            ? CircularProgressIndicator(
+                                strokeWidth: 6,
+                              )
+                            : PopupMenuButton(
+                                onSelected: (type) {
+                                  switch (type) {
+                                    case MenuType.Rename:
+                                      renameDialog(e.file);
+                                      break;
+                                    case MenuType.Update:
+                                      upgradeProfile(e.file);
+                                      break;
+                                    case MenuType.Remove:
+                                      removeProfile(e.file);
+                                      break;
+                                  }
+                                },
+                                itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
+                                  PopupMenuItem(
+                                    child: Text("重命名"),
+                                    value: MenuType.Rename,
+                                  ),
+                                  PopupMenuItem(
+                                    child: Text("更新"),
+                                    value: MenuType.Update,
+                                  ),
+                                  PopupMenuItem(
+                                    child: Text("移除"),
+                                    value: MenuType.Remove,
+                                  ),
+                                ],
+                              ),
                       ))
                   .toList(),
             );
@@ -116,7 +140,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           tooltip: "新增订阅",
           child: Icon(Icons.add),
           onPressed: () {
-            asuka.showDialog(builder: (dialogContext) {
+            asuka.showDialog(builder: (cxt) {
               var textController = TextEditingController();
               return StatefulBuilder(builder: (_, setDialogState) {
                 return AlertDialog(
@@ -125,21 +149,21 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                     controller: textController,
                     onSubmitted: (value) {
                       if (value.length == 0) return;
-                      Navigator.of(dialogContext).pop();
+                      Navigator.of(cxt).pop();
                       download(value);
                     },
                   ),
                   actions: [
-                    FlatButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
+                    TextButton(
+                      onPressed: () => Navigator.of(cxt).pop(),
                       child: Text("取消"),
                     ),
-                    RaisedButton(
+                    ElevatedButton(
                       child: Text("确认"),
                       onPressed: () {
                         var value = textController.text;
                         if (value.length == 0) return;
-                        Navigator.of(dialogContext).pop();
+                        Navigator.of(cxt).pop();
                         download(value);
                       },
                     ),

@@ -29,9 +29,9 @@ abstract class _ConfigFileBase extends Disposable with Store {
   @observable
   bool systemProxy = false;
   @observable
-  late FlutterClashConfig clashConfig;
+  FlutterClashConfig clashConfig = FlutterClashConfig.defaultConfig();
   @observable
-  late ClashForMeConfig clashForMe;
+  ClashForMeConfig clashForMe = ClashForMeConfig.defaultConfig();
 
   @override
   dispose() async {
@@ -41,22 +41,22 @@ abstract class _ConfigFileBase extends Disposable with Store {
   }
 
   Future<void> init() async {
-    configDir = await getApplicationSupportDirectory();
+    await getApplicationSupportDirectory().then((dir) => configDir = dir);
     var clashConfigFile = File(configDir.path + Constant.clashConfig);
     var clashForMeFile = File(configDir.path + Constant.clashForMe);
     if (await clashConfigFile.exists()) {
-      this.clashConfig = JsonMapper.deserialize<FlutterClashConfig>(
+      clashConfig = JsonMapper.deserialize<FlutterClashConfig>(
             await clashConfigFile.readAsString(),
           ) ??
-          FlutterClashConfig.defaultConfig();
+          clashConfig;
     }
     if (await clashForMeFile.exists()) {
-      this.clashForMe = await _profilesInitCheck(
+      clashForMe = await _profilesInitCheck(
             JsonMapper.deserialize<ClashForMeConfig>(
               await clashForMeFile.readAsString(),
             ),
           ) ??
-          ClashForMeConfig.defaultConfig();
+          clashForMe;
     }
 
     await _initClash();

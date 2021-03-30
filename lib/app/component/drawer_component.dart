@@ -30,41 +30,64 @@ class _AppDrawerState extends State<AppDrawer> {
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             image: DecorationImage(
-                fit: BoxFit.fitWidth,
-                image: AssetImage("assets/darwer_img.jpg")),
+              fit: BoxFit.fitWidth,
+              image: AssetImage("assets/darwer_img.jpg"),
+            ),
           ),
-          child: Text("${_speed.up} / ${_speed.down}"),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 6),
+                decoration:
+                    BoxDecoration(color: Color.fromARGB(180, 255, 255, 255)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "↑ ${_speed.up} byte/s ┃ ↓${_speed.down} byte/s",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  ],
+                ),
+              )
+            ],
+          ),
         ),
         ListTile(
-          selected: Modular.initialRoute.endsWith("/home"),
+          selected: Modular.to.modulePath.endsWith("/home"),
           leading: Icon(Icons.home),
           title: Text("主页"),
           onTap: () {
             Modular.to.navigate("/home");
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
+            if (Modular.to.canPop()) {
+              Modular.to.pop();
             }
           },
         ),
         ListTile(
-          selected: Modular.initialRoute.endsWith("/profiles"),
+          selected: Modular.to.modulePath.endsWith("/proxys"),
           leading: Icon(Icons.cloud),
           title: Text("代理"),
           onTap: () {
-            Modular.to.navigate("/profiles");
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
+            Modular.to.navigate("/proxys");
+            if (Modular.to.canPop()) {
+              Modular.to.pop();
             }
           },
         ),
         ListTile(
-          selected: Modular.initialRoute.endsWith("/proxys"),
+          selected: Modular.to.modulePath.endsWith("/profiles"),
           leading: Icon(Icons.code),
           title: Text("订阅"),
           onTap: () {
-            Modular.to.navigate("/proxys");
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
+            Modular.to.navigate("/profiles");
+            if (Modular.to.canPop()) {
+              Modular.to.pop();
             }
           },
         ),

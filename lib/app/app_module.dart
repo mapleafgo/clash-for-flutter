@@ -6,8 +6,8 @@ import 'package:clash_for_flutter/app/source/request.dart';
 class AppModule extends Module {
   @override
   final List<Bind> binds = [
-    Bind.lazySingleton((_) => GlobalConfig()),
-    Bind.lazySingleton((_) => Request())
+    Bind.singleton((_) => Request()),
+    Bind.singleton((_) => GlobalConfig()),
   ];
 
   @override
