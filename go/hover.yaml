@@ -1,7 +1,7 @@
-#application-name: "clash_for_flutter" # Uncomment to modify this value.
+application-name: "Clash For Flutter" # Uncomment to modify this value.
 #executable-name: "clash_for_flutter" # Uncomment to modify this value. Only lowercase a-z, numbers, underscores and no spaces
 #package-name: "clashforflutter" # Uncomment to modify this value. Only lowercase a-z, numbers and no underscores or spaces
-license: "" # MANDATORY: Fill in your SPDX license name: https://spdx.org/licenses
+license: "MIT" # MANDATORY: Fill in your SPDX license name: https://spdx.org/licenses
 target: lib/main_desktop.dart
 # opengl: "none" # Uncomment this line if you have trouble with your OpenGL driver (https://github.com/go-flutter-desktop/go-flutter/issues/272)
 docker: false

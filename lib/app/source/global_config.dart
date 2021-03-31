@@ -198,12 +198,13 @@ abstract class _ConfigFileBase extends Disposable with Store {
   proxySelect({required String name, required String select}) {
     if (active == null) return;
 
-    var index = clashForMe.profiles.indexOf(active!);
-    clashForMe.profiles[index].selected[name] = select;
+    var profiles = clashForMe.profiles.toList();
+    var index = profiles.indexOf(active!);
+    profiles[index].selected = {...profiles[index].selected, name: select};
 
     setState(
       clashForMe: ClashForMeConfig(
-        profiles: clashForMe.profiles,
+        profiles: profiles,
         selectedFile: clashForMe.selectedFile,
       ),
     );
