@@ -56,12 +56,12 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                     var groupNow = group.now;
                     var proxies = providers[groupName]?.proxies ?? [];
                     return ListView.separated(
-                      separatorBuilder: (_, i) => Divider(height: 5),
+                      separatorBuilder: (_, __) => Divider(height: 5),
                       itemCount: proxies.length,
                       itemBuilder: (_, i) {
                         var proxie = proxies[i];
                         var proxieName = proxie.name;
-                        var historys = proxie.history as List<History>;
+                        var historys = proxie.history as List<History>? ?? [];
                         var delay = historys.isNotEmpty
                             ? Text(
                                 historys.last.delay > 0
@@ -74,7 +74,8 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                             : "${(proxie as Group).type.value} [${proxie.now}]";
                         return ListTile(
                           visualDensity: VisualDensity(
-                              vertical: VisualDensity.minimumDensity),
+                            vertical: VisualDensity.minimumDensity,
+                          ),
                           selected: groupNow == proxieName,
                           title: Text(
                             proxieName,

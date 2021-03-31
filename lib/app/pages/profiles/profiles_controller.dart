@@ -8,16 +8,13 @@ import 'package:clash_for_flutter/app/utils/constant.dart';
 
 import '../../source/request.dart';
 
-class ProfileController extends Disposable {
+class ProfileController {
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();
 
   String? get selectedFile => _config.clashForMe.selectedFile;
 
   List<Profile> get profiles => _config.clashForMe.profiles;
-
-  @override
-  void dispose() => _config.dispose();
 
   _setCFM({String? select, List<Profile>? list}) {
     _config.setState(
@@ -95,11 +92,11 @@ class ProfileController extends Disposable {
           "${_config.configDir.path}${Constant.profilesPath}/${profile.file}",
     );
 
-    tempList[index] = profile;
+    tempList.replaceRange(index, index + 1, [profile]);
 
     if (selectedFile == file) {
       _setCFM(select: profile.file, list: tempList);
-      _config.start();
+      await _config.start();
     } else {
       _setCFM(list: tempList);
     }

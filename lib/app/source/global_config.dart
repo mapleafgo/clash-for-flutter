@@ -153,7 +153,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       throw new MessageException("暂无任何订阅可用，请先添加订阅");
     }
     // 判断是否已选择订阅
-    if (clashForMe.selectedFile == "") {
+    if (clashForMe.selectedFile == null) {
       throw new MessageException("未指定订阅");
     }
     var file = File(
@@ -203,7 +203,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
     var profile = Profile.clone(profiles[index]);
     profile.selected[name] = select;
-    profiles[index] = profile;
+    profiles.replaceRange(index, index + 1, [profile]);
 
     setState(
       clashForMe: ClashForMeConfig(

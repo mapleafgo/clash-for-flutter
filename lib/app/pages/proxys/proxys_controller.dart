@@ -22,16 +22,16 @@ class ProxysController {
 
   Future<void> getProxies() async {
     var proxies = await _request.getProxies();
-    var global = proxies?.proxies[UsedProxy.GLOBAL.value] as Group;
+    var global = proxies?.proxies[UsedProxy.GLOBAL.value] as Group?;
 
-    var list = global.all
+    var list = global?.all
         .where((name) => !UsedProxyValue.valueList.contains(name))
         .map((key) => proxies?.proxies[key])
         .toList();
 
     List<Group> groupList = [];
     List<Proxy> proxieList = [];
-    list.forEach((item) {
+    list?.forEach((item) {
       if (item is Group) {
         groupList.add(item);
       } else if (item is Proxy) {
