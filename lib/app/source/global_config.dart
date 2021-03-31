@@ -87,7 +87,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
                 (file) => file.writeAsString(JsonMapper.serialize(config)),
               );
         },
-        delay: 2000,
+        delay: 1000,
       ),
       reaction(
         (_) => clashForMe,
@@ -98,7 +98,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
                 (file) => file.writeAsString(JsonMapper.serialize(config)),
               );
         },
-        delay: 2000,
+        delay: 1000,
       ),
     ];
   }
@@ -135,7 +135,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
     var selectedFile = clashForMe.selectedFile;
     var profiles = clashForMe.profiles;
     if (selectedFile != null) {
-      return profiles.firstWhere((item) => item.file == selectedFile);
+      return profiles.firstWhere((e) => e.file == selectedFile);
     }
     return null;
   }
@@ -199,13 +199,13 @@ abstract class _ConfigFileBase extends Disposable with Store {
     if (active == null) return;
 
     var index = clashForMe.profiles.indexOf(active!);
-    var profile = JsonMapper.deserialize<Profile>(JsonMapper.serialize(active));
-    profile!.selected[name] = select;
+    clashForMe.profiles[index].selected[name] = select;
 
-    var config = JsonMapper.deserialize<ClashForMeConfig>(
-      JsonMapper.serialize(clashForMe),
+    setState(
+      clashForMe: ClashForMeConfig(
+        profiles: clashForMe.profiles,
+        selectedFile: clashForMe.selectedFile,
+      ),
     );
-    config!.profiles[index] = profile;
-    setState(clashForMe: config);
   }
 }
