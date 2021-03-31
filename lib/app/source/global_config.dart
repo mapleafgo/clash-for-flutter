@@ -200,7 +200,10 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
     var profiles = clashForMe.profiles.toList();
     var index = profiles.indexOf(active!);
-    profiles[index].selected = {...profiles[index].selected, name: select};
+
+    var profile = Profile.clone(profiles[index]);
+    profile.selected[name] = select;
+    profiles[index] = profile;
 
     setState(
       clashForMe: ClashForMeConfig(

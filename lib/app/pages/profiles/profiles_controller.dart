@@ -85,18 +85,20 @@ class ProfileController extends Disposable {
     var tempList = profiles.toList();
     var index = tempList.indexWhere((e) => e.file == file);
 
-    var time = DateTime.now();
-    var newFile = "${time.millisecondsSinceEpoch}.yaml";
+    var profile = Profile.clone(tempList[index]);
+    profile.time = DateTime.now();
+    profile.file = "${profile.time.millisecondsSinceEpoch}.yaml";
+
     await _request.downFile(
-      urlPath: tempList[index].url,
-      savePath: "${_config.configDir.path}${Constant.profilesPath}/$newFile",
+      urlPath: profile.url,
+      savePath:
+          "${_config.configDir.path}${Constant.profilesPath}/${profile.file}",
     );
 
-    tempList[index].time = time;
-    tempList[index].file = newFile;
+    tempList[index] = profile;
 
     if (selectedFile == file) {
-      _setCFM(select: newFile, list: tempList);
+      _setCFM(select: profile.file, list: tempList);
       _config.start();
     } else {
       _setCFM(list: tempList);

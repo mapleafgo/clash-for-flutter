@@ -53,4 +53,13 @@ class Profile {
         interval: 0,
         selected: {},
       );
+
+  factory Profile.clone(Profile bean) => Profile(
+        url: bean.url,
+        file: bean.file,
+        name: bean.name,
+        time: bean.time,
+        interval: bean.interval,
+        selected: Map.from(bean.selected),
+      );
 }
