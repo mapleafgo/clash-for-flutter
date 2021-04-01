@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/fanlide/sysproxy/cmd"
 	"github.com/gin-gonic/gin"
 	flutter "github.com/go-flutter-desktop/go-flutter"
 	"github.com/go-flutter-desktop/go-flutter/plugin"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/mapleafgo/sysproxy"
 )
 
 const channelName = "pac-proxy"
@@ -87,13 +87,13 @@ func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
 		return nil, errors.New("pac初始化尚未完成")
 	}
 	cport := arguments.(string)
-	return nil, cmd.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
+	return nil, sysproxy.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
 }
 
 func (p *PACProxy) close(interface{}) (reply interface{}, err error) {
-	return nil, cmd.TurnOffSystemProxy()
+	return nil, sysproxy.TurnOffSystemProxy()
 }
 
 func pacProxyClose() error {
-	return cmd.TurnOffSystemProxy()
+	return sysproxy.TurnOffSystemProxy()
 }

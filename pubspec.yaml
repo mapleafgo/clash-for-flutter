@@ -41,7 +41,7 @@ dependencies:
   go_flutter_systray:
     # path: ../go-flutter-systray
     git:
-      url: git://github.com/fanlide/go-flutter-systray.git
+      url: git://github.com/mapleafgo/go-flutter-systray.git
 
 dev_dependencies:
   flutter_test:
