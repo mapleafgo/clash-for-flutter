@@ -30,7 +30,6 @@ class _IndexPageState extends State<IndexPage> {
       asuka.showSnackBar(SnackBar(
         content: Text(
           err is PlatformException ? err.message ?? "未知错误" : "发生未知错误",
-          style: TextStyle(fontFamily: "NotoSansCJK"),
         ),
       ));
     });

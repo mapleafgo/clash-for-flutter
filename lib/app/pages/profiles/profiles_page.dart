@@ -59,11 +59,15 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
 
   upgradeProfile(String file) {
     setState(() => _loading = true);
-    controller.updateProfile(file).then(
-          (_) => setState(
-            () => _loading = false,
-          ),
-        );
+    controller
+        .updateProfile(file)
+        .then(
+          (_) => setState(() => _loading = false),
+        )
+        .catchError((err) {
+      setState(() => _loading = false);
+      asuka.showSnackBar(SnackBar(content: Text(err.message ?? "未知异常")));
+    });
   }
 
   removeProfile(String file) {

@@ -74,6 +74,14 @@ class _AppWidgetState extends State<AppWidget> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         theme: ThemeData(fontFamily: "NotoSansCJK"),
-        builder: asuka.builder,
+        builder: (BuildContext context, Widget? child) => Theme(
+          data: ThemeData(
+            fontFamily: "NotoSansCJK",
+            snackBarTheme: SnackBarThemeData(
+              contentTextStyle: TextStyle(fontFamily: "NotoSansCJK"),
+            ),
+          ),
+          child: asuka.builder(context, child),
+        ),
       ).modular();
 }

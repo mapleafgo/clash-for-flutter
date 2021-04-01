@@ -25,19 +25,9 @@ class _HomePageState extends State<HomePage> {
         await _config.openProxy();
       }
     } on MessageException catch (e) {
-      asuka.showSnackBar(SnackBar(
-        content: Text(
-          e.getMessage(),
-          style: TextStyle(fontFamily: "NotoSansCJK"),
-        ),
-      ));
+      asuka.showSnackBar(SnackBar(content: Text(e.getMessage())));
     } catch (e) {
-      asuka.showSnackBar(SnackBar(
-        content: Text(
-          "发生未知错误",
-          style: TextStyle(fontFamily: "NotoSansCJK"),
-        ),
-      ));
+      asuka.showSnackBar(SnackBar(content: Text("发生未知错误")));
     } finally {
       setState(() => _loading = false);
     }

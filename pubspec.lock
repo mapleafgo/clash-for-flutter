@@ -284,7 +284,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: fac7066d5b9839c646efdb087b09cb078cf2c7b2
+      resolved-ref: "098c673cc9a1989821fcf35ac6a6c1350caca7f7"
       url: "git://github.com/fanlide/go-flutter-systray.git"
     source: git
     version: "0.1.0"
