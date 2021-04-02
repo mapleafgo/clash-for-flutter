@@ -20,6 +20,7 @@ class _AppWidgetState extends State<AppWidget> {
 
   @override
   void initState() {
+    super.initState();
     GoFlutterSystray.initSystray();
     rootBundle
         .load("assets/icon.ico")
@@ -28,22 +29,16 @@ class _AppWidgetState extends State<AppWidget> {
       var menu = MenuItem.main(
         icon: icon,
         title: "ClashForFlutter",
-        tooltip: "ClashForFlutter",
         child: [
-          MenuItem(key: Constant.systrayWinKey, title: "显示窗口", tooltip: "显示窗口"),
+          MenuItem(key: Constant.systrayWinKey, title: "显示窗口"),
           MenuItem.separator(),
           MenuItem(
             key: Constant.systrayProxyKey,
             title: "代理",
-            tooltip: "代理",
             isCheckbox: true,
           ),
           MenuItem.separator(),
-          MenuItem(
-            key: GoFlutterSystray.quitCallMethod,
-            title: "退出",
-            tooltip: "退出",
-          ),
+          MenuItem(key: GoFlutterSystray.quitCallMethod, title: "退出"),
         ],
       );
       await GoFlutterSystray.runSystray(menu);
@@ -68,7 +63,6 @@ class _AppWidgetState extends State<AppWidget> {
         }),
       );
     });
-    super.initState();
   }
 
   @override

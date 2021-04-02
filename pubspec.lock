@@ -161,7 +161,7 @@ packages:
       name: crypto
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "3.0.0"
+    version: "3.0.1"
   dart_json_mapper:
     dependency: "direct main"
     description:
@@ -243,7 +243,7 @@ packages:
       name: flutter_mobx
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.0.0-nullsafety.3"
+    version: "2.0.0"
   flutter_modular:
     dependency: "direct main"
     description:
@@ -284,10 +284,10 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "098c673cc9a1989821fcf35ac6a6c1350caca7f7"
+      resolved-ref: b070523b2336fa87c961c2e3c92ae4922863f82e
       url: "git://github.com/mapleafgo/go-flutter-systray.git"
     source: git
-    version: "0.1.0"
+    version: "0.1.2"
   graphs:
     dependency: transitive
     description:
@@ -371,14 +371,14 @@ packages:
       name: mobx
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.0.0-nullsafety.6"
+    version: "2.0.0"
   mobx_codegen:
     dependency: "direct dev"
     description:
       name: mobx_codegen
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.0.0-nullsafety.2"
+    version: "2.0.0"
   package_config:
     dependency: transitive
     description:
@@ -572,7 +572,7 @@ packages:
       name: triple
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.0.0+1"
+    version: "1.0.1"
   typed_data:
     dependency: transitive
     description:
