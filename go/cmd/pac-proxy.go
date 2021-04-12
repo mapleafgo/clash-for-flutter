@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	flutter "github.com/go-flutter-desktop/go-flutter"
 	"github.com/go-flutter-desktop/go-flutter/plugin"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -48,11 +47,10 @@ func (p *PACProxy) InitPlugin(messenger plugin.BinaryMessenger) error {
 	channel.HandleFunc("open", p.open)
 	channel.HandleFunc("close", p.close)
 
-	router := gin.New()
-	router.GET("/pac", func(c *gin.Context) {
-		c.String(http.StatusOK, p.PacStr, c.Query("p"))
+	http.HandleFunc("/pac", func(resp http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(resp, p.PacStr, req.URL.Query().Get("p"))
 	})
-	go router.Run(fmt.Sprintf(":%s", port))
+	go http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
 	return nil
 }
