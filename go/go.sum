@@ -72,6 +72,8 @@ github.com/mapleafgo/go-flutter-clash/go v0.0.0-20210330035701-1fcafc930dcc h1:d
 github.com/mapleafgo/go-flutter-clash/go v0.0.0-20210330035701-1fcafc930dcc/go.mod h1:B82jb/0BkPUfKKWmVKKk7RYx+OwTNcufnqJh5ZvsFgc=
 github.com/mapleafgo/go-flutter-systray/go v0.0.0-20210412162236-1d65acf5d675 h1:OC0T9ClsO2qzHwCp75w9HqUFcM6q/RnHJfv/J0wekAU=
 github.com/mapleafgo/go-flutter-systray/go v0.0.0-20210412162236-1d65acf5d675/go.mod h1:j7Jjvvh0+qNxkwApi7xyYzWae1FtaM1U7bzjFLpJegU=
+github.com/mapleafgo/go-flutter-systray/go v0.0.0-20210413014355-59e3141b1836 h1:7VGTMc9/P3h+zqXVbDABSxKqkb6QmAStVKP0K7QrTGE=
+github.com/mapleafgo/go-flutter-systray/go v0.0.0-20210413014355-59e3141b1836/go.mod h1:j7Jjvvh0+qNxkwApi7xyYzWae1FtaM1U7bzjFLpJegU=
 github.com/mapleafgo/sysproxy v0.0.0-20210401141240-10c369e75ac9 h1:MbZcdjnFiQB1pztILEvSVciVJUeCld1mHnI3mEMvHWA=
 github.com/mapleafgo/sysproxy v0.0.0-20210401141240-10c369e75ac9/go.mod h1:50otE42294SXnQXxL5+nYLNBJz0TBCYt2XO8vO7mkj8=
 github.com/miekg/dns v1.1.35 h1:oTfOaDH+mZkdcgdIjH6yBajRGtIwcwcaR+rt23ZSrJs=
