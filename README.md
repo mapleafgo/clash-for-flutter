@@ -2,7 +2,7 @@
 
 这是一个**Clash**的桌面客户端，支持 windows、linux、macos。
 
-> [使用说明](https://clash-for-flutter.mapleafgo.github.io/)
+> [使用说明](https://mapleafgo.github.io/clash-for-flutter)
 
 ## 开发说明
 
