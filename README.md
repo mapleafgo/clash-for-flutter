@@ -2,11 +2,13 @@
 
 这是一个**Clash**的桌面客户端，支持 windows、linux、macos。
 
-## 说明
+> [使用说明](https://clash-for-flutter.mapleafgo.github.io/)
+
+## 开发说明
 
 - Linux
 
-  linux 版本可能需要先安装`gtk3`和`libappindicator3`。对于 Debian 系的发行版可执行下面的命令：
+  linux 上开发除必要安装的 `Go`、`Hover`、`Flutter`等外，还需要安装`gtk3`和`libappindicator3`。对于 Debian 系的发行版可执行下面的命令：
 
   > `sudo apt-get install gcc libgtk-3-dev libappindicator3-dev`
 
@@ -14,9 +16,9 @@
 
 界面较于简陋，不过这种应用也不用多炫吧
 
-![主页](./doc/home.png)
+![主页](./docs/images/home.png)
 
-![菜单](./doc/menu.png)
+![菜单](./docs/images/menu.png)
 
 ## 主要技术
 
