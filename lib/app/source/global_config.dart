@@ -6,6 +6,7 @@ import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/plugin/pac-proxy.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_emoji/flutter_emoji.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_bean.dart';
@@ -23,6 +24,7 @@ class GlobalConfig = _ConfigFileBase with _$GlobalConfig;
 
 abstract class _ConfigFileBase extends Disposable with Store {
   final _request = Modular.get<Request>();
+  final _emojiParser = EmojiParser();
   late Directory configDir;
 
   List<ReactionDisposer> _disposers = [];
@@ -164,7 +166,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       throw new MessageException("订阅文件已不存在，请更新订阅");
     }
     return GoFlutterClash.start(
-      json.encode(loadYaml(await file.readAsString())),
+      json.encode(loadYaml(_emojiParser.unemojify(await file.readAsString()))),
       clashConfig,
     ).then((_) {
       active?.selected.forEach((key, value) {
@@ -178,6 +180,11 @@ abstract class _ConfigFileBase extends Disposable with Store {
   Future<void> openProxy() async {
     await start();
     try {
+      // await GoFlutterClash.initTun(
+      //   "ClashForFlutter",
+      //   this.clashConfig.mixedPort.toString(),
+      // );
+      // await GoFlutterClash.startTun();
       await PACProxy.open(this.clashConfig.mixedPort.toString());
     } on PlatformException catch (e) {
       throw new MessageException(e.message ?? "开启代理异常");
@@ -189,6 +196,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
   /// 关闭代理
   @action
   Future<void> closeProxy() async {
+    // await GoFlutterClash.stopTun();
     await PACProxy.close();
     GoFlutterSystray.itemUncheck(Constant.systrayProxyKey);
     systemProxy = false;

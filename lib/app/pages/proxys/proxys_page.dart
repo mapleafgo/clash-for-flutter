@@ -7,6 +7,7 @@ import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_emoji/flutter_emoji.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -17,10 +18,12 @@ class ProxysPage extends StatefulWidget {
 }
 
 class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
+  final _emojiParser = EmojiParser();
+
   @override
   void initState() {
-    controller.initState();
     super.initState();
+    controller.initState();
   }
 
   void testDelay(TabController _tabController) async {
@@ -43,7 +46,9 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
           appBar: AppBar(
             title: groups.isNotEmpty
                 ? TabBar(
-                    tabs: groups.map((e) => Tab(text: e.name)).toList(),
+                    tabs: groups
+                        .map((e) => Tab(text: _emojiParser.emojify(e.name)))
+                        .toList(),
                     isScrollable: true,
                   )
                 : Text("代理"),
@@ -78,11 +83,11 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                           ),
                           selected: groupNow == proxieName,
                           title: Text(
-                            proxieName,
+                            _emojiParser.emojify(proxieName),
                             style: TextStyle(fontSize: 14),
                           ),
                           subtitle: Text(
-                            subText,
+                            _emojiParser.emojify(subText),
                             style: TextStyle(fontSize: 12),
                           ),
                           onTap: () => controller.select(

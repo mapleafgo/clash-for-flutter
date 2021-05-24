@@ -35,7 +35,7 @@ packages:
       name: async
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.5.0"
+    version: "2.6.1"
   boolean_selector:
     dependency: transitive
     description:
@@ -237,6 +237,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_emoji:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "2e2da41abf6a928206f44707fdf4d6149f049463"
+      url: "git://github.com/cek-cek/flutter-emoji.git"
+    source: git
+    version: "2.4.0"
   flutter_mobx:
     dependency: "direct main"
     description:
@@ -275,7 +284,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: fc8bb78d802eef9217d5e8044af7d601d81523ed
+      resolved-ref: eb769481608b0665b801b1c75591bb1739b71597
       url: "git://github.com/mapleafgo/go-flutter-clash.git"
     source: git
     version: "0.1.0"
@@ -558,7 +567,7 @@ packages:
       name: test_api
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.2.19"
+    version: "0.3.0"
   timing:
     dependency: transitive
     description:

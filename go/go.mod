@@ -11,3 +11,5 @@ require (
 	github.com/mapleafgo/sysproxy v0.0.0-20210401141240-10c369e75ac9
 	github.com/pkg/errors v0.9.1
 )
+
+// replace github.com/mapleafgo/go-flutter-clash/go => ../../go-flutter-clash/go

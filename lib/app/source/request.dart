@@ -29,7 +29,7 @@ class Request {
   }
 
   /// 获取单个代理
-  Future<dynamic?> oneProxie(String name) async {
+  Future<dynamic> oneProxie(String name) async {
     var res = await _dio.get<Map<String, dynamic>>("/proxies/$name");
     var data = res.data;
     if (data != null) {
