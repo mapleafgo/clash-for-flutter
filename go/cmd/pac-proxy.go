@@ -13,7 +13,7 @@ import (
 )
 
 const channelName = "pac-proxy"
-const port = "10080"
+const port = "10081"
 const defaultPac = `// Default PAC
 var proxy = __PROXY__;
 var direct = "DIRECT";
