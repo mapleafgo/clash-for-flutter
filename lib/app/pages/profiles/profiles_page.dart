@@ -1,4 +1,5 @@
 import 'package:asuka/asuka.dart' as asuka;
+import 'package:clash_for_flutter/app/bean/profile_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
@@ -8,7 +9,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 import 'package:mobx/mobx.dart';
 
-enum MenuType { Update, Remove, Rename }
+enum MenuType { Update, Remove, Edit }
 
 /// 配置文件页
 class ProfilesPage extends StatefulWidget {
@@ -27,17 +28,25 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     loading.remove();
   }
 
-  renameDialog(String file) => asuka.showDialog(builder: (dialogContext) {
-        var textController = TextEditingController();
+  edit(Profile profile) => asuka.showDialog(builder: (dialogContext) {
+        var nameController = TextEditingController();
+        var urlController = TextEditingController();
+        nameController.text = profile.name;
+        urlController.text = profile.url;
         return AlertDialog(
-          title: Text("重命名"),
-          content: TextField(
-            controller: textController,
-            onSubmitted: (value) {
-              if (value.length == 0) return;
-              Navigator.of(dialogContext).pop();
-              controller.rename(file, value);
-            },
+          title: Text("编辑"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(labelText: "名称"),
+                controller: nameController,
+              ),
+              TextField(
+                decoration: InputDecoration(labelText: "链接"),
+                controller: urlController,
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -47,10 +56,11 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
             ElevatedButton(
               child: Text("确认"),
               onPressed: () {
-                var value = textController.text;
-                if (value.length == 0) return;
+                profile.url = urlController.text;
+                profile.name = nameController.text;
+                if (profile.name.length == 0 || profile.url.length == 0) return;
                 Navigator.of(dialogContext).pop();
-                controller.rename(file, value);
+                controller.edit(profile);
               },
             ),
           ],
@@ -108,8 +118,8 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                             : PopupMenuButton(
                                 onSelected: (type) {
                                   switch (type) {
-                                    case MenuType.Rename:
-                                      renameDialog(e.file);
+                                    case MenuType.Edit:
+                                      edit(e);
                                       break;
                                     case MenuType.Update:
                                       upgradeProfile(e.file);
@@ -121,8 +131,8 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                                 },
                                 itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
                                   PopupMenuItem(
-                                    child: Text("重命名"),
-                                    value: MenuType.Rename,
+                                    child: Text("编辑"),
+                                    value: MenuType.Edit,
                                   ),
                                   PopupMenuItem(
                                     child: Text("更新"),

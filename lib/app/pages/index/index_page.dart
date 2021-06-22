@@ -3,7 +3,7 @@ import 'dart:developer';
 
 import 'package:asuka/asuka.dart' as asuka;
 import 'package:clash_for_flutter/app/source/global_config.dart';
-import 'package:clash_for_flutter/plugin/pac-proxy.dart';
+import 'package:clash_for_flutter/plugin/pac_proxy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';

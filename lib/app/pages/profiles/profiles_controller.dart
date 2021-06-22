@@ -50,11 +50,11 @@ class ProfileController {
   /// 选择某源
   select(String file) => _setCFM(select: file);
 
-  /// 重命名源
-  rename(String file, String name) {
+  /// 编辑源
+  edit(Profile profile) {
     var tempList = profiles.toList();
-    var i = tempList.indexWhere((element) => element.file == file);
-    tempList[i].name = name;
+    var i = tempList.indexWhere((element) => element.file == profile.file);
+    tempList[i] = profile;
     _setCFM(list: tempList);
   }
 

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
-import 'package:clash_for_flutter/plugin/pac-proxy.dart';
+import 'package:clash_for_flutter/plugin/pac_proxy.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_emoji/flutter_emoji.dart';
