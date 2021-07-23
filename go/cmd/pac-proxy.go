@@ -9,7 +9,7 @@ import (
 	flutter "github.com/go-flutter-desktop/go-flutter"
 	"github.com/go-flutter-desktop/go-flutter/plugin"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/mapleafgo/sysproxy"
+	"github.com/wzshiming/sysproxy"
 )
 
 const channelName = "pac-proxy"
@@ -19,17 +19,18 @@ var proxy = __PROXY__;
 var direct = "DIRECT";
 
 function FindProxyForURL(url, host) {
-  if (isPlainHostName(host) ||
-      shExpMatch(host, "*.local") ||
-      isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
-      isInNet(dnsResolve(host), "172.16.0.0",  "255.240.0.0") ||
-      isInNet(dnsResolve(host), "192.168.0.0",  "255.255.0.0") ||
-      isInNet(dnsResolve(host), "127.0.0.0", "255.255.255.0")) {
-    return direct;
-  }
-  return proxy + direct;
+	if (isPlainHostName(host) ||
+	shExpMatch(host, "*.local") ||
+	isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
+	isInNet(dnsResolve(host), "172.16.0.0",  "255.240.0.0") ||
+	isInNet(dnsResolve(host), "192.168.0.0",  "255.255.0.0") ||
+	isInNet(dnsResolve(host), "127.0.0.0", "255.255.255.0")) {
+		return direct;
+	}
+	return proxy + direct;
 }
 `
+const noProxy = "<local>"
 
 type PACProxy struct {
 	PacStr string
@@ -85,13 +86,13 @@ func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
 		return nil, errors.New("pac初始化尚未完成")
 	}
 	cport := arguments.(string)
-	return nil, sysproxy.TurnOnSystemProxy(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
+	return nil, sysproxy.OnPAC(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
 }
 
 func (p *PACProxy) close(interface{}) (reply interface{}, err error) {
-	return nil, sysproxy.TurnOffSystemProxy()
+	return nil, pacProxyClose()
 }
 
 func pacProxyClose() error {
-	return sysproxy.TurnOffSystemProxy()
+	return sysproxy.OffPAC()
 }
