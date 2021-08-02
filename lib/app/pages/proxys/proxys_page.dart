@@ -36,7 +36,6 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   }
 
   void moreMenu(
-    TabController _tabController,
     BuildContext context,
     MenuType type,
   ) {
@@ -44,10 +43,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
       // 排序
       case MenuType.Sort:
         change(sortType) {
-          controller.sortProxies(
-            controller.model.groups[_tabController.index].name,
-            sortType,
-          );
+          controller.sortProxies(type: sortType);
           Navigator.of(context).pop();
         }
         showMaterialModalBottomSheet(
@@ -93,30 +89,27 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   )
                 : Text("代理"),
             actions: [
-              Builder(
-                builder: (cxt) => PopupMenuButton(
-                  onSelected: (MenuType type) => moreMenu(
-                    DefaultTabController.of(cxt)!,
-                    cxt,
-                    type,
-                  ),
-                  itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
-                    PopupMenuItem(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        width: 100,
-                        child: Row(children: [
-                          Icon(
-                            Icons.sort,
-                            color: DefaultTextStyle.of(context).style.color,
-                          ),
-                          Expanded(child: Text("排序"))
-                        ]),
-                      ),
-                      value: MenuType.Sort,
-                    ),
-                  ],
+              PopupMenuButton(
+                onSelected: (MenuType type) => moreMenu(
+                  context,
+                  type,
                 ),
+                itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
+                  PopupMenuItem(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      width: 100,
+                      child: Row(children: [
+                        Icon(
+                          Icons.sort,
+                          color: DefaultTextStyle.of(context).style.color,
+                        ),
+                        Expanded(child: Text("排序"))
+                      ]),
+                    ),
+                    value: MenuType.Sort,
+                  ),
+                ],
               ),
             ],
           ),

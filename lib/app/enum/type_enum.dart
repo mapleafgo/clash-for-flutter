@@ -52,9 +52,9 @@ extension DataUnitValue on DataUnit {
 }
 
 /// 排序类型
-enum SortType { Default, Name, Delay }
+enum SortType { Name, Delay }
 
 extension SortTypeShowName on SortType {
-  static List<String> get showNameList => ["默认", "名称", "延迟"];
+  static List<String> get showNameList => ["名称", "延迟"];
   String get showName => SortTypeShowName.showNameList[this.index];
 }
