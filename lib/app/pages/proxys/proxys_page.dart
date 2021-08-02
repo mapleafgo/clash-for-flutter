@@ -49,7 +49,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
         showMaterialModalBottomSheet(
           context: context,
           builder: (_) => Container(
-            height: 150,
+            height: 100,
             child: ListView.builder(
               itemBuilder: (_, i) {
                 return ListTile(
@@ -104,7 +104,12 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                           Icons.sort,
                           color: DefaultTextStyle.of(context).style.color,
                         ),
-                        Expanded(child: Text("排序"))
+                        Expanded(
+                          child: Container(
+                            child: Text("排序"),
+                            margin: EdgeInsets.only(left: 10),
+                          ),
+                        ),
                       ]),
                     ),
                     value: MenuType.Sort,
