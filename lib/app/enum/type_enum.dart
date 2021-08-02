@@ -1,16 +1,5 @@
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 
-/// 代理类型
-@jsonSerializable
-enum ProxieType { Direct, Reject, Shadowsocks, Vmess, Socks, Http, Snell }
-
-extension ProxieTypeValue on ProxieType {
-  static List<String> get valueList =>
-      ProxieType.values.map((e) => e.toString().split("\.").last).toList();
-
-  String get value => ProxieTypeValue.valueList[this.index];
-}
-
 /// 分组类型
 @jsonSerializable
 enum GroupType { Selector, URLTest, Fallback, LoadBalance }

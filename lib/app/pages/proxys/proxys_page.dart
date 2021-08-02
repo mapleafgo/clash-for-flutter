@@ -75,7 +75,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                               )
                             : null;
                         var subText = proxie is Proxy
-                            ? proxie.type.value
+                            ? proxie.type
                             : "${(proxie as Group).type.value} [${proxie.now}]";
                         return ListTile(
                           visualDensity: VisualDensity(
@@ -87,7 +87,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                             style: TextStyle(fontSize: 14),
                           ),
                           subtitle: Text(
-                            _emojiParser.emojify(subText),
+                            _emojiParser.emojify(subText ?? ""),
                             style: TextStyle(fontSize: 12),
                           ),
                           onTap: () => controller.select(
