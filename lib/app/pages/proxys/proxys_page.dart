@@ -1,7 +1,4 @@
 import 'package:asuka/asuka.dart' as asuka;
-import 'package:clash_for_flutter/app/bean/group_bean.dart';
-import 'package:clash_for_flutter/app/bean/history_bean.dart';
-import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
@@ -10,6 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_emoji/flutter_emoji.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
+
+enum MenuType { Sort }
 
 /// 代理配置页
 class ProxysPage extends StatefulWidget {
@@ -35,11 +35,51 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
     overlay.remove();
   }
 
+  void moreMenu(
+    TabController _tabController,
+    BuildContext context,
+    MenuType type,
+  ) {
+    switch (type) {
+      // 排序
+      case MenuType.Sort:
+        change(sortType) {
+          controller.sortProxies(
+            controller.model.groups[_tabController.index].name,
+            sortType,
+          );
+          Navigator.of(context).pop();
+        }
+        showMaterialModalBottomSheet(
+          context: context,
+          builder: (_) => Container(
+            height: 150,
+            child: ListView.builder(
+              itemBuilder: (_, i) {
+                return ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                  onTap: () => change(SortType.values[i]),
+                  title: Text(SortType.values[i].showName),
+                  trailing: Radio<SortType>(
+                    value: SortType.values[i],
+                    groupValue: controller.model.sortType,
+                    onChanged: change,
+                  ),
+                );
+              },
+              itemCount: SortType.values.length,
+            ),
+          ),
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Observer(builder: (_) {
       var groups = controller.model.groups;
-      var providers = controller.model.providers;
+      var proxiesMap = controller.model.proxiesMap;
       return DefaultTabController(
         length: groups.length,
         child: Scaffold(
@@ -52,6 +92,33 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                     isScrollable: true,
                   )
                 : Text("代理"),
+            actions: [
+              Builder(
+                builder: (cxt) => PopupMenuButton(
+                  onSelected: (MenuType type) => moreMenu(
+                    DefaultTabController.of(cxt)!,
+                    cxt,
+                    type,
+                  ),
+                  itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
+                    PopupMenuItem(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: 100,
+                        child: Row(children: [
+                          Icon(
+                            Icons.sort,
+                            color: DefaultTextStyle.of(context).style.color,
+                          ),
+                          Expanded(child: Text("排序"))
+                        ]),
+                      ),
+                      value: MenuType.Sort,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           drawer: Drawer(child: AppDrawer()),
           body: groups.length > 0
@@ -59,24 +126,27 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   children: groups.map((group) {
                     var groupName = group.name;
                     var groupNow = group.now;
-                    var proxies = providers[groupName]?.proxies ?? [];
+                    var proxies = proxiesMap[groupName] ?? [];
                     return ListView.separated(
                       separatorBuilder: (_, __) => Divider(height: 5),
                       itemCount: proxies.length,
                       itemBuilder: (_, i) {
                         var proxie = proxies[i];
                         var proxieName = proxie.name;
-                        var historys = proxie.history as List<History>? ?? [];
-                        var delay = historys.isNotEmpty
-                            ? Text(
-                                historys.last.delay > 0
-                                    ? historys.last.delay.toString()
-                                    : "timeout",
-                              )
-                            : null;
-                        var subText = proxie is Proxy
-                            ? proxie.type
-                            : "${(proxie as Group).type.value} [${proxie.now}]";
+                        var delay = proxie.delay < 0
+                            ? null
+                            : Text(
+                                proxie.delay == 0
+                                    ? "timeout"
+                                    : proxie.delay.toString(),
+                              );
+                        var subTitle = StringBuffer();
+                        if (proxie.type != null) {
+                          subTitle.write(proxie.type);
+                        }
+                        if (proxie.now != null) {
+                          subTitle.write(" [${proxie.now}]");
+                        }
                         return ListTile(
                           visualDensity: VisualDensity(
                             vertical: VisualDensity.minimumDensity,
@@ -87,7 +157,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                             style: TextStyle(fontSize: 14),
                           ),
                           subtitle: Text(
-                            _emojiParser.emojify(subText ?? ""),
+                            _emojiParser.emojify(subTitle.toString()),
                             style: TextStyle(fontSize: 12),
                           ),
                           onTap: () => controller.select(
@@ -104,8 +174,8 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   child: Text("暂无可选代理节点，或暂未开启代理"),
                 ),
           floatingActionButton: Builder(
-            builder: (con) {
-              var _tabController = DefaultTabController.of(con);
+            builder: (cxt) {
+              var _tabController = DefaultTabController.of(cxt);
               return FloatingActionButton(
                 tooltip: "测延迟",
                 onPressed: () {

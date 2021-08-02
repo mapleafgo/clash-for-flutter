@@ -50,3 +50,11 @@ extension DataUnitValue on DataUnit {
 
   String get value => DataUnitValue.valueList[this.index];
 }
+
+/// 排序类型
+enum SortType { Default, Name, Delay }
+
+extension SortTypeShowName on SortType {
+  static List<String> get showNameList => ["默认", "名称", "延迟"];
+  String get showName => SortTypeShowName.showNameList[this.index];
+}

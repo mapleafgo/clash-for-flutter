@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
+import 'package:clash_for_flutter/app/bean/provider_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
+import 'package:clash_for_flutter/app/bean/proxie_show_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
@@ -30,7 +32,7 @@ class ProxysController {
         .toList();
 
     List<Group> groupList = [];
-    List<Proxy> proxieList = [];
+    Set<Proxy> proxieList = new Set();
     list?.forEach((item) {
       if (item is Group) {
         groupList.add(item);
@@ -39,12 +41,16 @@ class ProxysController {
       }
     });
 
-    model.setState(groups: groupList, proxies: proxieList, global: global);
+    model.setState(
+        groups: groupList, proxies: proxieList.toList(), global: global);
   }
 
   Future<void> getProviders() async {
     var providers = await _request.getProxyProviders();
-    model.setState(providers: providers?.providers);
+    model.setState(
+      providers: providers?.providers,
+      proxiesMap: _buildProxieShowList(providers: providers?.providers),
+    );
   }
 
   Future<void> select({
@@ -62,5 +68,60 @@ class ProxysController {
         (name) => _request.getProxyDelay(name).catchError((_) => 0),
       ),
     ).then((value) async => await getProviders());
+  }
+
+  Map<String, List<ProxieShow>> _buildProxieShowList({
+    Map<String, Provider>? providers,
+    String? groupName,
+  }) {
+    var proxiesMap = <String, List<ProxieShow>>{};
+    providers?.forEach((key, value) {
+      if (groupName != null && key != groupName) {
+        return;
+      }
+      proxiesMap[key] = value.proxies.map((e) {
+        var historys = e.history ?? [];
+        return e is Group
+            ? ProxieShow(
+                name: e.name,
+                type: e.type.value,
+                delay: historys.isNotEmpty ? historys.last.delay : -1,
+                now: e.now,
+              )
+            : ProxieShow(
+                name: e.name,
+                type: e.type,
+                delay: historys.isNotEmpty ? historys.last.delay : -1,
+              );
+      }).toList();
+    });
+    return proxiesMap;
+  }
+
+  void sortProxies(String groupName, SortType type) {
+    var list = model.proxiesMap[groupName]?.toList() ?? [];
+    switch (type) {
+      case SortType.Delay:
+        list.sort((a, b) {
+          if (a.delay < 1 || b.delay < 1) {
+            return b.delay.compareTo(a.delay);
+          }
+          return a.delay.compareTo(b.delay);
+        });
+        break;
+      case SortType.Name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      default:
+        list = _buildProxieShowList(
+              providers: model.providers,
+              groupName: groupName,
+            )[groupName] ??
+            [];
+    }
+    var proxiesMap = <String, List<ProxieShow>>{};
+    proxiesMap.addAll(model.proxiesMap);
+    proxiesMap[groupName] = list;
+    model.setState(proxiesMap: proxiesMap, sortType: type);
   }
 }
