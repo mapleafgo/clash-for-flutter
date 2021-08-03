@@ -41,12 +41,4 @@ class ProfileFile extends ProfileBase {
         time: DateTime.now(),
         selected: {},
       );
-
-  ProfileFile clone() => ProfileFile(
-        path: this.path,
-        file: this.file,
-        name: this.name,
-        time: this.time,
-        selected: this.selected,
-      );
 }

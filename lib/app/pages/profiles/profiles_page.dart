@@ -8,6 +8,7 @@ import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -60,6 +61,13 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     loading.remove();
   }
 
+  selectProfile(String file) async {
+    var loading = Loading.builder();
+    asuka.addOverlay(loading);
+    await controller.select(file);
+    loading.remove();
+  }
+
   profileFileDialog({
     required void Function(ProfileFile) onOk,
     ProfileFile? profile,
@@ -70,7 +78,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
         var nameController = TextEditingController();
         var pathController = TextEditingController();
         if (profile != null) {
-          value = profile.clone();
+          value = JsonMapper.clone<ProfileFile>(profile)!;
           nameController.text = value.name;
           pathController.text = value.path ?? "";
         } else {
@@ -134,7 +142,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
         var urlController = TextEditingController();
         var value = ProfileURL.emptyBean();
         if (profile != null) {
-          value = profile.clone();
+          value = JsonMapper.clone<ProfileURL>(profile)!;
           nameController.text = value.name;
           urlController.text = value.url;
         } else {
@@ -246,7 +254,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
                           ],
                         ),
                         selected: e.file == selectedFile,
-                        onTap: () => controller.select(e.file),
+                        onTap: () => selectProfile(e.file),
                         trailing: _loading
                             ? CircularProgressIndicator(
                                 strokeWidth: 6,

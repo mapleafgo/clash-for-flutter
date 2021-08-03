@@ -29,11 +29,4 @@ abstract class ProfileBase {
     required this.time,
     required this.selected,
   });
-
-  factory ProfileBase.createProfile(ProfileBase bean) {
-    if (bean is ProfileFile) {
-      return bean.clone();
-    }
-    return (bean as ProfileURL).clone();
-  }
 }

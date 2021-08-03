@@ -50,13 +50,4 @@ class ProfileURL extends ProfileBase {
         interval: 0,
         selected: {},
       );
-
-  ProfileURL clone() => ProfileURL(
-        url: this.url,
-        file: this.file,
-        name: this.name,
-        time: this.time,
-        interval: this.interval,
-        selected: this.selected,
-      );
 }

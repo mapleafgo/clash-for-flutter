@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
@@ -58,7 +59,10 @@ class ProfileController {
   }
 
   /// 选择某源
-  select(String file) => _setCFM(select: file);
+  Future<void> select(String file) async {
+    _setCFM(select: file);
+    await _config.start();
+  }
 
   /// 编辑源
   edit(ProfileBase profile) {
@@ -91,9 +95,10 @@ class ProfileController {
   Future<void> updateProfile(String file) async {
     var tempList = profiles.toList();
     var index = tempList.indexWhere((e) => e.file == file);
-    tempList[index] as ProfileURL;
 
-    var profile = (tempList[index] as ProfileURL).clone();
+    var profile = JsonMapper.clone<ProfileURL>(tempList[index] as ProfileURL);
+    if (profile == null) return;
+
     profile.time = DateTime.now();
     profile.file = "${profile.time.millisecondsSinceEpoch}.yaml";
 
