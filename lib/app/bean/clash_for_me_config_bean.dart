@@ -1,4 +1,4 @@
-import 'package:clash_for_flutter/app/bean/profile_bean.dart';
+import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 /// 软件配置
@@ -9,7 +9,7 @@ class ClashForMeConfig {
   String? selectedFile;
 
   /// 源配置
-  List<Profile> profiles;
+  List<ProfileBase> profiles;
 
   ClashForMeConfig({this.selectedFile, required this.profiles});
 

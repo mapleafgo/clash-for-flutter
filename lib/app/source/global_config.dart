@@ -1,16 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
+import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/app/utils/constant.dart';
 import 'package:clash_for_flutter/plugin/pac_proxy.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_emoji/flutter_emoji.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
-import 'package:clash_for_flutter/app/bean/profile_bean.dart';
-import 'package:clash_for_flutter/app/utils/constant.dart';
 import 'package:go_flutter_clash/go_flutter_clash.dart';
 import 'package:go_flutter_clash/model/flutter_clash_config_model.dart';
 import 'package:go_flutter_systray/go_flutter_systray.dart';
@@ -118,7 +118,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
       }).toList();
     }
 
-    List<Profile> profiles =
+    List<ProfileBase> profiles =
         config.profiles.where((e) => fileList.contains(e.file)).toList();
 
     var selectElements = profiles.where((e) => e.file == config.selectedFile);
@@ -133,7 +133,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
   /// 当前应用中的配置文件
   @computed
-  Profile? get active {
+  ProfileBase? get active {
     var selectedFile = clashForMe.selectedFile;
     var profiles = clashForMe.profiles;
     if (selectedFile != null) {
@@ -209,7 +209,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
     var profiles = clashForMe.profiles.toList();
     var index = profiles.indexOf(active!);
 
-    var profile = Profile.clone(profiles[index]);
+    var profile = ProfileBase.createProfile(profiles[index]);
     profile.selected[name] = select;
     profiles.replaceRange(index, index + 1, [profile]);
 

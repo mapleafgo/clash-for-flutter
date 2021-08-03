@@ -58,3 +58,14 @@ extension SortTypeShowName on SortType {
   static List<String> get showNameList => ["名称", "延迟"];
   String get showName => SortTypeShowName.showNameList[this.index];
 }
+
+// 配置类型
+@jsonSerializable
+enum ProfileType { URL, FILE }
+
+extension ProfileTypeValue on ProfileType {
+  static List<String> get valueList =>
+      ProfileType.values.map((e) => e.toString().split("\.").last).toList();
+
+  String get value => ProfileTypeValue.valueList[this.index];
+}

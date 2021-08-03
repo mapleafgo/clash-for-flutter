@@ -25,6 +25,7 @@ class _IndexPageState extends State<IndexPage> {
     Future.wait([_config.init(), PACProxy.init()]).then((_) {
       Modular.to.navigate("/home");
     }).catchError((err) {
+      print(err);
       Modular.to.navigate("/error");
       log("初始化失败", error: err);
       asuka.showSnackBar(SnackBar(

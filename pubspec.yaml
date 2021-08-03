@@ -43,6 +43,7 @@ dependencies:
     # path: ../go-flutter-systray
     git: git://github.com/mapleafgo/go-flutter-systray.git
   modal_bottom_sheet: ^2.0.0
+  file_picker: ^3.0.4
 
 dev_dependencies:
   flutter_test:
