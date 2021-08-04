@@ -82,7 +82,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           nameController.text = value.name;
           pathController.text = value.path ?? "";
         } else {
-          nameController.text = Random().nextInt(100).toString();
+          nameController.text = Random().nextInt(11000).toString();
         }
         return AlertDialog(
           title: Text("文件"),
@@ -146,7 +146,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           nameController.text = value.name;
           urlController.text = value.url;
         } else {
-          nameController.text = Random().nextInt(100).toString();
+          nameController.text = Random().nextInt(11000).toString();
         }
         return AlertDialog(
           title: Text("URL"),

@@ -53,10 +53,17 @@ abstract class _ConfigFileBase extends Disposable with Store {
           clashConfig;
     }
     if (await clashForMeFile.exists()) {
+      //TODO: 兼容0.0.7及之前的旧版本
+      Map<String, dynamic> ccm = json.decode(
+        await clashForMeFile.readAsString(),
+      );
+      ccm["profiles"] = ccm["profiles"].map((e) {
+        e["type"] ??= "URL";
+        return e;
+      }).toList();
+
       clashForMe = await _profilesInitCheck(
-            JsonMapper.deserialize<ClashForMeConfig>(
-              await clashForMeFile.readAsString(),
-            ),
+            JsonMapper.fromMap<ClashForMeConfig>(ccm),
           ) ??
           clashForMe;
     }

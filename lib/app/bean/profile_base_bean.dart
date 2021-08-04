@@ -1,5 +1,3 @@
-import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
-import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 
