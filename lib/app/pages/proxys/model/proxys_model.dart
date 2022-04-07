@@ -17,7 +17,7 @@ abstract class _ProxysModel with Store {
   @observable
   Group? global;
   @observable
-  SortType sortType = SortType.Name;
+  SortType sortType = SortType.Default;
 
   /// 代理列表
   @observable

@@ -66,7 +66,10 @@ class _AppWidgetState extends State<AppWidget> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => MaterialApp.router(
+        title: "Clash For Flutter",
+        routeInformationParser: Modular.routeInformationParser,
+        routerDelegate: Modular.routerDelegate,
         theme: ThemeData(fontFamily: "NotoSansCJK"),
         builder: (BuildContext context, Widget? child) => Theme(
           data: ThemeData(
@@ -77,5 +80,5 @@ class _AppWidgetState extends State<AppWidget> {
           ),
           child: asuka.builder(context, child),
         ),
-      ).modular();
+      );
 }

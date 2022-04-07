@@ -103,6 +103,14 @@ class ProxysController {
     required SortType type,
     Map<String, List<ProxieShow>>? startMap,
   }) {
+    if (type == SortType.Default) {
+      model.setState(
+        sortType: type,
+        proxiesMap: _buildProxieShowList(providers: model.providers),
+      );
+      return;
+    }
+
     var proxiesMap = <String, List<ProxieShow>>{};
     proxiesMap.addAll(startMap ?? model.proxiesMap);
     var lastMap = proxiesMap.map((key, value) {

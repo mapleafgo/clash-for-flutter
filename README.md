@@ -16,9 +16,9 @@
 
 界面较于简陋，不过这种应用也不用多炫吧
 
-![主页](./docs/images/home.png)
+![主页](./docs/images/home_page.png)
 
-![菜单](./docs/images/menu.png)
+![代理页](./docs/images/proxy_page.png)
 
 ## 主要技术
 

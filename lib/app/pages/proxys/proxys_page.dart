@@ -1,5 +1,4 @@
 import 'package:asuka/asuka.dart' as asuka;
-import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
@@ -49,7 +48,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
         showMaterialModalBottomSheet(
           context: context,
           builder: (_) => Container(
-            height: 100,
+            height: 150,
             child: ListView.builder(
               itemBuilder: (_, i) {
                 return ListTile(
@@ -118,7 +117,6 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
               ),
             ],
           ),
-          drawer: Drawer(child: AppDrawer()),
           body: groups.length > 0
               ? TabBarView(
                   children: groups.map((group) {

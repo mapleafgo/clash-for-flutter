@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.0.8
+version: 0.0.9
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
@@ -29,21 +29,22 @@ dependencies:
   dart_json_mapper_mobx: ^2.0.0
   mobx: ^2.0.0-nullsafety.6
   flutter_mobx: ^2.0.0-nullsafety.3
-  flutter_modular: ^3.0.2
+  flutter_modular: ^4.5.1
   asuka: ^2.0.0-nullsafety.2
   yaml: ^3.1.0
   fhir_yaml: ^0.4.0
   path_provider: ^2.0.1
   flutter_emoji:
-    git: git://github.com/cek-cek/flutter-emoji.git
+    git: https://github.com/cek-cek/flutter-emoji.git
   go_flutter_clash:
     # path: ../go-flutter-clash
-    git: git://github.com/mapleafgo/go-flutter-clash.git
+    git: https://github.com/mapleafgo/go-flutter-clash.git
   go_flutter_systray:
     # path: ../go-flutter-systray
-    git: git://github.com/mapleafgo/go-flutter-systray.git
+    git: https://github.com/mapleafgo/go-flutter-systray.git
   modal_bottom_sheet: ^2.0.0
   file_picker: ^3.0.4
+  easy_sidemenu: ^0.2.0
 
 dev_dependencies:
   flutter_test:

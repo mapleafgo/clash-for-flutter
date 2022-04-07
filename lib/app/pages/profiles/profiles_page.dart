@@ -4,7 +4,6 @@ import 'package:asuka/asuka.dart' as asuka;
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
-import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
@@ -234,7 +233,6 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           )
         ],
       ),
-      drawer: Drawer(child: AppDrawer()),
       body: Container(
         child: Observer(
           builder: (_) {

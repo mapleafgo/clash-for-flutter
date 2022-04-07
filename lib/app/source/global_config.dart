@@ -44,6 +44,7 @@ abstract class _ConfigFileBase extends Disposable with Store {
 
   Future<void> init() async {
     await getApplicationSupportDirectory().then((dir) => configDir = dir);
+    print("配置文件夹:" + configDir.path);
     var clashConfigFile = File(configDir.path + Constant.clashConfig);
     var clashForMeFile = File(configDir.path + Constant.clashForMe);
     if (await clashConfigFile.exists()) {
