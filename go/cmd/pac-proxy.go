@@ -71,7 +71,7 @@ func (p *PACProxy) InitPluginGLFW(window *glfw.Window) error {
 	return nil
 }
 
-func (p *PACProxy) initPac(arguments interface{}) (reply interface{}, err error) {
+func (p *PACProxy) initPac(arguments any) (reply any, err error) {
 	if arguments != nil && arguments != "" {
 		pacStr := arguments.(string)
 		p.PacStr = pacStr
@@ -81,7 +81,7 @@ func (p *PACProxy) initPac(arguments interface{}) (reply interface{}, err error)
 	return nil, nil
 }
 
-func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
+func (p *PACProxy) open(arguments any) (reply any, err error) {
 	if p.PacStr == "" {
 		return nil, errors.New("pac初始化尚未完成")
 	}
@@ -89,7 +89,7 @@ func (p *PACProxy) open(arguments interface{}) (reply interface{}, err error) {
 	return nil, sysproxy.OnPAC(fmt.Sprintf("http://127.0.0.1:%s/pac?p=%s", port, cport))
 }
 
-func (p *PACProxy) close(interface{}) (reply interface{}, err error) {
+func (p *PACProxy) close(any) (reply any, err error) {
 	return nil, pacProxyClose()
 }
 

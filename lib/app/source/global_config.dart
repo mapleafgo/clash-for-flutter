@@ -221,12 +221,19 @@ abstract class _ConfigFileBase extends Disposable with Store {
     profile?.selected[name] = select;
     if (profile != null) {
       profiles.replaceRange(index, index + 1, [profile]);
+
+/* TODO: copyWith 异常，临时修复
       setState(
         clashForMe: JsonMapper.copyWith<ClashForMeConfig>(
           clashForMe,
           {"profiles": profiles},
         ),
       );
+*/
+
+      var clashForMeClone = JsonMapper.copy(clashForMe);
+      clashForMeClone?.profiles = profiles;
+      setState(clashForMe: clashForMeClone);
     }
   }
 }

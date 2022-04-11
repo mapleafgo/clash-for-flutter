@@ -19,21 +19,21 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 0.0.9
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ">=2.16.1 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   dio: ^4.0.0-prev3
-  dart_json_mapper: ^2.0.5
-  dart_json_mapper_mobx: ^2.0.0
-  mobx: ^2.0.0-nullsafety.6
-  flutter_mobx: ^2.0.0-nullsafety.3
-  flutter_modular: ^4.5.1
-  asuka: ^2.0.0-nullsafety.2
+  dart_json_mapper: ^2.1.16
+  dart_json_mapper_mobx: ^2.0.5
+  mobx: ^2.0.6+1
+  flutter_mobx: ^2.0.4
+  flutter_modular: ^4.5.1+1
+  asuka: ^2.0.0+1
   yaml: ^3.1.0
-  fhir_yaml: ^0.4.0
-  path_provider: ^2.0.1
+  fhir_yaml: ^0.6.1
+  path_provider: ^2.0.9
   flutter_emoji:
     git: https://github.com/cek-cek/flutter-emoji.git
   go_flutter_clash:
@@ -43,8 +43,8 @@ dependencies:
     # path: ../go-flutter-systray
     git: https://github.com/mapleafgo/go-flutter-systray.git
   modal_bottom_sheet: ^2.0.0
-  file_picker: ^3.0.4
-  easy_sidemenu: ^0.2.0
+  file_picker: ^4.5.1
+  easy_sidemenu: ^0.2.1
 
 dev_dependencies:
   flutter_test:
@@ -52,8 +52,8 @@ dev_dependencies:
 
   # For information on the generic Dart part of this file, see the
   # following page: https://dart.dev/tools/pub/pubspec
-  build_runner: ^1.12.2
-  mobx_codegen: ^2.0.0-nullsafety.2
+  build_runner: ^2.1.8
+  mobx_codegen: ^2.0.4
 
 # The following section is specific to Flutter.
 flutter:
