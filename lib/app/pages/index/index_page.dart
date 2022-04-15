@@ -11,6 +11,12 @@ class _IndexPageState extends State<IndexPage> {
   final PageController _page = PageController();
 
   @override
+  void initState() {
+    super.initState();
+    Modular.to.navigate("/tab/home");
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Row(children: [
       AppDrawer(page: _page),
@@ -18,7 +24,7 @@ class _IndexPageState extends State<IndexPage> {
         child: PageView.builder(
           controller: _page,
           itemCount: 3,
-          itemBuilder: (cxt, i) {
+          onPageChanged: (i) {
             switch (i) {
               case 0:
                 Modular.to.navigate("/tab/home");
@@ -30,8 +36,8 @@ class _IndexPageState extends State<IndexPage> {
                 Modular.to.navigate("/tab/profiles");
                 break;
             }
-            return RouterOutlet();
           },
+          itemBuilder: (_, __) => RouterOutlet(),
         ),
       )
     ]);
