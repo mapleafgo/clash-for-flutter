@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
+import 'package:clash_for_flutter/app/bean/net_speed.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxies_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
@@ -115,5 +118,25 @@ class Request {
   Future<String?> getClashVersion() async {
     var res = await _clashDio.get<Map<String, String>>("/version");
     return res.data?["version"];
+  }
+
+  Future<Stream<Uint8List>?> traffic() {
+    var resp = _clashDio.get<ResponseBody>(
+      "/traffic",
+      options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
+    );
+    return resp.then((res) {
+      return res.data?.stream.asBroadcastStream();
+    });
+  }
+
+  Future<Stream<Uint8List>?> logs() {
+    var resp = _clashDio.get<ResponseBody>(
+      "/logs",
+      options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
+    );
+    return resp.then((res) {
+      return res.data?.stream.asBroadcastStream();
+    });
   }
 }
