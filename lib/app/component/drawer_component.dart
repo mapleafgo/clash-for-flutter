@@ -3,7 +3,6 @@ import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
 import 'package:flutter/material.dart';
-import 'package:go_flutter_clash/go_flutter_clash.dart';
 
 class AppDrawer extends StatefulWidget {
   final PageController page;
@@ -11,7 +10,7 @@ class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key, required this.page}) : super(key: key);
 
   @override
-  _AppDrawerState createState() => _AppDrawerState();
+  State<AppDrawer> createState() => _AppDrawerState();
 }
 
 class _AppDrawerState extends State<AppDrawer> {
@@ -20,11 +19,11 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   void initState() {
     super.initState();
-    GoFlutterClash.trafficHandler((ret) {
-      setState(
-        () => _speed = JsonMapper.deserialize<NetSpeed>(ret) ?? NetSpeed(),
-      );
-    });
+    // GoFlutterClash.trafficHandler((ret) {
+    //   setState(
+    //     () => _speed = JsonMapper.deserialize<NetSpeed>(ret) ?? NetSpeed(),
+    //   );
+    // });
   }
 
   String format(int value) {

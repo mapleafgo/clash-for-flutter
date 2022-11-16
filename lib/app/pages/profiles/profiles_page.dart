@@ -1,12 +1,14 @@
 import 'dart:math';
 
-import 'package:asuka/asuka.dart' as asuka;
+import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
+import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
+import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -20,29 +22,33 @@ enum MenuType { Update, Remove, Edit }
 
 /// 配置文件页
 class ProfilesPage extends StatefulWidget {
+  const ProfilesPage({super.key});
+
   @override
-  _ProfilesPageState createState() => _ProfilesPageState();
+  ModularState<ProfilesPage, ProfileController> createState() =>
+      _ProfilesPageState();
 }
 
 class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
+  final _config = Modular.get<GlobalConfig>();
   bool _loading = false;
   late List<ReactionDisposer> disposerList;
 
   addProfiles(BuildContext context) {
     showMaterialModalBottomSheet(
       context: context,
-      builder: (_) => Container(
+      builder: (_) => SizedBox(
         height: 100,
         child: ListView(children: [
           ListTile(
-            title: Text("文件"),
+            title: const Text("文件"),
             onTap: () {
               Navigator.of(context).pop();
               profileFileDialog(onOk: addProfile);
             },
           ),
           ListTile(
-            title: Text("URL"),
+            title: const Text("URL"),
             onTap: () {
               Navigator.of(context).pop();
               profileURLDialog(onOk: addProfile);
@@ -55,14 +61,14 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
 
   addProfile(ProfileBase profile) async {
     var loading = Loading.builder();
-    asuka.addOverlay(loading);
-    await controller.getNewProfile(profile);
+    Asuka.addOverlay(loading);
+    await controller.addProfile(profile);
     loading.remove();
   }
 
   selectProfile(String file) async {
     var loading = Loading.builder();
-    asuka.addOverlay(loading);
+    Asuka.addOverlay(loading);
     await controller.select(file);
     loading.remove();
   }
@@ -71,7 +77,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     required void Function(ProfileFile) onOk,
     ProfileFile? profile,
   }) {
-    asuka.showDialog(
+    Asuka.showDialog(
       builder: (cxt) {
         var value = ProfileFile.emptyBean();
         var nameController = TextEditingController();
@@ -84,17 +90,17 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           nameController.text = Random().nextInt(11000).toString();
         }
         return AlertDialog(
-          title: Text("文件"),
+          title: const Text("文件"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: InputDecoration(labelText: "名称"),
+                decoration: const InputDecoration(labelText: "名称"),
                 controller: nameController,
               ),
               TextField(
                 readOnly: true,
-                decoration: InputDecoration(labelText: "文件"),
+                decoration: const InputDecoration(labelText: "文件"),
                 controller: pathController,
                 onTap: () {
                   FilePicker.platform.pickFiles(
@@ -109,11 +115,11 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           ),
           actions: [
             TextButton(
-              child: Text("取消"),
+              child: const Text("取消"),
               onPressed: () => Navigator.of(cxt).pop(),
             ),
             ElevatedButton(
-              child: Text("确认"),
+              child: const Text("确认"),
               onPressed: () {
                 if (nameController.text.isEmpty) {
                   return;
@@ -135,7 +141,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     required void Function(ProfileURL) onOk,
     ProfileURL? profile,
   }) {
-    asuka.showDialog(
+    Asuka.showDialog(
       builder: (cxt) {
         var nameController = TextEditingController();
         var urlController = TextEditingController();
@@ -148,27 +154,27 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           nameController.text = Random().nextInt(11000).toString();
         }
         return AlertDialog(
-          title: Text("URL"),
+          title: const Text("URL"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: InputDecoration(labelText: "名称"),
+                decoration: const InputDecoration(labelText: "名称"),
                 controller: nameController,
               ),
               TextField(
-                decoration: InputDecoration(labelText: "URL"),
+                decoration: const InputDecoration(labelText: "URL"),
                 controller: urlController,
               ),
             ],
           ),
           actions: [
             TextButton(
-              child: Text("取消"),
+              child: const Text("取消"),
               onPressed: () => Navigator.of(cxt).pop(),
             ),
             ElevatedButton(
-              child: Text("确认"),
+              child: const Text("确认"),
               onPressed: () {
                 value.url = urlController.text;
                 value.name = nameController.text;
@@ -201,18 +207,16 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     setState(() => _loading = true);
     controller
         .updateProfile(file)
-        .then(
-          (_) => setState(() => _loading = false),
-        )
+        .then((_) => setState(() => _loading = false))
         .catchError((err) {
       setState(() => _loading = false);
-      asuka.showSnackBar(SnackBar(content: Text(err.message ?? "未知异常")));
+      Asuka.showSnackBar(SnackBar(content: Text(err.message ?? "未知异常")));
     });
   }
 
   removeProfile(String file) {
-    asuka.showSnackBar(SnackBar(
-      content: Text("确定移除？"),
+    Asuka.showSnackBar(SnackBar(
+      content: const Text("确定移除？"),
       action: SnackBarAction(
         label: "确定",
         onPressed: () => controller.removeProfile(file),
@@ -223,82 +227,74 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   @override
   Widget build(_) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("订阅"),
+      appBar: SysAppBar(
+        title: const Text("订阅"),
         actions: [
           IconButton(
             tooltip: "新增",
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.add),
             onPressed: () => addProfiles(context),
           )
         ],
       ),
-      body: Container(
-        child: Observer(
-          builder: (_) {
-            var profiles = controller.profiles;
-            var selectedFile = controller.selectedFile;
-            return ListView(
-              children: profiles
-                  .map((e) => ListTile(
-                        title: Text(e.name),
-                        subtitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(e.type.value),
-                            Text(
-                              DateFormat("yyyy/MM/dd HH:mm").format(e.time),
+      body: Observer(
+        builder: (_) {
+          return ListView(
+            children: _config.profiles
+                .map((e) => ListTile(
+                      title: Text(e.name),
+                      subtitle: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(e.type.value),
+                          Text(DateFormat("yyyy/MM/dd HH:mm").format(e.time)),
+                        ],
+                      ),
+                      selected: e.file == _config.selectedFile,
+                      onTap: () => selectProfile(e.file),
+                      trailing: _loading
+                          ? const CircularProgressIndicator(strokeWidth: 6)
+                          : PopupMenuButton(
+                              onSelected: (type) {
+                                switch (type) {
+                                  case MenuType.Edit:
+                                    edit(e);
+                                    break;
+                                  case MenuType.Update:
+                                    upgradeProfile(e.file);
+                                    break;
+                                  case MenuType.Remove:
+                                    removeProfile(e.file);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (_) {
+                                var list = <PopupMenuEntry<MenuType>>[
+                                  const PopupMenuItem(
+                                    value: MenuType.Edit,
+                                    child: Text("编辑"),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: MenuType.Remove,
+                                    child: Text("移除"),
+                                  ),
+                                ];
+                                if (e.type == ProfileType.URL) {
+                                  list.insert(
+                                    0,
+                                    const PopupMenuItem(
+                                      value: MenuType.Update,
+                                      child: Text("更新"),
+                                    ),
+                                  );
+                                }
+                                return list;
+                              },
                             ),
-                          ],
-                        ),
-                        selected: e.file == selectedFile,
-                        onTap: () => selectProfile(e.file),
-                        trailing: _loading
-                            ? CircularProgressIndicator(
-                                strokeWidth: 6,
-                              )
-                            : PopupMenuButton(
-                                onSelected: (type) {
-                                  switch (type) {
-                                    case MenuType.Edit:
-                                      edit(e);
-                                      break;
-                                    case MenuType.Update:
-                                      upgradeProfile(e.file);
-                                      break;
-                                    case MenuType.Remove:
-                                      removeProfile(e.file);
-                                      break;
-                                  }
-                                },
-                                itemBuilder: (_) {
-                                  var list = <PopupMenuEntry<MenuType>>[
-                                    PopupMenuItem(
-                                      child: Text("编辑"),
-                                      value: MenuType.Edit,
-                                    ),
-                                    PopupMenuItem(
-                                      child: Text("移除"),
-                                      value: MenuType.Remove,
-                                    ),
-                                  ];
-                                  if (e.type == ProfileType.URL) {
-                                    list.insert(
-                                      0,
-                                      PopupMenuItem(
-                                        child: Text("更新"),
-                                        value: MenuType.Update,
-                                      ),
-                                    );
-                                  }
-                                  return list;
-                                },
-                              ),
-                      ))
-                  .toList(),
-            );
-          },
-        ),
+                    ))
+                .toList(),
+          );
+        },
       ),
     );
   }

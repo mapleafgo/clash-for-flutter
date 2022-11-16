@@ -1,10 +1,9 @@
 name: clash_for_flutter
 description: A new Flutter project.
-author: "mapleafgo"
 
 # The following line prevents the package from being accidentally published to
-# pub.dev using `pub publish`. This is preferred for private packages.
-publish_to: "none" # Remove this line if you wish to publish to pub.dev
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -13,49 +12,67 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.0.9
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
 
 environment:
-  sdk: ">=2.16.1 <3.0.0"
+  sdk: '>=2.18.4 <3.0.0'
 
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
-  dio: ^4.0.0-prev3
-  dart_json_mapper: ^2.1.16
+  dio: ^4.0.6
+  window_manager: ^0.2.7
+  launch_at_startup: ^0.2.0
+  tray_manager: ^0.2.0
+  flutter_modular: ^5.0.3
+  path_provider: ^2.0.11
+  ffi: ^2.0.1
+  vclibs: ^0.1.0
+  protocol_handler: ^0.1.4
+  proxy_manager: ^0.0.3
+  file_picker: ^5.1.0
+
+  dart_json_mapper: 2.2.6+1
   dart_json_mapper_mobx: ^2.0.5
-  mobx: ^2.0.6+1
-  flutter_mobx: ^2.0.4
-  flutter_modular: ^4.5.1+1
-  asuka: ^2.0.0+1
-  yaml: ^3.1.0
-  fhir_yaml: ^0.6.1
-  path_provider: ^2.0.9
-  flutter_emoji:
-    git: https://github.com/cek-cek/flutter-emoji.git
-  go_flutter_clash:
-    # path: ../go-flutter-clash
-    git: https://github.com/mapleafgo/go-flutter-clash.git
-  go_flutter_systray:
-    # path: ../go-flutter-systray
-    git: https://github.com/mapleafgo/go-flutter-systray.git
-  modal_bottom_sheet: ^2.0.0
-  file_picker: ^4.5.1
-  easy_sidemenu: ^0.2.1
+  mobx: ^2.1.1
+  flutter_mobx: ^2.0.6+4
+  mobx_triple: ^1.1.3+1
+
+  easy_sidemenu: ^0.4.1
+  modal_bottom_sheet: ^2.1.2
+  asuka: ^2.0.1+3
+  settings_yaml: ^4.0.0
+  msix: ^3.7.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # For information on the generic Dart part of this file, see the
-  # following page: https://dart.dev/tools/pub/pubspec
-  build_runner: ^2.1.8
-  mobx_codegen: ^2.0.4
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^2.0.0
+  build_runner: 2.2.0
+  ffigen: ^7.2.0
+  mobx_codegen: ^2.0.7+3
 
-# The following section is specific to Flutter.
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -65,20 +82,22 @@ flutter:
   assets:
     - assets/
   # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/assets-and-images/#resolution-aware.
+  # https://flutter.dev/assets-and-images/#resolution-aware
+
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/assets-and-images/#from-packages
+
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  fonts:
-    - family: NotoSansCJK
-      fonts:
-        - asset: fonts/NotoSansCJK-Regular.ttc
-        - asset: fonts/NotoSansCJK-Bold.ttc
-          style: italic
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf
@@ -87,3 +106,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+ffigen:
+  name: "Clash"
+  output: 'lib/clash_generated_bindings.dart'
+  headers:
+    entry-points:
+      - 'clash/libclash.h'
+  llvm-path:
+    - 'C:/Users/Casbin/Scoop/apps/llvm/current'

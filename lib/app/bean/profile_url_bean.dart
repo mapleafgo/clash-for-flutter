@@ -16,16 +16,9 @@ class ProfileURL extends ProfileBase {
     required String file,
     required String name,
     required DateTime time,
-    required Map<String, String> selected,
     required this.url,
     required this.interval,
-  }) : super(
-          name: name,
-          file: file,
-          type: ProfileType.URL,
-          time: time,
-          selected: selected,
-        );
+  }) : super(name: name, file: file, type: ProfileType.URL, time: time);
 
   factory ProfileURL.defaultBean({
     required String url,
@@ -33,21 +26,8 @@ class ProfileURL extends ProfileBase {
     required String name,
     required DateTime time,
   }) =>
-      ProfileURL(
-        url: url,
-        file: file,
-        name: name,
-        time: time,
-        interval: 0,
-        selected: {},
-      );
+      ProfileURL(url: url, file: file, name: name, time: time, interval: 0);
 
   factory ProfileURL.emptyBean() => ProfileURL(
-        url: "",
-        file: "",
-        name: "",
-        time: DateTime.now(),
-        interval: 0,
-        selected: {},
-      );
+      url: "", file: "", name: "", time: DateTime.now(), interval: 0);
 }

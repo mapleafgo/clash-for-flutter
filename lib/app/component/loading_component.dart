@@ -11,12 +11,12 @@ class Loading {
             ),
             child: Center(
               child: Container(
-                child: CircularProgressIndicator(),
-                padding: EdgeInsets.all(30),
+                padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.6),
-                  borderRadius: BorderRadius.all(Radius.circular(5)),
+                  borderRadius: const BorderRadius.all(Radius.circular(5)),
                 ),
+                child: const CircularProgressIndicator(),
               ),
             ),
           ),

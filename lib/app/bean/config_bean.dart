@@ -1,27 +1,68 @@
-import 'package:dart_json_mapper/dart_json_mapper.dart';
+import 'package:settings_yaml/settings_yaml.dart';
 
-@JsonSerializable()
 class Config {
-  int port;
-  @JsonProperty(name: "socks-port")
-  int socksPort;
-  @JsonProperty(name: "redir-port")
-  int redirPort;
-  @JsonProperty(name: "mixed-port")
-  int mixedPort;
-  @JsonProperty(name: "allow-lan")
-  bool allowLan;
-  String mode;
-  @JsonProperty(name: "log-level")
-  String logLevel;
+  int? port;
+  int? socksPort;
+  int? redirPort;
+  int? mixedPort;
+  bool? allowLan;
+  String? mode;
+  String? logLevel;
 
   Config({
-    required this.port,
-    required this.socksPort,
-    required this.redirPort,
-    required this.mixedPort,
-    required this.allowLan,
-    required this.mode,
-    required this.logLevel,
+    this.port,
+    this.socksPort,
+    this.redirPort,
+    this.mixedPort,
+    this.allowLan,
+    this.mode,
+    this.logLevel,
   });
+
+  Future<void> saveFile(String path) {
+    var yaml = SettingsYaml.load(pathToSettings: path);
+    if (port != null) (yaml["port"] = port);
+    if (socksPort != null) (yaml["socks-port"] = socksPort);
+    if (socksPort != null) (yaml["redir-port"] = socksPort);
+    if (socksPort != null) (yaml["mixed-port"] = socksPort);
+    if (allowLan != null) (yaml["allow-lan"] = allowLan);
+    if (mode != null) (yaml["mode"] = mode);
+    if (logLevel != null) (yaml["log-level"] = logLevel);
+    return yaml.save();
+  }
+
+  Config copyWith({
+    int? port,
+    int? socksPort,
+    int? redirPort,
+    int? mixedPort,
+    bool? allowLan,
+    String? mode,
+    String? logLevel,
+  }) {
+    return Config(
+      port: port ?? this.port,
+      socksPort: socksPort ?? this.socksPort,
+      redirPort: redirPort ?? this.redirPort,
+      mixedPort: mixedPort ?? this.mixedPort,
+      allowLan: allowLan ?? this.allowLan,
+      mode: mode ?? this.mode,
+      logLevel: logLevel ?? this.logLevel,
+    );
+  }
+
+  factory Config.defaultConfig() => Config(mixedPort: 7890);
+
+  factory Config.formYamlFile(String path) {
+    var yaml = SettingsYaml.load(pathToSettings: path);
+    return Config(
+      port: yaml["port"],
+      socksPort: yaml["socks-port"],
+      redirPort: yaml["redir-port"],
+      mixedPort: yaml["mixed-port"],
+      allowLan: yaml["allow-lan"],
+      mode: yaml["mode"],
+      logLevel: yaml["log-level"],
+    );
+  }
 }

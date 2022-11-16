@@ -1,28 +1,16 @@
 # clash_for_flutter
 
-这是一个**Clash**的桌面客户端，支持 windows、linux、macos。
+A new Flutter project.
 
-> [使用说明](https://mapleafgo.github.io/clash-for-flutter)
+## Getting Started
 
-## 开发说明
+This project is a starting point for a Flutter application.
 
-- Linux
+A few resources to get you started if this is your first Flutter project:
 
-  linux 上开发除必要安装的 `Go`、`Hover`、`Flutter`等外，还需要安装`gtk3`和`libappindicator3`。对于 Debian 系的发行版可执行下面的命令：
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-  > `sudo apt-get install gcc libgtk-3-dev libappindicator3-dev`
-
-## 界面
-
-界面较于简陋，不过这种应用也不用多炫吧
-
-![主页](./docs/images/home_page.png)
-
-![代理页](./docs/images/proxy_page.png)
-
-## 主要技术
-
-- [Clash](https://github.com/Dreamacro/clash)
-- [Flutter](https://flutter.dev)
-- [Go-Flutter](https://github.com/go-flutter-desktop/go-flutter)
-- [systray](https://github.com/getlantern/systray)
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.

@@ -17,14 +17,10 @@ abstract class ProfileBase {
   /// 更新的时间
   DateTime time;
 
-  /// 当前各分组的选择
-  Map<String, String> selected;
-
   ProfileBase({
     required this.name,
     required this.file,
     required this.type,
     required this.time,
-    required this.selected,
   });
 }

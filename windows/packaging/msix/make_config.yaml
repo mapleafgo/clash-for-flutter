@@ -1,0 +1,5 @@
+display_name: Clash For Flutter
+publisher_display_name: mapleafgo
+identity_name: cn.mapleafgo.clash-for-flutter
+msix_version: 1.0.0.1
+protocol_activation: clash

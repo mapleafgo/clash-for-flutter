@@ -18,17 +18,17 @@ class IndexModule extends Module {
 
   @override
   final List<ModularRoute> routes = [
-    ChildRoute("/", child: (_, __) => InitPage(), children: [
+    ChildRoute("/", child: (_, __) => const InitPage(), children: [
       ChildRoute(
         "/loading",
-        child: (_, __) => Center(child: CircularProgressIndicator()),
+        child: (_, __) => const Center(child: CircularProgressIndicator()),
       ),
       ChildRoute(
         "/error",
-        child: (_, __) => Center(child: Text("初始化失败")),
+        child: (_, __) => const Center(child: Text("初始化失败")),
       ),
     ]),
-    ChildRoute("/tab", child: (_, __) => IndexPage(), children: [
+    ChildRoute("/tab", child: (_, __) => const IndexPage(), children: [
       ModuleRoute("/home", module: HomeModule()),
       ModuleRoute("/profiles", module: ProfilesModule()),
       ModuleRoute("/proxys", module: ProxysModule())
