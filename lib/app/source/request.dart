@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
-import 'package:clash_for_flutter/app/bean/net_speed.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxies_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
@@ -125,9 +123,7 @@ class Request {
       "/traffic",
       options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
     );
-    return resp.then((res) {
-      return res.data?.stream.asBroadcastStream();
-    });
+    return resp.then((res) => res.data?.stream);
   }
 
   Future<Stream<Uint8List>?> logs() {
@@ -135,8 +131,6 @@ class Request {
       "/logs",
       options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
     );
-    return resp.then((res) {
-      return res.data?.stream.asBroadcastStream();
-    });
+    return resp.then((res) => res.data?.stream);
   }
 }
