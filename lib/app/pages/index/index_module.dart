@@ -1,3 +1,4 @@
+import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/pages/home/home_module.dart';
 import 'package:clash_for_flutter/app/pages/index/index_page.dart';
 import 'package:clash_for_flutter/app/pages/index/init_page.dart';
@@ -27,7 +28,10 @@ class IndexModule extends Module {
       ),
       ChildRoute(
         "/error",
-        child: (_, __) => const Center(child: Text("初始化失败")),
+        child: (_, __) => const Scaffold(
+          appBar: SysAppBar(title: Text("Clash For Flutter")),
+          body: Center(child: Text("初始化失败")),
+        ),
       ),
     ]),
     ChildRoute("/tab", child: (_, __) => const IndexPage(), children: [
