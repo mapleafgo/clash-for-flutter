@@ -43,13 +43,11 @@ class ProfileController {
       var tempList = _config.profiles.toList();
       tempList.add(p);
       _config.setState(profiles: tempList);
-    }).catchError((e) {
-      Asuka.showSnackBar(SnackBar(content: Text("导入异常: $e")));
     });
   }
 
   /// 选择某源
-  Future<void> select(String file) async {
+  select(String file) {
     _config.setState(selectedFile: file);
   }
 
@@ -82,14 +80,10 @@ class ProfileController {
     var profile = JsonMapper.clone<ProfileURL>(tempList[index] as ProfileURL);
     if (profile == null) return;
 
-    profile.time = DateTime.now();
-    profile.file = "${profile.time.millisecondsSinceEpoch}.yaml";
-
     try {
-      await _request.downFile(
-        urlPath: profile.url,
-        savePath:
-            "${_config.configDir.path}${Constants.profilesPath}/${profile.file}",
+      profile = await _request.getSubscribe(
+        profile: profile,
+        profilesDir: _config.profilesPath,
       );
     } catch (e) {
       Asuka.showSnackBar(SnackBar(content: Text("更新异常: $e")));

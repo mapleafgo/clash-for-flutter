@@ -8,6 +8,7 @@ import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxies_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_providers_bean.dart';
+import 'package:clash_for_flutter/app/bean/sub_userinfo_bean.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:dio/dio.dart';
@@ -40,7 +41,24 @@ class Request {
     var time = DateTime.now();
     var file = "${time.millisecondsSinceEpoch}.yaml";
     var savePath = "$profilesDir/$file";
-    return downFile(urlPath: profile.url, savePath: savePath).then((_) {
+    return downFile(urlPath: profile.url, savePath: savePath).then((resp) {
+      if (profile.name.isEmpty) {
+        resp.headers["content-disposition"]?.forEach((v) {
+          var filename = HeaderValue.parse(v).parameters["filename"];
+          if (filename != null) {
+            profile.name = filename;
+          } else {
+            profile.name = file;
+          }
+        });
+      }
+      resp.headers["subscription-userinfo"]?.forEach((v) {
+        profile.userinfo = SubUserinfo.formHString(v);
+      });
+      var value = resp.headers.value("profile-update-interval");
+      if (value != null && profile.interval == 0) {
+        profile.interval = int.parse(value);
+      }
       return profile
         ..time = time
         ..file = file;

@@ -22,6 +22,7 @@ void main() async {
   await protocolHandler.register('clash');
 
   WindowOptions windowOptions = const WindowOptions(
+    minimumSize: Size(460, 600),
     size: Size(900, 600),
     center: true,
     backgroundColor: Colors.transparent,
