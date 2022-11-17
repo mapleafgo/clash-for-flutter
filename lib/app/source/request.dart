@@ -114,7 +114,7 @@ class Request {
 
   /// 获取内核版本
   Future<String?> getClashVersion() async {
-    var res = await _clashDio.get<Map<String, String>>("/version");
+    var res = await _clashDio.get<Map<String, dynamic>>("/version");
     return res.data?["version"];
   }
 

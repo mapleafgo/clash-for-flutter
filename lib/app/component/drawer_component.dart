@@ -20,6 +20,7 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   final _request = Modular.get<Request>();
   NetSpeed _speed = NetSpeed();
+  String _clashVersion = "-";
 
   @override
   void initState() {
@@ -28,6 +29,9 @@ class _AppDrawerState extends State<AppDrawer> {
       value?.listen((event) => setState(() => _speed =
           JsonMapper.deserialize<NetSpeed>(utf8.decode(event)) ?? NetSpeed()));
     });
+    _request
+        .getClashVersion()
+        .then((value) => setState(() => _clashVersion = value ?? _clashVersion));
   }
 
   String format(int value) {
@@ -63,11 +67,22 @@ class _AppDrawerState extends State<AppDrawer> {
             const Divider(indent: 8.0, endIndent: 8.0),
           ],
         ),
-        footer: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Text(
-            "↑ ${format(_speed.up)}\n↓ ${format(_speed.down)}",
-            style: Theme.of(context).textTheme.titleSmall,
+        footer: SizedBox(
+          height: 75,
+          child: Column(
+            children: [
+              Text(
+                "↑ ${format(_speed.up)}\n↓ ${format(_speed.down)}",
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                child: Text(
+                  "Clash: $_clashVersion",
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+            ],
           ),
         ),
         items: [

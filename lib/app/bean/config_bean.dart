@@ -10,6 +10,8 @@ class Config {
   int? socksPort;
   @JsonProperty(name: "redir-port")
   int? redirPort;
+  @JsonProperty(name: "tproxy-port")
+  int? tproxyPort;
   @JsonProperty(name: "mixed-port")
   int? mixedPort;
   @JsonProperty(name: "allow-lan")
@@ -25,6 +27,7 @@ class Config {
     this.port,
     this.socksPort,
     this.redirPort,
+    this.tproxyPort,
     this.mixedPort,
     this.allowLan,
     this.mode,
@@ -36,8 +39,9 @@ class Config {
     var yaml = SettingsYaml.load(pathToSettings: path);
     if (port != null) (yaml["port"] = port);
     if (socksPort != null) (yaml["socks-port"] = socksPort);
-    if (socksPort != null) (yaml["redir-port"] = socksPort);
-    if (socksPort != null) (yaml["mixed-port"] = socksPort);
+    if (redirPort != null) (yaml["redir-port"] = redirPort);
+    if (tproxyPort != null) (yaml["tproxy-port"] = tproxyPort);
+    if (mixedPort != null) (yaml["mixed-port"] = mixedPort);
     if (allowLan != null) (yaml["allow-lan"] = allowLan);
     if (mode != null) (yaml["mode"] = mode?.value);
     if (logLevel != null) (yaml["log-level"] = logLevel?.value);
@@ -49,6 +53,7 @@ class Config {
     int? port,
     int? socksPort,
     int? redirPort,
+    int? tproxyPort,
     int? mixedPort,
     bool? allowLan,
     Mode? mode,
@@ -59,6 +64,7 @@ class Config {
       port: port ?? this.port,
       socksPort: socksPort ?? this.socksPort,
       redirPort: redirPort ?? this.redirPort,
+      tproxyPort: tproxyPort ?? this.tproxyPort,
       mixedPort: mixedPort ?? this.mixedPort,
       allowLan: allowLan ?? this.allowLan,
       mode: mode ?? this.mode,
@@ -75,6 +81,7 @@ class Config {
       port: yaml["port"],
       socksPort: yaml["socks-port"],
       redirPort: yaml["redir-port"],
+      tproxyPort: yaml["tproxy-port"],
       mixedPort: yaml["mixed-port"],
       allowLan: yaml["allow-lan"],
       mode: Mode.values.singleWhere(

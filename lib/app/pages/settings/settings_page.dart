@@ -141,6 +141,7 @@ class _SettingsPageState extends State<SettingsPage> {
         var port = _config.clashConfig.port ?? 0;
         var socksPort = _config.clashConfig.socksPort ?? 0;
         var redirPort = _config.clashConfig.redirPort ?? 0;
+        var tproxyPort = _config.clashConfig.tproxyPort ?? 0;
         var mixedPort = _config.clashConfig.mixedPort ?? 0;
         return SettingsList(
           sections: [
@@ -181,6 +182,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
                 SettingsTile.navigation(
+                  title: const Text('Tproxy'),
+                  value: Text(tproxyPort.toString()),
+                  onPressed: (_) {
+                    setValue(
+                      title: "Tproxy",
+                      initialValue: tproxyPort.toString(),
+                      onOk: (v) => _config.setState(tproxyPort: int.parse(v)),
+                    );
+                  },
+                ),
+                SettingsTile.navigation(
                   title: const Text('Mixed'),
                   value: Text(mixedPort.toString()),
                   onPressed: (_) {
@@ -197,14 +209,14 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('Clash 设置'),
               tiles: <SettingsTile>[
                 SettingsTile(
-                  title: const Text("局域网"),
+                  title: const Text("允许局域网"),
                   trailing: Switch(
                     value: _config.clashConfig.allowLan ?? false,
                     onChanged: (v) => _config.setState(allowLan: v),
                   ),
                 ),
                 SettingsTile(
-                  title: const Text("局域网"),
+                  title: const Text("IPv6"),
                   trailing: Switch(
                     value: _config.clashConfig.ipv6 ?? false,
                     onChanged: (v) => _config.setState(ipv6: v),
