@@ -90,6 +90,9 @@ abstract class ConfigFileBase extends Disposable with Store {
         (Config config) {
           _request.patchConfigs(config);
           config.saveFile(clashConfigPath);
+          if (systemProxy) {
+            openProxy();
+          }
         },
         delay: 1000,
       ),
