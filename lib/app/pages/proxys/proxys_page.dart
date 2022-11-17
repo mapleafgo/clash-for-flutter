@@ -6,7 +6,6 @@ import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 
 enum MenuType { Sort }
 
@@ -35,35 +34,39 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
     overlay.remove();
   }
 
-  void moreMenu(
-    BuildContext context,
-    MenuType type,
-  ) {
+  moreMenu(MenuType type) {
     switch (type) {
       // 排序
       case MenuType.Sort:
-        change(sortType) {
+        change(sortType, BuildContext context) {
           controller.sortProxies(type: sortType);
           Navigator.of(context).pop();
         }
-        showMaterialModalBottomSheet(
-          context: context,
-          builder: (_) => SizedBox(
-            height: 150,
-            child: ListView.builder(
-              itemBuilder: (_, i) {
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                  onTap: () => change(SortType.values[i]),
-                  title: Text(SortType.values[i].showName),
-                  trailing: Radio<SortType>(
-                    value: SortType.values[i],
-                    groupValue: controller.model.sortType,
-                    onChanged: change,
-                  ),
-                );
-              },
-              itemCount: SortType.values.length,
+        Asuka.showModalBottomSheet(
+          backgroundColor: Colors.transparent,
+          builder: (cxt) => Material(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
+            elevation: 7,
+            child: SizedBox(
+              height: SortType.values.length * 50,
+              child: ListView.builder(
+                itemCount: SortType.values.length,
+                itemBuilder: (_, i) {
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    onTap: () => change(SortType.values[i], cxt),
+                    title: Text(SortType.values[i].showName),
+                    trailing: Radio<SortType>(
+                      value: SortType.values[i],
+                      groupValue: controller.model.sortType,
+                      onChanged: (v) => change(v, cxt),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         );
@@ -89,10 +92,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                 : const Text("代理"),
             actions: [
               PopupMenuButton(
-                onSelected: (MenuType type) => moreMenu(
-                  context,
-                  type,
-                ),
+                onSelected: (MenuType type) => moreMenu(type),
                 itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
                   PopupMenuItem(
                     padding: const EdgeInsets.symmetric(horizontal: 16),

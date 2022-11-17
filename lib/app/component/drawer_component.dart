@@ -89,6 +89,12 @@ class _AppDrawerState extends State<AppDrawer> {
             icon: const Icon(Icons.code),
             onTap: () => widget.page.jumpToPage(2),
           ),
+          SideMenuItem(
+            priority: 3,
+            title: "设置",
+            icon: const Icon(Icons.settings),
+            onTap: () => widget.page.jumpToPage(3),
+          ),
         ]);
   }
 }

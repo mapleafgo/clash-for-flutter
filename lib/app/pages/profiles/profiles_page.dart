@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:asuka/asuka.dart';
+import 'package:asuka/asuka.dart' hide showDialog;
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
@@ -16,7 +16,6 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 import 'package:mobx/mobx.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 
 enum MenuType { Update, Remove, Edit }
 
@@ -34,27 +33,34 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   bool _loading = false;
   late List<ReactionDisposer> disposerList;
 
-  addProfiles(BuildContext context) {
-    showMaterialModalBottomSheet(
-      context: context,
-      builder: (_) => SizedBox(
-        height: 100,
-        child: ListView(children: [
-          ListTile(
-            title: const Text("文件"),
-            onTap: () {
-              Navigator.of(context).pop();
-              profileFileDialog(onOk: addProfile);
-            },
-          ),
-          ListTile(
-            title: const Text("URL"),
-            onTap: () {
-              Navigator.of(context).pop();
-              profileURLDialog(onOk: addProfile);
-            },
-          ),
-        ]),
+  showAddProfiles() {
+    Asuka.showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      builder: (cxt) => Material(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        elevation: 7,
+        child: SizedBox(
+          height: 100,
+          child: ListView(children: [
+            ListTile(
+              title: const Text("文件"),
+              onTap: () {
+                Navigator.of(cxt).pop();
+                profileFileDialog(onOk: addProfile);
+              },
+            ),
+            ListTile(
+              title: const Text("URL"),
+              onTap: () {
+                Navigator.of(cxt).pop();
+                profileURLDialog(onOk: addProfile);
+              },
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -77,7 +83,8 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     required void Function(ProfileFile) onOk,
     ProfileFile? profile,
   }) {
-    Asuka.showDialog(
+    showDialog(
+      context: context,
       builder: (cxt) {
         var value = ProfileFile.emptyBean();
         var nameController = TextEditingController();
@@ -118,7 +125,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
               child: const Text("取消"),
               onPressed: () => Navigator.of(cxt).pop(),
             ),
-            ElevatedButton(
+            TextButton(
               child: const Text("确认"),
               onPressed: () {
                 if (nameController.text.isEmpty) {
@@ -141,7 +148,8 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     required void Function(ProfileURL) onOk,
     ProfileURL? profile,
   }) {
-    Asuka.showDialog(
+    showDialog(
+      context: context,
       builder: (cxt) {
         var nameController = TextEditingController();
         var urlController = TextEditingController();
@@ -173,7 +181,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
               child: const Text("取消"),
               onPressed: () => Navigator.of(cxt).pop(),
             ),
-            ElevatedButton(
+            TextButton(
               child: const Text("确认"),
               onPressed: () {
                 value.url = urlController.text;
@@ -233,7 +241,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           IconButton(
             tooltip: "新增",
             icon: const Icon(Icons.add),
-            onPressed: () => addProfiles(context),
+            onPressed: showAddProfiles,
           )
         ],
       ),

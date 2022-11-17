@@ -16,6 +16,20 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
       (_$activeComputed ??= Computed<ProfileBase?>(() => super.active,
               name: 'ConfigFileBase.active'))
           .value;
+  Computed<String?>? _$selectedFileComputed;
+
+  @override
+  String? get selectedFile =>
+      (_$selectedFileComputed ??= Computed<String?>(() => super.selectedFile,
+              name: 'ConfigFileBase.selectedFile'))
+          .value;
+  Computed<List<ProfileBase>>? _$profilesComputed;
+
+  @override
+  List<ProfileBase> get profiles =>
+      (_$profilesComputed ??= Computed<List<ProfileBase>>(() => super.profiles,
+              name: 'ConfigFileBase.profiles'))
+          .value;
 
   late final _$systemProxyAtom =
       Atom(name: 'ConfigFileBase.systemProxy', context: context);
@@ -93,8 +107,9 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
       int? redirPort,
       int? mixedPort,
       bool? allowLan,
-      String? mode,
-      String? logLevel}) {
+      Mode? mode,
+      LogLevel? logLevel,
+      bool? ipv6}) {
     final _$actionInfo = _$ConfigFileBaseActionController.startAction(
         name: 'ConfigFileBase.setState');
     try {
@@ -107,7 +122,8 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
           mixedPort: mixedPort,
           allowLan: allowLan,
           mode: mode,
-          logLevel: logLevel);
+          logLevel: logLevel,
+          ipv6: ipv6);
     } finally {
       _$ConfigFileBaseActionController.endAction(_$actionInfo);
     }
@@ -119,7 +135,9 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
 systemProxy: ${systemProxy},
 clashConfig: ${clashConfig},
 clashForMe: ${clashForMe},
-active: ${active}
+active: ${active},
+selectedFile: ${selectedFile},
+profiles: ${profiles}
     ''';
   }
 }

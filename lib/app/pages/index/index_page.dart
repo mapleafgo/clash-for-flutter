@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:io';
 import 'dart:math';
 
@@ -37,8 +36,8 @@ class _IndexPageState extends State<IndexPage>
   @override
   void initState() {
     _disposeSystemProxy = reaction(
-          (_) => _config.systemProxy,
-          (status) => trayMenuChange(status),
+      (_) => _config.systemProxy,
+      (status) => trayMenuChange(status),
     );
     trayManager.addListener(this);
     windowManager.addListener(this);
@@ -125,6 +124,11 @@ class _IndexPageState extends State<IndexPage>
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print("状态改变: $state");
+  }
+
   /// 外链接
   @override
   void onProtocolUrlReceived(String url) {
@@ -169,7 +173,7 @@ class _IndexPageState extends State<IndexPage>
       Expanded(
         child: PageView.builder(
           controller: _page,
-          itemCount: 3,
+          itemCount: 4,
           onPageChanged: (i) {
             switch (i) {
               case 0:
@@ -180,6 +184,9 @@ class _IndexPageState extends State<IndexPage>
                 break;
               case 2:
                 Modular.to.navigate("/tab/profiles/");
+                break;
+              case 3:
+                Modular.to.navigate("/tab/settings/");
                 break;
             }
           },

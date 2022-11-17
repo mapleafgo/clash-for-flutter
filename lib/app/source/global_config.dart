@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:clash_for_flutter/clash_generated_bindings.dart';
@@ -86,7 +87,10 @@ abstract class ConfigFileBase extends Disposable with Store {
     _disposers = [
       reaction(
         (_) => clashConfig,
-        (Config config) => config.saveFile(clashConfigPath),
+        (Config config) {
+          _request.patchConfigs(config);
+          config.saveFile(clashConfigPath);
+        },
         delay: 1000,
       ),
       reaction(
@@ -100,7 +104,7 @@ abstract class ConfigFileBase extends Disposable with Store {
           if (!File(file).isAbsolute) {
             file = "$profilesPath/$file";
           }
-          _request.changeConfig(file);
+          _changeProfile(file);
         },
       ),
     ];
@@ -147,6 +151,12 @@ abstract class ConfigFileBase extends Disposable with Store {
   @computed
   List<ProfileBase> get profiles => clashForMe.profiles;
 
+  /// 由于切换 profile 后，部分如 mode 会随 profile 更改，这里相当于同步配置
+  _changeProfile(String file) async {
+    await _request.changeConfig(file);
+    await _request.patchConfigs(clashConfig);
+  }
+
   @action
   setState({
     String? selectedFile,
@@ -156,8 +166,9 @@ abstract class ConfigFileBase extends Disposable with Store {
     int? redirPort,
     int? mixedPort,
     bool? allowLan,
-    String? mode,
-    String? logLevel,
+    Mode? mode,
+    LogLevel? logLevel,
+    bool? ipv6,
   }) {
     clashForMe = clashForMe.copyWith(
       selectedFile: selectedFile,
@@ -171,6 +182,7 @@ abstract class ConfigFileBase extends Disposable with Store {
       allowLan: allowLan,
       mode: mode,
       logLevel: logLevel,
+      ipv6: ipv6,
     );
   }
 
@@ -183,7 +195,7 @@ abstract class ConfigFileBase extends Disposable with Store {
     );
     if (clash.startService() == 1) {
       if (active != null) {
-        _request.changeConfig("$profilesPath/${active?.file}");
+        _changeProfile("$profilesPath/${active?.file}");
       }
       return true;
     }
