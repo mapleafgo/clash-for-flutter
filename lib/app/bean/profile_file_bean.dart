@@ -13,32 +13,16 @@ class ProfileFile extends ProfileBase {
     required String file,
     required String name,
     required DateTime time,
-    required Map<String, String> selected,
     this.path,
-  }) : super(
-          name: name,
-          file: file,
-          type: ProfileType.FILE,
-          time: time,
-          selected: selected,
-        );
+  }) : super(name: name, file: file, type: ProfileType.FILE, time: time);
 
   factory ProfileFile.defaultBean({
     required String file,
     required String name,
     required DateTime time,
   }) =>
-      ProfileFile(
-        file: file,
-        name: name,
-        time: time,
-        selected: {},
-      );
+      ProfileFile(file: file, name: name, time: time);
 
-  factory ProfileFile.emptyBean() => ProfileFile(
-        file: "",
-        name: "",
-        time: DateTime.now(),
-        selected: {},
-      );
+  factory ProfileFile.emptyBean() =>
+      ProfileFile(file: "", name: "", time: DateTime.now());
 }

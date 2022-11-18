@@ -3,7 +3,7 @@ class MessageException implements Exception {
   late String _message;
 
   MessageException(String message) {
-    this._message = message;
+    _message = message;
   }
 
   getMessage() => _message;

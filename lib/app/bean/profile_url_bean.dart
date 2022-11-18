@@ -1,4 +1,5 @@
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
+import 'package:clash_for_flutter/app/bean/sub_userinfo_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 
@@ -12,20 +13,17 @@ class ProfileURL extends ProfileBase {
   /// 更新间隔(h)
   int interval;
 
+  @JsonProperty(name: "sub-userinfo")
+  SubUserinfo? userinfo;
+
   ProfileURL({
     required String file,
     required String name,
     required DateTime time,
-    required Map<String, String> selected,
     required this.url,
     required this.interval,
-  }) : super(
-          name: name,
-          file: file,
-          type: ProfileType.URL,
-          time: time,
-          selected: selected,
-        );
+    this.userinfo,
+  }) : super(name: name, file: file, type: ProfileType.URL, time: time);
 
   factory ProfileURL.defaultBean({
     required String url,
@@ -33,21 +31,8 @@ class ProfileURL extends ProfileBase {
     required String name,
     required DateTime time,
   }) =>
-      ProfileURL(
-        url: url,
-        file: file,
-        name: name,
-        time: time,
-        interval: 0,
-        selected: {},
-      );
+      ProfileURL(url: url, file: file, name: name, time: time, interval: 0);
 
   factory ProfileURL.emptyBean() => ProfileURL(
-        url: "",
-        file: "",
-        name: "",
-        time: DateTime.now(),
-        interval: 0,
-        selected: {},
-      );
+      url: "", file: "", name: "", time: DateTime.now(), interval: 0);
 }

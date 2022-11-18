@@ -7,7 +7,10 @@ class AppModule extends Module {
   @override
   final List<Bind> binds = [
     Bind.singleton((_) => Request()),
-    Bind.singleton((_) => GlobalConfig()),
+    Bind.singleton<GlobalConfig>(
+      (_) => GlobalConfig(),
+      onDispose: (c) => c.dispose(),
+    ),
   ];
 
   @override

@@ -6,20 +6,16 @@ import 'package:clash_for_flutter/app/bean/proxie_show_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class ProxysController {
   final _request = Modular.get<Request>();
-  final _config = Modular.get<GlobalConfig>();
   final model = Modular.get<ProxysModel>();
 
   Future<void> initState() async {
-    if (_config.systemProxy) {
-      await getProviders();
-      await getProxies();
-    }
+    await getProviders();
+    await getProxies();
   }
 
   Future<void> getProxies() async {
@@ -32,7 +28,7 @@ class ProxysController {
         .toList();
 
     List<Group> groupList = [];
-    Set<Proxy> proxieList = new Set();
+    Set<Proxy> proxieList = {};
     list?.forEach((item) {
       if (item is Group) {
         groupList.add(item);
@@ -59,7 +55,6 @@ class ProxysController {
     required String select,
   }) async {
     await _request.changeProxy(name: name, select: select);
-    _config.proxySelect(name: name, select: select);
     await getProxies();
   }
 

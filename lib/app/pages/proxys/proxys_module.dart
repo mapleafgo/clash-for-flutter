@@ -12,6 +12,6 @@ class ProxysModule extends Module {
 
   @override
   final List<ModularRoute> routes = [
-    ChildRoute("/", child: (_, __) => ProxysPage()),
+    ChildRoute("/", child: (_, __) => const ProxysPage()),
   ];
 }

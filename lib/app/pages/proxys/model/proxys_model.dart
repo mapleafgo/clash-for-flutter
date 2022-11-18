@@ -7,10 +7,10 @@ import 'package:mobx/mobx.dart';
 
 part 'proxys_model.g.dart';
 
-class ProxysModel = _ProxysModel with _$ProxysModel;
+class ProxysModel = ProxysModelBase with _$ProxysModel;
 
 /// 代理列表
-abstract class _ProxysModel with Store {
+abstract class ProxysModelBase with Store {
   /// 分组列表
   @observable
   var groups = <Group>[];

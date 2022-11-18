@@ -1,18 +1,20 @@
-import 'package:asuka/asuka.dart' as asuka;
+import 'package:asuka/asuka.dart';
+import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
+import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-import '../../exceptions/message_exception.dart';
-
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  GlobalConfig _config = Modular.get<GlobalConfig>();
+  final GlobalConfig _config = Modular.get<GlobalConfig>();
   bool _loading = false;
 
   @override
@@ -29,9 +31,9 @@ class _HomePageState extends State<HomePage> {
         await _config.openProxy();
       }
     } on MessageException catch (e) {
-      asuka.showSnackBar(SnackBar(content: Text(e.getMessage())));
+      Asuka.showSnackBar(SnackBar(content: Text(e.getMessage())));
     } catch (e) {
-      asuka.showSnackBar(SnackBar(content: Text("发生未知错误")));
+      Asuka.showSnackBar(const SnackBar(content: Text("发生未知错误")));
     } finally {
       setState(() => _loading = false);
     }
@@ -40,44 +42,36 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: const SysAppBar(
         title: Text("Clash For Flutter"),
       ),
       body: Center(
         child: Card(
-          elevation: 1,
+          elevation: 3,
           child: _loading
-              ? Container(
+              ? const SizedBox(
+                  width: 200,
+                  height: 60,
                   child: Center(
                     child: CircularProgressIndicator(strokeWidth: 5),
                   ),
-                  width: 200,
-                  height: 60,
                 )
               : InkWell(
                   onTap: click,
-                  child: Container(
-                    child: Observer(
-                      builder: (_) => Center(
-                        child: _config.systemProxy
-                            ? Text(
-                                "关闭",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              )
-                            : Text(
-                                "开启",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                      ),
-                    ),
+                  child: SizedBox(
                     width: 200,
                     height: 60,
+                    child: Observer(
+                      builder: (_) => Center(
+                        child: Text(
+                          _config.systemProxy ? "关闭" : "开启",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
         ),
