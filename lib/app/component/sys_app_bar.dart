@@ -17,12 +17,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (actions != null) {
       acs.addAll(actions!);
     }
-    acs.add(CloseButton(
-      onPressed: () => windowManager.close(),
-    ));
-    actions?.add(CloseButton(
-      onPressed: () => windowManager.close(),
-    ));
+    acs.add(CloseButton(onPressed: () => windowManager.close()));
     return GestureDetector(
       onPanStart: (_) => windowManager.startDragging(),
       child: AppBar(

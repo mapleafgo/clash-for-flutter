@@ -5,6 +5,7 @@ import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -89,25 +90,25 @@ class _AppDrawerState extends State<AppDrawer> {
           SideMenuItem(
             priority: 0,
             title: "主页",
-            icon: const Icon(Icons.home),
+            icon: const Icon(FluentIcons.home_16_regular),
             onTap: () => widget.page.jumpToPage(0),
           ),
           SideMenuItem(
             priority: 1,
             title: "代理",
-            icon: const Icon(Icons.cloud),
+            icon: const Icon(FluentIcons.cloud_16_regular),
             onTap: () => widget.page.jumpToPage(1),
           ),
           SideMenuItem(
             priority: 2,
             title: "订阅",
-            icon: const Icon(Icons.code),
+            icon: const Icon(FluentIcons.code_16_regular),
             onTap: () => widget.page.jumpToPage(2),
           ),
           SideMenuItem(
             priority: 3,
             title: "设置",
-            icon: const Icon(Icons.settings),
+            icon: const Icon(FluentIcons.settings_16_regular),
             onTap: () => widget.page.jumpToPage(3),
           ),
         ]);

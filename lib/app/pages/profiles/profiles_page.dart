@@ -7,6 +7,7 @@ import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -16,6 +17,8 @@ import 'package:mobx/mobx.dart';
 import 'package:path/path.dart' hide context;
 
 enum MenuType { Update, Remove, Edit, Name }
+
+final dateFormat = DateFormat("yyyy/MM/dd HH:mm");
 
 /// 配置文件页
 class ProfilesPage extends StatefulWidget {
@@ -210,6 +213,49 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     ));
   }
 
+  getResidual(ProfileBase? profile) {
+    if (profile is ProfileURL) {
+      var userinfo = profile.userinfo;
+      if (userinfo != null) {
+        var download = userinfo.download ?? 0;
+        var total = userinfo.total ?? 0;
+        var progress = download / total;
+        var color = Theme.of(context).primaryColor.withOpacity(0.7);
+        var textStyle =
+            Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
+        var expire =
+            DateTime.fromMillisecondsSinceEpoch((userinfo.expire ?? 0) * 1000);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 5),
+                  child: Text(
+                    "${dataformat(download)}/${dataformat(total)}",
+                    style: textStyle,
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.black12,
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            Text("Expire: ${dateFormat.format(expire)}", style: textStyle),
+          ],
+        );
+      }
+    }
+    return Container();
+  }
+
   @override
   Widget build(_) {
     return Scaffold(
@@ -221,18 +267,25 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
             itemBuilder: (_, i) {
               var profile = _config.profiles[i];
               return ListTile(
-                title: Text(profile.name),
+                selected: profile.file == _config.selectedFile,
+                onTap: () => controller.select(profile.file),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [Text(profile.name), getResidual(profile)],
+                ),
                 subtitle: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(profile.type.value),
-                    Text(DateFormat("yyyy/MM/dd HH:mm").format(profile.time)),
+                    Text(dateFormat.format(profile.time)),
                   ],
                 ),
-                selected: profile.file == _config.selectedFile,
-                onTap: () => controller.select(profile.file),
                 trailing: _loadingFile != null && _loadingFile == profile.file
-                    ? const CircularProgressIndicator(strokeWidth: 6)
+                    ? const SizedBox(
+                        width: 25,
+                        height: 25,
+                        child: CircularProgressIndicator(),
+                      )
                     : PopupMenuButton(
                         onSelected: (type) {
                           switch (type) {

@@ -42,7 +42,7 @@ extension ModeValue on Mode {
   String get value => ModeValue.valueList[index];
 }
 
-enum DataUnit { Byte, KB, MB, GB }
+enum DataUnit { Byte, KB, MB, GB, TB, PB }
 
 extension DataUnitValue on DataUnit {
   static List<String> get valueList =>

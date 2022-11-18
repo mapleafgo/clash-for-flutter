@@ -47,7 +47,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Center(
         child: Card(
-          elevation: 1,
+          elevation: 3,
           child: _loading
               ? const SizedBox(
                   width: 200,
@@ -63,21 +63,13 @@ class _HomePageState extends State<HomePage> {
                     height: 60,
                     child: Observer(
                       builder: (_) => Center(
-                        child: _config.systemProxy
-                            ? const Text(
-                                "关闭",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              )
-                            : const Text(
-                                "开启",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
+                        child: Text(
+                          _config.systemProxy ? "关闭" : "开启",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
                       ),
                     ),
                   ),

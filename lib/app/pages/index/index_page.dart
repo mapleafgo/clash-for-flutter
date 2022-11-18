@@ -138,17 +138,14 @@ class _IndexPageState extends State<IndexPage>
       var params = uri.queryParameters;
       var subscribeUrl = params["url"];
       if (subscribeUrl != null) {
-        var profileURL = ProfileURL.emptyBean()
+        var profile = ProfileURL.emptyBean()
           ..url = subscribeUrl
-          ..name = params["name"] ?? Random().nextInt(11000).toString();
+          ..name = params["name"] ?? "";
 
         var loading = Loading.builder();
         Asuka.addOverlay(loading);
         _request
-            .getSubscribe(
-          profile: profileURL,
-          profilesDir: _config.profilesPath,
-        )
+            .getSubscribe(profile: profile, profilesDir: _config.profilesPath)
             .then((p) {
           var tempList = _config.profiles.toList();
           tempList.add(p);
