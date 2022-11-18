@@ -5,6 +5,7 @@ import (
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/hub"
+	"github.com/oschwald/geoip2-golang"
 	"log"
 	"os"
 	"path/filepath"
@@ -53,6 +54,15 @@ func withExternalController(externalController *C.char) {
 //export withSecret
 func withSecret(secret *C.char) {
 	options = append(options, hub.WithSecret(C.GoString(secret)))
+}
+
+//export mmdbVerify
+func mmdbVerify(path *C.char) bool {
+	instance, err := geoip2.Open(C.GoString(path))
+	if err == nil {
+		_ = instance.Close()
+	}
+	return err == nil
 }
 
 //export startService

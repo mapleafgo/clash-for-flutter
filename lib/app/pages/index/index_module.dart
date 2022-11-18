@@ -23,10 +23,6 @@ class IndexModule extends Module {
   final List<ModularRoute> routes = [
     ChildRoute("/", child: (_, __) => const InitPage(), children: [
       ChildRoute(
-        "/loading",
-        child: (_, __) => const Center(child: CircularProgressIndicator()),
-      ),
-      ChildRoute(
         "/error",
         child: (_, __) => const Scaffold(
           appBar: SysAppBar(title: Text("Clash For Flutter")),

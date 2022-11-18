@@ -25,12 +25,15 @@ class Request {
   Future<Response> downFile({
     required String urlPath,
     required String savePath,
+    int? connectTimeout,
+    int? receiveTimeout,
+    void Function(int, int)? onReceiveProgress,
   }) {
     return Dio(BaseOptions(
       headers: {'User-Agent': 'Clash For Flutter'},
-      connectTimeout: 10000,
-      receiveTimeout: 10000,
-    )).download(urlPath, savePath);
+      connectTimeout: connectTimeout ?? 10000,
+      receiveTimeout: receiveTimeout ?? 10000,
+    )).download(urlPath, savePath, onReceiveProgress: onReceiveProgress);
   }
 
   /// 下载订阅

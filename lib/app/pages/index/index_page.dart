@@ -70,17 +70,17 @@ class _IndexPageState extends State<IndexPage>
   void trayMenuChange(bool isChecked) async {
     List<MenuItem> items = [
       MenuItem(
-        key: Constants.systrayWinKey,
+        key: SystrayMenuKeys.systrayWinKey,
         label: '显示窗口',
       ),
       MenuItem.separator(),
       MenuItem.checkbox(
-        key: Constants.systrayProxyKey,
+        key: SystrayMenuKeys.systrayProxyKey,
         label: '代理',
         checked: isChecked,
       ),
       MenuItem(
-        key: Constants.systrayExitKey,
+        key: SystrayMenuKeys.systrayExitKey,
         label: '退出',
       ),
     ];
@@ -100,17 +100,17 @@ class _IndexPageState extends State<IndexPage>
   @override
   void onTrayMenuItemClick(MenuItem menuItem) async {
     switch (menuItem.key) {
-      case Constants.systrayWinKey:
+      case SystrayMenuKeys.systrayWinKey:
         windowManager.show();
         break;
-      case Constants.systrayProxyKey:
+      case SystrayMenuKeys.systrayProxyKey:
         if (menuItem.checked!) {
           await _config.closeProxy();
         } else {
           await _config.openProxy();
         }
         break;
-      case Constants.systrayExitKey:
+      case SystrayMenuKeys.systrayExitKey:
         await _config.closeProxy();
         windowManager.close().then((_) => windowManager.destroy());
         break;

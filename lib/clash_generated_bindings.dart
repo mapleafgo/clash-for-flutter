@@ -910,6 +910,20 @@ class Clash {
   late final _withSecret =
       _withSecretPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 
+  int mmdbVerify(
+    ffi.Pointer<ffi.Char> path,
+  ) {
+    return _mmdbVerify(
+      path,
+    );
+  }
+
+  late final _mmdbVerifyPtr =
+      _lookup<ffi.NativeFunction<GoUint8 Function(ffi.Pointer<ffi.Char>)>>(
+          'mmdbVerify');
+  late final _mmdbVerify =
+      _mmdbVerifyPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
+
   int startService() {
     return _startService();
   }

@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -10,10 +9,8 @@ import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:clash_for_flutter/clash_generated_bindings.dart';
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:proxy_manager/proxy_manager.dart';
 
@@ -48,13 +45,10 @@ abstract class ConfigFileBase extends Disposable with Store {
 
   Future<void> init() async {
     await getApplicationSupportDirectory().then((dir) => configDir = dir);
-    if (kDebugMode) {
-      log("配置文件夹: ${configDir.path}");
-    }
 
     profilesPath = "${configDir.path}${Constants.profilesPath}";
-
     clashForMePath = "${configDir.path}${Constants.clashForMe}";
+
     ClashForMeConfig? tempCfm = ClashForMeConfig.formYamlFile(clashForMePath);
     tempCfm = await _profilesInitCheck(tempCfm);
     if (tempCfm != null) {
@@ -73,11 +67,11 @@ abstract class ConfigFileBase extends Disposable with Store {
   Future<void> _initClash() async {
     String fullPath = "";
     if (Platform.isWindows) {
-      fullPath = p.join(Directory.current.path, "clash", "libclash.dll");
+      fullPath = "libclash.dll";
     } else if (Platform.isMacOS) {
-      fullPath = p.join(Directory.current.path, "clash", "libclash.dylib");
+      fullPath = "libclash.dylib";
     } else {
-      fullPath = p.join(Directory.current.path, "clash", "libclash.so");
+      fullPath = "libclash.so";
     }
     final lib = DynamicLibrary.open(fullPath);
     clash = Clash(lib);
