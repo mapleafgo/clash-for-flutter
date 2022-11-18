@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:asuka/asuka.dart' hide showDialog;
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
@@ -9,7 +7,6 @@ import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
-import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -216,85 +213,79 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   @override
   Widget build(_) {
     return Scaffold(
-      appBar: SysAppBar(
-        title: const Text("订阅"),
-        actions: [
-          IconButton(
-            tooltip: "新增",
-            icon: const Icon(Icons.add),
-            onPressed: showAddProfiles,
-          )
-        ],
-      ),
+      appBar: const SysAppBar(title: Text("订阅")),
       body: Observer(
         builder: (_) {
-          return ListView(
-            children: _config.profiles
-                .map(
-                  (profile) => ListTile(
-                    title: Text(profile.name),
-                    subtitle: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(profile.type.value),
-                        Text(DateFormat("yyyy/MM/dd HH:mm")
-                            .format(profile.time)),
-                      ],
-                    ),
-                    selected: profile.file == _config.selectedFile,
-                    onTap: () => controller.select(profile.file),
-                    trailing:
-                        _loadingFile != null && _loadingFile == profile.file
-                            ? const CircularProgressIndicator(strokeWidth: 6)
-                            : PopupMenuButton(
-                                onSelected: (type) {
-                                  switch (type) {
-                                    case MenuType.Edit:
-                                      edit(profile);
-                                      break;
-                                    case MenuType.Update:
-                                      upgradeProfile(profile.file);
-                                      break;
-                                    case MenuType.Remove:
-                                      removeProfile(profile.file);
-                                      break;
-                                    case MenuType.Name:
-                                      changeName(profile);
-                                      break;
-                                  }
-                                },
-                                itemBuilder: (_) {
-                                  var list = <PopupMenuEntry<MenuType>>[
-                                    const PopupMenuItem(
-                                      value: MenuType.Name,
-                                      child: Text("修改名称"),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: MenuType.Edit,
-                                      child: Text("修改源"),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: MenuType.Remove,
-                                      child: Text("移除"),
-                                    ),
-                                  ];
-                                  if (profile.type == ProfileType.URL) {
-                                    list.insert(
-                                      0,
-                                      const PopupMenuItem(
-                                        value: MenuType.Update,
-                                        child: Text("更新"),
-                                      ),
-                                    );
-                                  }
-                                  return list;
-                                },
+          return ListView.builder(
+            itemCount: _config.profiles.length,
+            itemBuilder: (_, i) {
+              var profile = _config.profiles[i];
+              return ListTile(
+                title: Text(profile.name),
+                subtitle: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(profile.type.value),
+                    Text(DateFormat("yyyy/MM/dd HH:mm").format(profile.time)),
+                  ],
+                ),
+                selected: profile.file == _config.selectedFile,
+                onTap: () => controller.select(profile.file),
+                trailing: _loadingFile != null && _loadingFile == profile.file
+                    ? const CircularProgressIndicator(strokeWidth: 6)
+                    : PopupMenuButton(
+                        onSelected: (type) {
+                          switch (type) {
+                            case MenuType.Edit:
+                              edit(profile);
+                              break;
+                            case MenuType.Update:
+                              upgradeProfile(profile.file);
+                              break;
+                            case MenuType.Remove:
+                              removeProfile(profile.file);
+                              break;
+                            case MenuType.Name:
+                              changeName(profile);
+                              break;
+                          }
+                        },
+                        itemBuilder: (_) {
+                          var list = <PopupMenuEntry<MenuType>>[
+                            const PopupMenuItem(
+                              value: MenuType.Name,
+                              child: Text("修改名称"),
+                            ),
+                            const PopupMenuItem(
+                              value: MenuType.Edit,
+                              child: Text("修改源"),
+                            ),
+                            const PopupMenuItem(
+                              value: MenuType.Remove,
+                              child: Text("移除"),
+                            ),
+                          ];
+                          if (profile.type == ProfileType.URL) {
+                            list.insert(
+                              0,
+                              const PopupMenuItem(
+                                value: MenuType.Update,
+                                child: Text("更新"),
                               ),
-                  ),
-                )
-                .toList(),
+                            );
+                          }
+                          return list;
+                        },
+                      ),
+              );
+            },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: "新增",
+        onPressed: showAddProfiles,
+        child: const Icon(Icons.add),
       ),
     );
   }
