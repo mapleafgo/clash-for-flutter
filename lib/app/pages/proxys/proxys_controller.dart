@@ -28,7 +28,7 @@ class ProxysController {
         .toList();
 
     List<Group> groupList = [];
-    Set<Proxy> proxieList = Set();
+    Set<Proxy> proxieList = {};
     list?.forEach((item) {
       if (item is Group) {
         groupList.add(item);
