@@ -1,8 +1,5 @@
 app_id: B3039CF4-E394-42B6-971C-4BE97F322DE8
 publisher: mapleafgo
-publisher_url: https://blog.mapleafgo.cn/
+publisher_url: https://github.com/mapleafgo/clash-for-flutter
 display_name: ClashForFlutter
 create_desktop_icon: true
-locales:
-  - en
-  - zh
