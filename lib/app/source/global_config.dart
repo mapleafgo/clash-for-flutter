@@ -204,24 +204,44 @@ abstract class ConfigFileBase extends Disposable with Store {
   /// 打开代理
   @action
   Future<void> openProxy() async {
-    await proxyManager.setAsSystemProxy(
-      ProxyTypes.http,
-      Constants.localhost,
-      clashConfig.port ?? clashConfig.mixedPort ?? 7890,
-    );
-    await proxyManager.setAsSystemProxy(
-      ProxyTypes.https,
-      Constants.localhost,
-      clashConfig.port ?? clashConfig.mixedPort ?? 7890,
-    );
-    if (!Platform.isWindows) {
-      await proxyManager.setAsSystemProxy(
-        ProxyTypes.socks,
-        Constants.localhost,
-        clashConfig.socksPort ?? clashConfig.mixedPort ?? 7890,
-      );
+    int? port = clashConfig.port ?? 0;
+    if (port == 0) {
+      port = null;
     }
-    systemProxy = true;
+    int? socksPort = clashConfig.socksPort ?? 0;
+    if (socksPort == 0) {
+      socksPort = null;
+    }
+    int? mixedPort = clashConfig.mixedPort ?? 0;
+    if (mixedPort == 0) {
+      mixedPort = null;
+    }
+
+    port = port ?? mixedPort ?? 0;
+    if (port != 0) {
+      await proxyManager.setAsSystemProxy(
+        ProxyTypes.http,
+        Constants.localhost,
+        port,
+      );
+      await proxyManager.setAsSystemProxy(
+        ProxyTypes.https,
+        Constants.localhost,
+        port,
+      );
+      systemProxy = true;
+    }
+    socksPort = socksPort ?? mixedPort ?? 0;
+    if (socksPort != 0) {
+      if (!Platform.isWindows) {
+        await proxyManager.setAsSystemProxy(
+          ProxyTypes.socks,
+          Constants.localhost,
+          socksPort,
+        );
+      }
+      systemProxy = true;
+    }
   }
 
   /// 关闭代理
