@@ -31,8 +31,8 @@ class Request {
   }) {
     return Dio(BaseOptions(
       headers: {'User-Agent': 'Clash For Flutter'},
-      connectTimeout: connectTimeout ?? 10000,
-      receiveTimeout: receiveTimeout ?? 10000,
+      connectTimeout: connectTimeout ?? 20000,
+      receiveTimeout: receiveTimeout ?? 20000,
     )).download(urlPath, savePath, onReceiveProgress: onReceiveProgress);
   }
 

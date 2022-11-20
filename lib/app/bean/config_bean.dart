@@ -82,7 +82,7 @@ class Config {
       socksPort: yaml["socks-port"],
       redirPort: yaml["redir-port"],
       tproxyPort: yaml["tproxy-port"],
-      mixedPort: yaml["mixed-port"],
+      mixedPort: yaml["mixed-port"] ?? 7890,
       allowLan: yaml["allow-lan"],
       mode: Mode.values.singleWhere(
         (m) => m.value == yaml["mode"],

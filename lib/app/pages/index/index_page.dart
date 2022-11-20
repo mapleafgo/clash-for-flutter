@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
