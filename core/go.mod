@@ -2,7 +2,10 @@ module mapleafgo.cn/clash_for_flutter_core
 
 go 1.19
 
-require github.com/Dreamacro/clash v1.11.12
+require (
+	github.com/Dreamacro/clash v1.11.12
+	github.com/oschwald/geoip2-golang v1.8.0
+)
 
 require (
 	github.com/ajg/form v1.5.1 // indirect
@@ -18,7 +21,6 @@ require (
 	github.com/mdlayher/netlink v1.6.2 // indirect
 	github.com/mdlayher/socket v0.2.3 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
-	github.com/oschwald/geoip2-golang v1.8.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/u-root/uio v0.0.0-20220204230159-dac05f7d2cb4 // indirect

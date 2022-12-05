@@ -4,14 +4,6 @@
 
 > [使用说明](https://mapleafgo.github.io/clash-for-flutter)
 
-## 开发说明
-
-~~- Linux~~
-
-  ~~linux 上开发除必要安装的 `Go`、`Hover`、`Flutter`等外，还需要安装`gtk3`和`libappindicator3`。对于 Debian 系的发行版可执行下面的命令：~~
-
-  ~~> `sudo apt-get install gcc libgtk-3-dev libappindicator3-dev`~~
-
 ## 界面
 
 界面较于简陋，不过这种应用也不用多炫吧
@@ -24,14 +16,55 @@
 
 ![设置页](./docs/images/settings_page.png)
 
+## 开发、打包说明
+
+- 基础环境
+
+  `GCC`、`Go v1.19+`、`Flutter v3.3.9+`
+
+  > `Linux`环境下 [tray_manager](https://github.com/leanflutter/tray_manager) 需要 `libayatana-appindicator3-dev`
+  or `libappindicator3-dev`
+
+- 编译项目
+
+  ```shell
+  # 1. 获取项目依赖
+  $ flutter pub get
+  # 2. 生成 .g.dart 文件
+  $ flutter pub run build_runner build --delete-conflicting-outputs
+  # 3. 编译 Clash 内核
+  $ cd core
+  # windows
+  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.dll
+  # Linux / macos
+  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.so
+  $ cd ../
+
+  # 4. 运行项目 (linux)
+  $ flutter run -d linux
+  # 4. 运行项目 (windows)
+  $ flutter run -d windows
+  # 4. 运行项目 (macos)
+  $ flutter run -d macos
+  ```
+
+- 打包项目
+
+  该项目用 [flutter_distributor](https://distributor.leanflutter.org/) 打包，打包步骤看 `flutter_distributor` 的官方文档吧
+
 ## 主要技术
 
+- [Go](https://go.dev/)
 - [Clash](https://github.com/Dreamacro/clash)
 - [Flutter](https://flutter.dev)
 - [tray_manager](https://github.com/leanflutter/tray_manager)
 - [window_manager](https://github.com/leanflutter/window_manager)
 - [proxy_manager](https://github.com/Kingtous/proxy_manager)
 - [flutter_modular](https://github.com/Flutterando/modular)
+- [flutter_distributor](https://distributor.leanflutter.org/)
+
 
 ## 写在后面
-自 1.0.0 版本开始，本软件全面从之前的 Go-Flutter 迁移到了官方 Flutter 版本。迁移中部分参考了 [Fclash](https://github.com/Kingtous/Fclash) 非常感谢！
+
+自 1.0.0 版本开始，本软件全面从之前的 Go-Flutter 迁移到了官方 Flutter
+版本。迁移中部分参考了 [Fclash](https://github.com/Kingtous/Fclash) 非常感谢！
