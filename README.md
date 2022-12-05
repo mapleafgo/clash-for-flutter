@@ -35,8 +35,10 @@
   $ cd core
   # windows
   $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.dll
-  # Linux / macos
+  # Linux
   $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.so
+  # macos
+  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.dylib
   $ cd ../
 
   # 4. 运行项目 (linux)
