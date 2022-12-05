@@ -1,12 +1,10 @@
-# clash_for_flutter
+# Clash For Flutter
 
-这是一个**Clash**的桌面客户端，支持 windows、linux、macos。
+这是一个 **Clash** 的桌面客户端，支持 windows、linux、macos。
 
 > [使用说明](https://mapleafgo.github.io/clash-for-flutter)
 
 ## 界面
-
-界面较于简陋，不过这种应用也不用多炫吧
 
 ![主页](./docs/images/home_page.png)
 
@@ -32,6 +30,7 @@
   $ flutter pub get
   # 2. 生成 .g.dart 文件
   $ flutter pub run build_runner build --delete-conflicting-outputs
+
   # 3. 编译 Clash 内核
   $ cd core
   # windows
@@ -62,7 +61,6 @@
 - [proxy_manager](https://github.com/Kingtous/proxy_manager)
 - [flutter_modular](https://github.com/Flutterando/modular)
 - [flutter_distributor](https://distributor.leanflutter.org/)
-
 
 ## 写在后面
 
