@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:clash_for_flutter/app/app_module.dart';
 import 'package:clash_for_flutter/app/app_widget.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
@@ -19,7 +21,9 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
-  await protocolHandler.register('clash');
+  if (!Platform.isLinux) {
+    await protocolHandler.register('clash');
+  }
 
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(460, 600),
