@@ -5,7 +5,6 @@ import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -27,12 +26,10 @@ class _AppDrawerState extends State<AppDrawer> {
   void initState() {
     super.initState();
     _request.traffic().then((value) {
-      value?.listen((event) => setState(() => _speed =
-          JsonMapper.deserialize<NetSpeed>(utf8.decode(event)) ?? NetSpeed()));
+      value?.listen(
+          (event) => setState(() => _speed = JsonMapper.deserialize<NetSpeed>(utf8.decode(event)) ?? NetSpeed()));
     });
-    _request
-        .getClashVersion()
-        .then((value) => setState(() => _clashVersion = value ?? _clashVersion));
+    _request.getClashVersion().then((value) => setState(() => _clashVersion = value ?? _clashVersion));
   }
 
   String format(int value) {
@@ -46,15 +43,16 @@ class _AppDrawerState extends State<AppDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    var themeData = Theme.of(context);
     return SideMenu(
         controller: widget.page,
         style: SideMenuStyle(
           openSideMenuWidth: 200,
-          unselectedTitleTextStyle: Theme.of(context).textTheme.button,
-          selectedTitleTextStyle: Theme.of(context).primaryTextTheme.button,
-          selectedIconColor: Theme.of(context).primaryTextTheme.button!.color,
-          selectedColor: Theme.of(context).primaryColor,
-          hoverColor: Theme.of(context).hoverColor,
+          unselectedTitleTextStyle: themeData.textTheme.button,
+          selectedTitleTextStyle: themeData.primaryTextTheme.button,
+          selectedIconColor: themeData.primaryTextTheme.button!.color,
+          selectedColor: themeData.primaryColor,
+          hoverColor: themeData.hoverColor,
         ),
         title: Column(
           children: [
@@ -90,25 +88,25 @@ class _AppDrawerState extends State<AppDrawer> {
           SideMenuItem(
             priority: 0,
             title: "主页",
-            icon: const Icon(FluentIcons.home_16_regular),
+            icon: const Icon(Icons.home_outlined),
             onTap: () => widget.page.jumpToPage(0),
           ),
           SideMenuItem(
             priority: 1,
             title: "代理",
-            icon: const Icon(FluentIcons.cloud_16_regular),
+            icon: const Icon(Icons.cloud_outlined),
             onTap: () => widget.page.jumpToPage(1),
           ),
           SideMenuItem(
             priority: 2,
             title: "订阅",
-            icon: const Icon(FluentIcons.code_16_regular),
+            icon: const Icon(Icons.code_rounded),
             onTap: () => widget.page.jumpToPage(2),
           ),
           SideMenuItem(
             priority: 3,
             title: "设置",
-            icon: const Icon(FluentIcons.settings_16_regular),
+            icon: const Icon(Icons.settings_outlined),
             onTap: () => widget.page.jumpToPage(3),
           ),
         ]);

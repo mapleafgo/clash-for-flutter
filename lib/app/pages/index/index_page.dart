@@ -22,11 +22,7 @@ class IndexPage extends StatefulWidget {
 }
 
 class _IndexPageState extends State<IndexPage>
-    with
-        TrayListener,
-        WindowListener,
-        ProtocolListener,
-        WidgetsBindingObserver {
+    with TrayListener, WindowListener, ProtocolListener, WidgetsBindingObserver {
   final _config = Modular.get<GlobalConfig>();
   final _request = Modular.get<Request>();
   final PageController _page = PageController();
@@ -143,9 +139,7 @@ class _IndexPageState extends State<IndexPage>
 
         var loading = Loading.builder();
         Asuka.addOverlay(loading);
-        _request
-            .getSubscribe(profile: profile, profilesDir: _config.profilesPath)
-            .then((p) {
+        _request.getSubscribe(profile: profile, profilesDir: _config.profilesPath).then((p) {
           var tempList = _config.profiles.toList();
           tempList.add(p);
           _config.setState(profiles: tempList);

@@ -143,7 +143,14 @@ class _SettingsPageState extends State<SettingsPage> {
         var redirPort = _config.clashConfig.redirPort ?? 0;
         var tproxyPort = _config.clashConfig.tproxyPort ?? 0;
         var mixedPort = _config.clashConfig.mixedPort ?? 0;
+
+        var allowLan = _config.clashConfig.allowLan ?? false;
+        var ipv6 = _config.clashConfig.ipv6 ?? false;
+        var mode = _config.clashConfig.mode ?? Mode.Rule;
+        var logLevel = _config.clashConfig.logLevel ?? LogLevel.info;
+
         return SettingsList(
+          platform: DevicePlatform.macOS,
           sections: [
             SettingsSection(
               title: const Text('Clash 代理端口'),
@@ -208,29 +215,24 @@ class _SettingsPageState extends State<SettingsPage> {
             SettingsSection(
               title: const Text('Clash 设置'),
               tiles: <SettingsTile>[
-                SettingsTile(
+                SettingsTile.switchTile(
                   title: const Text("允许局域网"),
-                  trailing: Switch(
-                    value: _config.clashConfig.allowLan ?? false,
-                    onChanged: (v) => _config.setState(allowLan: v),
-                  ),
+                  initialValue: allowLan,
+                  onToggle: (v) => _config.setState(allowLan: v),
                 ),
-                SettingsTile(
+                SettingsTile.switchTile(
                   title: const Text("IPv6"),
-                  trailing: Switch(
-                    value: _config.clashConfig.ipv6 ?? false,
-                    onChanged: (v) => _config.setState(ipv6: v),
-                  ),
+                  initialValue: ipv6,
+                  onToggle: (v) => _config.setState(ipv6: v),
                 ),
                 SettingsTile.navigation(
                   title: const Text('代理模式'),
-                  value: Text((_config.clashConfig.mode ?? Mode.Rule).value),
+                  value: Text(mode.value),
                   onPressed: (_) => selectMode(),
                 ),
                 SettingsTile.navigation(
                   title: const Text('日志等级'),
-                  value: Text(
-                      (_config.clashConfig.logLevel ?? LogLevel.info).value),
+                  value: Text(logLevel.value),
                   onPressed: (_) => selectLogLevel(),
                 ),
               ],

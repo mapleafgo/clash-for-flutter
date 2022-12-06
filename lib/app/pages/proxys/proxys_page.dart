@@ -14,8 +14,7 @@ class ProxysPage extends StatefulWidget {
   const ProxysPage({super.key});
 
   @override
-  ModularState<ProxysPage, ProxysController> createState() =>
-      _ProxysPageState();
+  ModularState<ProxysPage, ProxysController> createState() => _ProxysPageState();
 }
 
 class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
@@ -38,40 +37,45 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
     switch (type) {
       // 排序
       case MenuType.Sort:
-        change(sortType, BuildContext context) {
-          controller.sortProxies(type: sortType);
-          Navigator.of(context).pop();
-        }
-        Asuka.showModalBottomSheet(
-          backgroundColor: Colors.transparent,
-          builder: (cxt) => Material(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-            elevation: 7,
-            child: SizedBox(
-              height: SortType.values.length * 50,
-              child: ListView.builder(
-                itemCount: SortType.values.length,
-                itemBuilder: (_, i) {
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                    onTap: () => change(SortType.values[i], cxt),
-                    title: Text(SortType.values[i].showName),
-                    trailing: Radio<SortType>(
-                      value: SortType.values[i],
-                      groupValue: controller.model.sortType,
-                      onChanged: (v) => change(v, cxt),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
+        sortAction();
         break;
     }
+  }
+
+  sortAction() {
+    change(sortType, BuildContext context) {
+      controller.sortProxies(type: sortType);
+      Navigator.of(context).pop();
+    }
+
+    Asuka.showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      builder: (cxt) => Material(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        elevation: 7,
+        child: SizedBox(
+          height: SortType.values.length * 50,
+          child: ListView.builder(
+            itemCount: SortType.values.length,
+            itemBuilder: (_, i) {
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                onTap: () => change(SortType.values[i], cxt),
+                title: Text(SortType.values[i].showName),
+                trailing: Radio<SortType>(
+                  value: SortType.values[i],
+                  groupValue: controller.model.sortType,
+                  onChanged: (v) => change(v, cxt),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -91,6 +95,12 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   )
                 : const Text("代理"),
             actions: [
+              IconButton(
+                tooltip: "排序",
+                icon: const Icon(Icons.sort_outlined),
+                onPressed: sortAction,
+              ),
+/*
               PopupMenuButton(
                 onSelected: (MenuType type) => moreMenu(type),
                 itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
@@ -101,7 +111,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                       width: 100,
                       child: Row(children: [
                         Icon(
-                          Icons.sort,
+                          Icons.sort_outlined,
                           color: DefaultTextStyle.of(context).style.color,
                         ),
                         Expanded(
@@ -115,6 +125,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   ),
                 ],
               ),
+*/
             ],
           ),
           body: groups.isNotEmpty
@@ -132,9 +143,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                         var delay = proxie.delay < 0
                             ? null
                             : Text(
-                                proxie.delay == 0
-                                    ? "..."
-                                    : proxie.delay.toString(),
+                                proxie.delay == 0 ? "..." : proxie.delay.toString(),
                               );
                         var subTitle = StringBuffer();
                         if (proxie.type != null) {

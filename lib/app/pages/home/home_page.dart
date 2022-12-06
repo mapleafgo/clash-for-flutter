@@ -22,58 +22,131 @@ class _HomePageState extends State<HomePage> {
     super.initState();
   }
 
-  click() async {
+  click() {
     setState(() => _loading = true);
-    try {
+    Future(() {
       if (_config.systemProxy) {
-        await _config.closeProxy();
+        return _config.closeProxy();
       } else {
-        await _config.openProxy();
+        return _config.openProxy();
       }
-    } on MessageException catch (e) {
-      Asuka.showSnackBar(SnackBar(content: Text(e.getMessage())));
-    } catch (e) {
-      Asuka.showSnackBar(const SnackBar(content: Text("发生未知错误")));
-    } finally {
-      setState(() => _loading = false);
-    }
+    }).catchError((e) {
+      if (e is MessageException) {
+        Asuka.showSnackBar(SnackBar(content: Text(e.getMessage())));
+      } else {
+        Asuka.showSnackBar(const SnackBar(content: Text("发生未知错误")));
+      }
+    }).then((_) => setState(() => _loading = false));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const SysAppBar(
-        title: Text("Clash For Flutter"),
-      ),
+      appBar: const SysAppBar(title: Text("Clash For Flutter")),
       body: Center(
-        child: Card(
-          elevation: 3,
-          child: _loading
-              ? const SizedBox(
-                  width: 200,
-                  height: 60,
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 5),
-                  ),
-                )
-              : InkWell(
-                  onTap: click,
-                  child: SizedBox(
-                    width: 200,
-                    height: 60,
-                    child: Observer(
-                      builder: (_) => Center(
-                        child: Text(
-                          _config.systemProxy ? "关闭" : "开启",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+        child: _loading
+            ? const LoadingButton()
+            : Observer(
+                builder: (_) {
+                  if (_config.systemProxy) {
+                    return OffButton(onTap: click);
+                  } else {
+                    return OnButton(onTap: click);
+                  }
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class OnButton extends StatelessWidget {
+  final Function() onTap;
+
+  const OnButton({Key? key, required this.onTap}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    var themeData = Theme.of(context);
+    return Card(
+      color: Colors.black12,
+      child: SizedBox.fromSize(
+        size: const Size(250, 80),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: const BorderRadius.all(Radius.circular(10)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.flight_takeoff_rounded,
+                size: 36,
+                color: themeData.primaryTextTheme.headlineMedium?.color,
+              ),
+              Container(
+                padding: const EdgeInsets.only(left: 10),
+                child: Text(
+                  "开启",
+                  style: themeData.primaryTextTheme.headlineMedium,
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class OffButton extends StatelessWidget {
+  final Function() onTap;
+
+  const OffButton({Key? key, required this.onTap}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    var themeData = Theme.of(context);
+    return Card(
+      color: themeData.primaryColor,
+      child: SizedBox.fromSize(
+        size: const Size(250, 80),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: const BorderRadius.all(Radius.circular(10)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.flight_land_rounded,
+                size: 36,
+                color: themeData.primaryTextTheme.headlineMedium?.color,
+              ),
+              Container(
+                padding: const EdgeInsets.only(left: 10),
+                child: Text(
+                  "关闭",
+                  style: themeData.primaryTextTheme.headlineMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LoadingButton extends StatelessWidget {
+  const LoadingButton({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.black12,
+      child: SizedBox.fromSize(
+        size: const Size(250, 80),
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 5),
         ),
       ),
     );

@@ -54,7 +54,6 @@ dependencies:
   settings_yaml: ^4.0.0
   settings_ui: ^2.0.2
   cupertino_icons: ^1.0.5
-  fluentui_system_icons: ^1.1.186
 
 dev_dependencies:
   flutter_test:
