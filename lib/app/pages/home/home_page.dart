@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-const btnSize = Size(220, 75);
+const btnSize = Size(200, 70);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

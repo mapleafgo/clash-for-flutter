@@ -1,0 +1,16 @@
+appId: cn.mapleafgo.clash_for_flutter
+# relative path to the application's icon
+icon: assets/icon.png
+
+script:
+
+include: []
+exclude: []
+# its true by default
+default_excludes: true
+
+files:
+  include: []
+  exclude: []
+  # its true by default
+  default_excludes: true
