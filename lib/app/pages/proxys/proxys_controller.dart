@@ -37,8 +37,7 @@ class ProxysController {
       }
     });
 
-    model.setState(
-        groups: groupList, proxies: proxieList.toList(), global: global);
+    model.setState(groups: groupList, proxies: proxieList.toList(), global: global);
   }
 
   Future<void> getProviders() async {
@@ -60,9 +59,7 @@ class ProxysController {
 
   Future<void> delayGroup(Group group) {
     return Future.wait(
-      group.all.map(
-        (name) => _request.getProxyDelay(name).catchError((_) => 0),
-      ),
+      group.all.map((name) => _request.getProxyDelay(name).catchError((_) => 0)),
     ).then((value) async => await getProviders());
   }
 

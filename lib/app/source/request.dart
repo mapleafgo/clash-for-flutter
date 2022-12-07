@@ -86,7 +86,7 @@ class Request {
   /// 获取单个代理的延迟
   Future<int?> getProxyDelay(String name) {
     return _clashDio.get<Map>("/proxies/$name/delay", queryParameters: {
-      "timeout": 3000,
+      "timeout": 2900,
       "url": 'http://www.gstatic.com/generate_204'
     }).then((res) => res.data?["delay"]);
   }

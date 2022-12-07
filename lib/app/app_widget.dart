@@ -1,5 +1,6 @@
 import 'package:asuka/asuka.dart';
 import 'package:flutter/material.dart' hide MenuItem;
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class AppWidget extends StatefulWidget {
@@ -14,6 +15,9 @@ class _AppWidgetState extends State<AppWidget> {
   Widget build(BuildContext context) {
     var app = MaterialApp.router(
       title: "Clash For Flutter",
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN")],
+      locale: const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN"),
       theme: ThemeData(
         useMaterial3: true,
         primarySwatch: Colors.blue,

@@ -28,7 +28,7 @@ abstract class ConfigFileBase extends Disposable with Store {
   late final String clashForMePath;
   late final String profilesPath;
 
-  List<ReactionDisposer> _disposers = [];
+  final List<ReactionDisposer> _disposers = [];
   @observable
   bool systemProxy = false;
   @observable
@@ -37,8 +37,8 @@ abstract class ConfigFileBase extends Disposable with Store {
   ClashForMeConfig clashForMe = ClashForMeConfig.defaultConfig();
 
   @override
-  dispose() async {
-    await for (ReactionDisposer item in Stream.fromIterable(_disposers)) {
+  dispose() {
+    for (ReactionDisposer item in _disposers) {
       item();
     }
   }
@@ -48,19 +48,22 @@ abstract class ConfigFileBase extends Disposable with Store {
 
     profilesPath = "${configDir.path}${Constants.profilesPath}";
     clashForMePath = "${configDir.path}${Constants.clashForMe}";
+    clashConfigPath = "${configDir.path}${Constants.clashConfig}";
 
+    await _initClash();
+    _initConfig();
+    _initDispose();
+  }
+
+  @action
+  _initConfig() async {
     ClashForMeConfig? tempCfm = ClashForMeConfig.formYamlFile(clashForMePath);
     tempCfm = await _profilesInitCheck(tempCfm);
     if (tempCfm != null) {
       clashForMe = tempCfm;
     }
 
-    clashConfigPath = "${configDir.path}${Constants.clashConfig}";
     clashConfig = Config.formYamlFile(clashConfigPath);
-
-    await _initClash();
-
-    _initDispose();
   }
 
   // 初始化clash
@@ -78,7 +81,8 @@ abstract class ConfigFileBase extends Disposable with Store {
   }
 
   _initDispose() {
-    _disposers = [
+    _disposers.clear();
+    _disposers.addAll([
       reaction(
         (_) => clashConfig,
         (Config config) {
@@ -96,7 +100,7 @@ abstract class ConfigFileBase extends Disposable with Store {
         delay: 1000,
       ),
       reaction(
-        (_) => clashForMe.selectedFile ?? clashConfigPath,
+        (_) => selectedFile ?? clashConfigPath,
         (String file) {
           if (!File(file).isAbsolute) {
             file = "$profilesPath/$file";
@@ -104,7 +108,7 @@ abstract class ConfigFileBase extends Disposable with Store {
           _changeProfile(file);
         },
       ),
-    ];
+    ]);
   }
 
   /// 校验本地订阅文件与配置里对应
@@ -120,8 +124,7 @@ abstract class ConfigFileBase extends Disposable with Store {
       }).toList();
     }
 
-    List<ProfileBase> profiles =
-        config.profiles.where((e) => fileList.contains(e.file)).toList();
+    List<ProfileBase> profiles = config.profiles.where((e) => fileList.contains(e.file)).toList();
 
     var selectElements = profiles.where((e) => e.file == config.selectedFile);
     if (selectElements.isNotEmpty) {
