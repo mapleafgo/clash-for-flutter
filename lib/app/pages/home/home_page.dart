@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+const btnSize = Size(220, 75);
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -69,9 +71,9 @@ class OnButton extends StatelessWidget {
   Widget build(BuildContext context) {
     var themeData = Theme.of(context);
     return Card(
-      color: Colors.black12,
+      color: Colors.white54,
       child: SizedBox.fromSize(
-        size: const Size(250, 80),
+        size: btnSize,
         child: InkWell(
           onTap: onTap,
           borderRadius: const BorderRadius.all(Radius.circular(10)),
@@ -109,7 +111,7 @@ class OffButton extends StatelessWidget {
     return Card(
       color: themeData.primaryColor,
       child: SizedBox.fromSize(
-        size: const Size(250, 80),
+        size: btnSize,
         child: InkWell(
           onTap: onTap,
           borderRadius: const BorderRadius.all(Radius.circular(10)),
@@ -142,9 +144,9 @@ class LoadingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.black12,
+      color: Colors.white54,
       child: SizedBox.fromSize(
-        size: const Size(250, 80),
+        size: btnSize,
         child: const Center(
           child: CircularProgressIndicator(strokeWidth: 5),
         ),
