@@ -89,7 +89,6 @@ jobs:
         run: docker load -i ~/image-cache/xgo.tar
       - name: Build
         run: |
-          cd core
           go install src.techknowlogick.com/xgo@latest
           xgo --targets=darwin/arm64 -ldflags="-w -s" -buildmode=c-shared -pkg=core -out=libclash .
           mv libclash-*.dylib libclash.dylib
