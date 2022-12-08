@@ -69,12 +69,11 @@ jobs:
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage
-          mv dist/$VERSION/* dist/
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: dist/*.AppImage
+          asset_path: dist/${{ needs.get-release.outputs.tag_name }}/*
           overwrite: true
 #   build-macos-arm64-lib:
 #     runs-on: ubuntu-latest
