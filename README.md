@@ -34,11 +34,11 @@
   # 3. 编译 Clash 内核
   $ cd core
   # windows
-  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.dll
+  $ go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dll
   # Linux
-  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.so
+  $ go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.so
   # macos
-  $ go mod tidy && go build -buildmode=c-shared -o ./dist/libclash.dylib
+  $ go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dylib
   $ cd ../
 
   # 4. 运行项目 (linux)
