@@ -68,7 +68,8 @@ jobs:
           cd ../
 
           dart pub global activate flutter_distributor
-          flutter_distributor release --name linux-dev
+          flutter_distributor package --platform=linux --targets=appimage
+          flutter_distributor publish --path clash_for_flutter-$VERSION-linux.appimage --targets github
   build-macos-arm64-lib:
     runs-on: ubuntu-latest
     needs: [ get-release ]
