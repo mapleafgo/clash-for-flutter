@@ -46,10 +46,6 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: "^1.19"
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          cache: 'pip'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.3.9'
@@ -62,7 +58,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          pip3 install appimage-builder
+          curl -L https://github.com/AppImageCrafters/appimage-builder/releases/latest/download/appimage-builder-1.1.0-x86_64.AppImage -o /usr/local/bin/appimage-builder
+          chmod +x /usr/local/bin/appimage-builder
 
           cd core
           go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.so mapleafgo.cn/clash_for_flutter/core
