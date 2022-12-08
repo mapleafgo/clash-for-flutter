@@ -4,7 +4,7 @@ icon: assets/icon.png
 
 script:
 
-include: []
+include: [gdk-pixbuf2]
 exclude: []
 # its true by default
 default_excludes: true
