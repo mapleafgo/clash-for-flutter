@@ -1,1 +1,35 @@
 output: dist/
+releases:
+  - name: windows-dev
+    jobs:
+      - name: release-dev-windows
+        package:
+          platform: windows
+          target: exe
+        publish:
+          target: github
+          args:
+            repo-owner: mapleafgo
+            repo-name: clash-for-flutter
+  - name: linux-dev
+    jobs:
+      - name: release-dev-linux
+        package:
+          platform: linux
+          target: appimage
+        publish:
+          target: github
+          args:
+            repo-owner: mapleafgo
+            repo-name: clash-for-flutter
+  - name: macos-dev
+    jobs:
+      - name: release-dev-macos
+        package:
+          platform: macos
+          target: dmg
+        publish:
+          target: github
+          args:
+            repo-owner: mapleafgo
+            repo-name: clash-for-flutter

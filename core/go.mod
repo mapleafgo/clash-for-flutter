@@ -1,4 +1,4 @@
-module mapleafgo.cn/clash_for_flutter_core
+module mapleafgo.cn/clash_for_flutter/core
 
 go 1.19
 
