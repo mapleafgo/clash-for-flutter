@@ -49,7 +49,7 @@ class _IndexPageState extends State<IndexPage>
       Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
     );
     trayMenuChange(_config.systemProxy);
-    trayManager.setTitle("ClashForFlutter").catchError((_) {});
+    trayManager.setToolTip("ClashForFlutter").catchError((_) {});
   }
 
   @override
