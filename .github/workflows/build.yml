@@ -29,7 +29,6 @@ jobs:
           channel: 'stable'
       - name: Build
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           cd core
@@ -62,7 +61,6 @@ jobs:
           binutils coreutils desktop-file-utils fakeroot fuse libgdk-pixbuf2.0-dev patchelf python3-pip python3-setuptools squashfs-tools strace util-linux zsync
       - name: Build
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           curl -L https://github.com/AppImageCrafters/appimage-builder/releases/latest/download/appimage-builder-1.1.0-x86_64.AppImage -o /usr/local/bin/appimage-builder
