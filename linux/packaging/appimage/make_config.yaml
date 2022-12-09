@@ -4,10 +4,10 @@ icon: assets/icon.png
 
 script:
 
-include: [gdk-pixbuf2]
+include: [libgdk-pixbuf2.0-0,libgtk-3-0]
 exclude: []
 # its true by default
-default_excludes: true
+default_excludes: false
 
 files:
   include: []
