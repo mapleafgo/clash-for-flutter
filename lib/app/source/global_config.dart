@@ -22,6 +22,8 @@ final proxyManager = ProxyManager();
 
 abstract class ConfigFileBase extends Disposable with Store {
   final _request = Modular.get<Request>();
+  static bool isStartClash = false;
+
   late Directory configDir;
   late final Clash clash;
   late final String clashConfigPath;
@@ -86,8 +88,10 @@ abstract class ConfigFileBase extends Disposable with Store {
       reaction(
         (_) => clashConfig,
         (Config config) {
-          _request.patchConfigs(config);
           config.saveFile(clashConfigPath);
+          if (isStartClash) {
+            _request.patchConfigs(config);
+          }
           if (systemProxy) {
             openProxy();
           }
@@ -199,6 +203,7 @@ abstract class ConfigFileBase extends Disposable with Store {
       if (active != null) {
         _changeProfile("$profilesPath/${active?.file}");
       }
+      isStartClash = true;
       return true;
     }
     return false;
