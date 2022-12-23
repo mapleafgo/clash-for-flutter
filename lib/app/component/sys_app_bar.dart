@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -8,8 +9,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final List<Widget>? actions;
 
-  const SysAppBar({Key? key, this.toolbarHeight, this.title, this.actions})
-      : super(key: key);
+  const SysAppBar({Key? key, this.toolbarHeight, this.title, this.actions}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +17,9 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (actions != null) {
       acs.addAll(actions!);
     }
-    acs.add(CloseButton(onPressed: () => windowManager.close()));
+    if (Platform.isWindows || Platform.isLinux) {
+      acs.add(CloseButton(onPressed: () => windowManager.close()));
+    }
     return GestureDetector(
       onPanStart: (_) => windowManager.startDragging(),
       child: AppBar(

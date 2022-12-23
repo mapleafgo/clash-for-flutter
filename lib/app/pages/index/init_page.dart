@@ -8,7 +8,6 @@ import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:window_manager/window_manager.dart';
 
 class InitPage extends StatefulWidget {
   const InitPage({super.key});
@@ -41,10 +40,7 @@ class _InitPageState extends State<InitPage> {
               savePath: mmdb.path,
               receiveTimeout: 0,
               onReceiveProgress: (received, total) {
-                setState(() {
-                  _loadingProgress = received / total;
-                  windowManager.setProgressBar(_loadingProgress);
-                });
+                setState(() => _loadingProgress = received / total);
               },
             )
             .then((value) => setState(() => _isLoading = false));
@@ -62,9 +58,7 @@ class _InitPageState extends State<InitPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? LoadingWidget(value: _loadingProgress)
-        : const RouterOutlet();
+    return _isLoading ? LoadingWidget(value: _loadingProgress) : const RouterOutlet();
   }
 }
 
