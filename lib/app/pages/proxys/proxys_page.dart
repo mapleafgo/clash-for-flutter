@@ -183,7 +183,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                 tooltip: "测延迟",
                 onPressed: () {
                   if (groups.isNotEmpty) {
-                    testDelay(tabController!);
+                    testDelay(tabController);
                   }
                 },
                 child: const Icon(Icons.flash_on),

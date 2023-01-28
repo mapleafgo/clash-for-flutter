@@ -19,17 +19,25 @@ class AppDrawer extends StatefulWidget {
 
 class _AppDrawerState extends State<AppDrawer> {
   final _request = Modular.get<Request>();
+  final SideMenuController _smc = SideMenuController();
   NetSpeed _speed = NetSpeed();
   String _clashVersion = "-";
 
   @override
   void initState() {
     super.initState();
+    _smc.addListener((p0) => widget.page.jumpToPage(p0));
     _request.traffic().then((value) {
       value?.listen(
           (event) => setState(() => _speed = JsonMapper.deserialize<NetSpeed>(utf8.decode(event)) ?? NetSpeed()));
     });
     _request.getClashVersion().then((value) => setState(() => _clashVersion = value ?? _clashVersion));
+  }
+
+  @override
+  void dispose() {
+    _smc.dispose();
+    super.dispose();
   }
 
   String format(int value) {
@@ -45,7 +53,7 @@ class _AppDrawerState extends State<AppDrawer> {
   Widget build(BuildContext context) {
     var themeData = Theme.of(context);
     return SideMenu(
-        controller: widget.page,
+        controller: _smc,
         style: SideMenuStyle(
           openSideMenuWidth: 200,
           unselectedTitleTextStyle: themeData.textTheme.button,
@@ -89,25 +97,25 @@ class _AppDrawerState extends State<AppDrawer> {
             priority: 0,
             title: "主页",
             icon: const Icon(Icons.home_outlined),
-            onTap: () => widget.page.jumpToPage(0),
+            onTap: (i, c) => c.changePage(i),
           ),
           SideMenuItem(
             priority: 1,
             title: "代理",
             icon: const Icon(Icons.cloud_outlined),
-            onTap: () => widget.page.jumpToPage(1),
+            onTap: (i, c) => c.changePage(i),
           ),
           SideMenuItem(
             priority: 2,
             title: "订阅",
             icon: const Icon(Icons.code_rounded),
-            onTap: () => widget.page.jumpToPage(2),
+            onTap: (i, c) => c.changePage(i),
           ),
           SideMenuItem(
             priority: 3,
             title: "设置",
             icon: const Icon(Icons.settings_outlined),
-            onTap: () => widget.page.jumpToPage(3),
+            onTap: (i, c) => c.changePage(i),
           ),
         ]);
   }
