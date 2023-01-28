@@ -34,7 +34,7 @@ jobs:
           cd core
           go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dll mapleafgo.cn/clash_for_flutter/core
           cd ../
-          
+
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=windows --targets=exe
       - name: Upload
@@ -136,19 +136,19 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           PROJECT_DIR=$(pwd)
-          
+
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=macos --targets=dmg
-          mv dist/$VERSION/clash_for_flutter-$VERSION-macos.dmg dist/$VERSION/clash_for_flutter-$VERSION-macos-arm64.dmg
+          mv dist/$VERSION/clash_for_flutter-*-macos.dmg dist/$VERSION/clash_for_flutter-$VERSION-macos-arm64.dmg
 
           cd $PROJECT_DIR/core
           go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dylib mapleafgo.cn/clash_for_flutter/core
           cp -f ./dist/libclash.dylib $PROJECT_DIR/macos/Frameworks/libclash.dylib
           cd $PROJECT_DIR
-          
+
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=macos --targets=dmg
-          mv dist/$VERSION/clash_for_flutter-$VERSION-macos.dmg dist/$VERSION/clash_for_flutter-$VERSION-macos-amd64.dmg
+          mv dist/$VERSION/clash_for_flutter-*-macos.dmg dist/$VERSION/clash_for_flutter-$VERSION-macos-amd64.dmg
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
