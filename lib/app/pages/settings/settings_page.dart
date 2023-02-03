@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:asuka/asuka.dart' hide showDialog;
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -149,6 +153,9 @@ class _SettingsPageState extends State<SettingsPage> {
         var mode = _config.clashConfig.mode ?? Mode.Rule;
         var logLevel = _config.clashConfig.logLevel ?? LogLevel.info;
 
+        var mmdbUrl = _config.clashForMe.mmdbUrl;
+        var delayTestUrl = _config.clashForMe.delayTestUrl;
+
         return SettingsList(
           platform: DevicePlatform.macOS,
           sections: [
@@ -237,9 +244,111 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+            SettingsSection(
+              title: const Text('其他设置'),
+              tiles: <SettingsTile>[
+                SettingsTile.navigation(
+                  title: Row(
+                    children: const [
+                      Text("MMDB Url"),
+                      MmdbRefreshButton(),
+                    ],
+                  ),
+                  value: Text(mmdbUrl),
+                  onPressed: (_) {
+                    setValue(
+                      title: "MMDB Url",
+                      decoration: DefaultConfigValue.mmdbUrl,
+                      initialValue: mmdbUrl,
+                      onOk: (v) => _config.setState(mmdbUrl: v),
+                    );
+                  },
+                ),
+                SettingsTile.navigation(
+                  title: const Text("延迟测试Url"),
+                  value: Text(delayTestUrl),
+                  onPressed: (_) {
+                    setValue(
+                      title: "延迟测试Url",
+                      decoration: DefaultConfigValue.delayTestUrl,
+                      initialValue: delayTestUrl,
+                      onOk: (v) => _config.setState(delayTestUrl: v),
+                    );
+                  },
+                ),
+              ],
+            ),
           ],
         );
       }),
+    );
+  }
+}
+
+///MMDB 更新按钮
+class MmdbRefreshButton extends StatefulWidget {
+  const MmdbRefreshButton({Key? key}) : super(key: key);
+
+  @override
+  State<MmdbRefreshButton> createState() => _MmdbRefreshButtonState();
+}
+
+class _MmdbRefreshButtonState extends State<MmdbRefreshButton> {
+  final _config = Modular.get<GlobalConfig>();
+  final _request = Modular.get<Request>();
+
+  double _value = 0;
+
+  downloadMMDB() {
+    if (_value > 0) {
+      if (_value < 1) {
+        Asuka.showSnackBar(const SnackBar(content: Text("下载中，请稍等")));
+      } else {
+        Asuka.showSnackBar(const SnackBar(content: Text("已下载完成，请勿多次下载")));
+      }
+      return;
+    }
+    var mmdb = File("${_config.configDir.path}${Constants.mmdb_new}");
+    _request
+        .downFile(
+      urlPath: _config.clashForMe.mmdbUrl,
+      savePath: mmdb.path,
+      receiveTimeout: 0,
+      onReceiveProgress: (received, total) {
+        setState(() => _value = received / total);
+      },
+    )
+        .then((value) {
+      setState(() => _value = 1);
+      Asuka.showSnackBar(const SnackBar(content: Text("下载完成，请重启应用以启用新的MMDB")));
+    }).catchError((e) {
+      setState(() => _value = -1);
+      Asuka.showSnackBar(SnackBar(content: Text(e.toString())));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: "更新MMDB",
+      icon: Builder(builder: (_) {
+        if (_value == 0) {
+          return const Icon(Icons.refresh_rounded);
+        } else if (_value == 1) {
+          return const Icon(Icons.done_outlined);
+        } else if (_value == -1) {
+          return const Icon(Icons.error_outlined);
+        }
+        return SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            value: _value,
+            backgroundColor: Colors.black12,
+          ),
+        );
+      }),
+      onPressed: () => downloadMMDB(),
     );
   }
 }

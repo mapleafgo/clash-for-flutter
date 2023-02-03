@@ -110,6 +110,8 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   dynamic setState(
       {String? selectedFile,
       List<ProfileBase>? profiles,
+      String? mmdbUrl,
+      String? delayTestUrl,
       int? port,
       int? socksPort,
       int? redirPort,
@@ -125,6 +127,8 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
       return super.setState(
           selectedFile: selectedFile,
           profiles: profiles,
+          mmdbUrl: mmdbUrl,
+          delayTestUrl: delayTestUrl,
           port: port,
           socksPort: socksPort,
           redirPort: redirPort,

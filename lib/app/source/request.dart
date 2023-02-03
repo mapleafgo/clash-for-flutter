@@ -78,16 +78,14 @@ class Request {
   Future<dynamic> oneProxies(String name) async {
     var res = await _clashDio.get<Map<String, dynamic>>("/proxies/$name");
     var data = res.data?.containsKey("now");
-    return data == true
-        ? JsonMapper.fromMap<Group>(res.data)
-        : JsonMapper.fromMap<Proxy>(res.data);
+    return data == true ? JsonMapper.fromMap<Group>(res.data) : JsonMapper.fromMap<Proxy>(res.data);
   }
 
   /// 获取单个代理的延迟
-  Future<int?> getProxyDelay(String name) {
+  Future<int?> getProxyDelay(String name, String url) {
     return _clashDio.get<Map>("/proxies/$name/delay", queryParameters: {
       "timeout": 2900,
-      "url": 'http://www.gstatic.com/generate_204'
+      "url": url,
     }).then((res) => res.data?["delay"]);
   }
 

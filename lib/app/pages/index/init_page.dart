@@ -32,11 +32,17 @@ class _InitPageState extends State<InitPage> {
     try {
       await _config.init();
       var mmdb = File("${_config.configDir.path}${Constants.mmdb}");
+      // 对新mmdb操作
+      var mmdbNew = File("${_config.configDir.path}${Constants.mmdb_new}");
+      if (mmdbNew.existsSync()) {
+        mmdbNew.renameSync(mmdb.path);
+      }
+
       if (_config.clash.mmdbVerify(mmdb.path.toNativeUtf8().cast()) == 0) {
         setState(() => _isLoading = true);
         await _request
             .downFile(
-              urlPath: Constants.mmdbUrl,
+              urlPath: _config.clashForMe.mmdbUrl,
               savePath: mmdb.path,
               receiveTimeout: 0,
               onReceiveProgress: (received, total) {

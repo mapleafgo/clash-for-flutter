@@ -22,10 +22,10 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: "^1.19"
+          go-version: "^1.20"
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.0'
+          flutter-version: '3.7.1'
           channel: 'stable'
       - name: Build
         env:
@@ -50,10 +50,10 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: "^1.19"
+          go-version: "^1.20"
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.0'
+          flutter-version: '3.7.1'
           channel: 'stable'
       - run: |
           sudo apt-get update -y
@@ -85,17 +85,17 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: "^1.19"
+          go-version: "^1.20"
       - run: mkdir -p ~/image-cache
       - id: image-cache
         uses: actions/cache@v3
         with:
           path: ~/image-cache
-          key: image-cache-xgo-v1.19
+          key: image-cache-xgo-v1.20
       - if: steps.image-cache.outputs.cache-hit != 'true'
         run: |
-          docker pull techknowlogick/xgo:go-1.19.x
-          docker save -o ~/image-cache/xgo.tar techknowlogick/xgo:go-1.19.x
+          docker pull techknowlogick/xgo:go-1.20.x
+          docker save -o ~/image-cache/xgo.tar techknowlogick/xgo:go-1.20.x
       - if: steps.image-cache.outputs.cache-hit == 'true'
         run: docker load -i ~/image-cache/xgo.tar
       - name: Build
@@ -115,13 +115,13 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: "^1.19"
+          go-version: "^1.20"
       - uses: actions/setup-node@v3
         with:
           node-version: 16
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.0'
+          flutter-version: '3.7.1'
           channel: 'stable'
       - name: Install appdmg
         run: npm install -g appdmg

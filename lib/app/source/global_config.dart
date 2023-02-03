@@ -109,7 +109,9 @@ abstract class ConfigFileBase extends Disposable with Store {
           if (!File(file).isAbsolute) {
             file = "$profilesPath/$file";
           }
-          _changeProfile(file);
+          if (isStartClash) {
+            _changeProfile(file);
+          }
         },
       ),
     ]);
@@ -129,15 +131,7 @@ abstract class ConfigFileBase extends Disposable with Store {
     }
 
     List<ProfileBase> profiles = config.profiles.where((e) => fileList.contains(e.file)).toList();
-
-    var selectElements = profiles.where((e) => e.file == config.selectedFile);
-    if (selectElements.isNotEmpty) {
-      return ClashForMeConfig(
-        selectedFile: selectElements.first.file,
-        profiles: profiles,
-      );
-    }
-    return ClashForMeConfig(profiles: profiles);
+    return config.copyWith(profiles: profiles);
   }
 
   /// 当前应用中的配置文件
@@ -165,6 +159,8 @@ abstract class ConfigFileBase extends Disposable with Store {
   setState({
     String? selectedFile,
     List<ProfileBase>? profiles,
+    String? mmdbUrl,
+    String? delayTestUrl,
     int? port,
     int? socksPort,
     int? redirPort,
@@ -178,6 +174,8 @@ abstract class ConfigFileBase extends Disposable with Store {
     clashForMe = clashForMe.copyWith(
       selectedFile: selectedFile,
       profiles: profiles,
+      mmdbUrl: mmdbUrl,
+      delayTestUrl: delayTestUrl,
     );
     clashConfig = clashConfig.copyWith(
       port: port,

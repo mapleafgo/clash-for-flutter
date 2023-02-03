@@ -9,14 +9,20 @@ class Constants {
   /// 该程序的一些配置
   static const clashForMe = "/cfm.json";
 
-  /// 数据库
+  /// mmdb 保存路径
   static const mmdb = "/Country.mmdb";
 
-  /// 数据库URL
-  static const mmdbUrl =
-      "https://ghproxy.com/https://github.com/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb";
+  /// mmdb 更新保存路径
+  static const mmdb_new = "/Country_new.mmdb";
 
   static const localhost = "127.0.0.1";
+}
+
+/// 默认配置值
+class DefaultConfigValue {
+  static const mmdbUrl = "http://www.ideame.top/mmdb/Country.mmdb";
+
+  static const delayTestUrl = "http://www.gstatic.com/generate_204";
 }
 
 class SystrayMenuKeys {

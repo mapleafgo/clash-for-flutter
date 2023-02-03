@@ -5,18 +5,18 @@ packages:
     dependency: transitive
     description:
       name: _fe_analyzer_shared
-      sha256: "0c80aeab9bc807ab10022cd3b2f4cf2ecdf231949dc1ddd9442406a003f19201"
+      sha256: "3444216bfd127af50bbe4862d8843ed44db946dd933554f0d7285e89f10e28ac"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "52.0.0"
+    version: "50.0.0"
   analyzer:
     dependency: transitive
     description:
       name: analyzer
-      sha256: cd8ee83568a77f3ae6b913a36093a1c9b1264e7cb7f834d9ddd2311dade9c1f4
+      sha256: "68796c31f510c8455a06fed75fc97d8e5ad04d324a830322ab3efc9feb6201c1"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "5.4.0"
+    version: "5.2.0"
   args:
     dependency: transitive
     description:
@@ -205,10 +205,10 @@ packages:
     dependency: "direct main"
     description:
       name: dart_json_mapper
-      sha256: e53c6ef117b3315edb73fb2e3c7b492977add1eb5755e83a1841affdaf40959d
+      sha256: d951684c4366e59527171c5195c24f8229eaea4308276a01cef3aa35ad74abab
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.2.7+1"
+    version: "2.2.7"
   dart_json_mapper_mobx:
     dependency: "direct main"
     description:
@@ -229,10 +229,10 @@ packages:
     dependency: transitive
     description:
       name: dcli_core
-      sha256: "2431aa8f2b58a8adaa96a2ddc5a3f3ffec5e0d7e98a2bf442cd35ecab6de9941"
+      sha256: "452fa1365d7b31a16e7bd772abe8a0077e8863cc0c5e01045706e79563dfeab8"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.0.0-beta.21"
+    version: "2.0.0-beta.20"
   dio:
     dependency: "direct main"
     description:
@@ -445,6 +445,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.1"
+  local_notifier:
+    dependency: "direct main"
+    description:
+      name: local_notifier
+      sha256: cc855aa6362c8840e3d3b35b1c3b058a3a8becdb2b03d5a9aa3f3a1e861f0a03
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.5"
   logging:
     dependency: transitive
     description:
@@ -923,5 +931,5 @@ packages:
     source: hosted
     version: "2.0.3"
 sdks:
-  dart: ">=2.19.0-444.4.beta <4.0.0"
+  dart: ">=2.18.4 <3.0.0"
   flutter: ">=3.0.0"

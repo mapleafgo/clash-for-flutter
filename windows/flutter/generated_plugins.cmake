@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  local_notifier
   protocol_handler
   proxy_manager
   screen_retriever

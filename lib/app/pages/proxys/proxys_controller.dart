@@ -6,11 +6,13 @@ import 'package:clash_for_flutter/app/bean/proxie_show_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
+import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class ProxysController {
   final _request = Modular.get<Request>();
+  final _config = Modular.get<GlobalConfig>();
   final model = Modular.get<ProxysModel>();
 
   Future<void> initState() async {
@@ -58,8 +60,9 @@ class ProxysController {
   }
 
   Future<void> delayGroup(Group group) {
+    final delayTestUrl = _config.clashForMe.delayTestUrl;
     return Future.wait(
-      group.all.map((name) => _request.getProxyDelay(name).catchError((_) => 0)),
+      group.all.map((name) => _request.getProxyDelay(name, delayTestUrl).catchError((_) => 0)),
     ).then((value) async => await getProviders());
   }
 
