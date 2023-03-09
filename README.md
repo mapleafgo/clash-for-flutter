@@ -39,7 +39,11 @@
   $ go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.so
   # macos
   $ go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dylib
+  
+  # 回到项目根目录
   $ cd ../
+  # macos 系统需要移动下编译的内核路径
+  $ cp -f ./core/dist/libclash.dylib ./macos/Frameworks/libclash.dylib
 
   # 4. 运行项目 (linux)
   $ flutter run -d linux

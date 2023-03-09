@@ -304,7 +304,7 @@ class _MmdbRefreshButtonState extends State<MmdbRefreshButton> {
       if (_value < 1) {
         Asuka.showSnackBar(const SnackBar(content: Text("下载中，请稍等")));
       } else {
-        Asuka.showSnackBar(const SnackBar(content: Text("已下载完成，请勿多次下载")));
+        Asuka.showSnackBar(const SnackBar(content: Text("已下载完成，请重启应用以启用新的MMDB")));
       }
       return;
     }
