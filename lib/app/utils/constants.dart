@@ -24,11 +24,3 @@ class DefaultConfigValue {
 
   static const delayTestUrl = "http://www.gstatic.com/generate_204";
 }
-
-class SystrayMenuKeys {
-  static const systrayWinKey = "showWindow";
-
-  static const systrayProxyKey = "changeProxy";
-
-  static const systrayExitKey = "exitApp";
-}

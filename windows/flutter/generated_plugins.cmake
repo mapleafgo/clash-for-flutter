@@ -7,7 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   protocol_handler
   proxy_manager
   screen_retriever
-  tray_manager
+  system_tray
   vclibs
   window_manager
 )

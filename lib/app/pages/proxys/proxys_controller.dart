@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
-import 'package:clash_for_flutter/app/bean/provider_bean.dart';
-import 'package:clash_for_flutter/app/bean/proxie_show_bean.dart';
-import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/pages/proxys/model/proxie_show_bean.dart';
 import 'package:clash_for_flutter/app/pages/proxys/model/proxys_model.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
@@ -16,39 +14,33 @@ class ProxysController {
   final model = Modular.get<ProxysModel>();
 
   Future<void> initState() async {
-    await getProviders();
     await getProxies();
   }
 
   Future<void> getProxies() async {
     var proxies = await _request.getProxies();
-    var global = proxies?.proxies[UsedProxy.GLOBAL.value] as Group?;
+    var global = proxies?.proxies[UsedProxy.GLOBAL.value] as Group;
 
-    var list = global?.all
+    var list = global.all
         .where((name) => !UsedProxyValue.valueList.contains(name))
         .map((key) => proxies?.proxies[key])
         .toList();
 
     List<Group> groupList = [];
-    Set<Proxy> proxieList = {};
-    list?.forEach((item) {
+    Map<String, dynamic> proxiesMap = {};
+    for (var item in list) {
+      proxiesMap[item.name] = item;
       if (item is Group) {
         groupList.add(item);
-      } else if (item is Proxy) {
-        proxieList.add(item);
       }
-    });
+    }
 
-    model.setState(all: list, groups: groupList, proxies: proxieList.toList(), global: global);
-  }
+    // 全局代理时
+    if (_config.clashConfig.mode == Mode.Global) {
+      groupList = [global, ...groupList];
+    }
 
-  Future<void> getProviders() async {
-    var providers = await _request.getProxyProviders();
-    model.setState(providers: providers?.providers);
-    sortProxies(
-      type: model.sortType,
-      startMap: _buildProxieShowList(providers: providers?.providers),
-    );
+    model.setState(groups: groupList, proxiesMap: proxiesMap, global: global);
   }
 
   Future<void> select({
@@ -63,41 +55,39 @@ class ProxysController {
     final delayTestUrl = _config.clashForMe.delayTestUrl;
     return Future.wait(
       group.all.map((name) => _request.getProxyDelay(name, delayTestUrl).catchError((_) => 0)),
-    ).then((value) async => await getProviders());
+    ).then((_) => getProxies());
   }
 
-  Map<String, List<ProxieShow>> _buildProxieShowList({
-    Map<String, Provider>? providers,
-    String? groupName,
-  }) {
-    var proxiesMap = <String, List<ProxieShow>>{};
-    providers?.forEach((key, value) {
-      if (groupName != null && key != groupName) {
-        return;
-      }
-      proxiesMap[key] = value.proxies.map((e) {
-        var historys = e.history ?? [];
-        return e is Group
-            ? ProxieShow(
-                name: e.name,
-                type: e.type.value,
-                delay: historys.isNotEmpty ? historys.last.delay : -1,
-                now: e.now,
-              )
-            : ProxieShow(
-                name: e.name,
-                type: e.type,
-                delay: historys.isNotEmpty ? historys.last.delay : -1,
-              );
-      }).toList();
-    });
-    return proxiesMap;
+  void sort(SortType type) {
+    model.setState(sortType: type);
   }
 
-  ProxieShow? getProxieShow(String name) {
-    var proxie = model.all.firstWhere((e) => e.name == name, orElse: () => null);
+  List<ProxieShow> getShowList(Group group) {
+    var list = group.all.map((e) => _proxieShow(e)).toList();
+    switch (model.sortType) {
+      case SortType.Delay:
+        if (list.any((element) => element.delay > 0)) {
+          list.sort((a, b) {
+            if (a.delay < 1 || b.delay < 1) {
+              return b.delay.compareTo(a.delay);
+            }
+            return a.delay.compareTo(b.delay);
+          });
+        }
+        break;
+      case SortType.Name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case SortType.Default:
+        break;
+    }
+    return list;
+  }
+
+  ProxieShow _proxieShow(String name) {
+    var proxie = model.proxiesMap[name];
     if (proxie == null) {
-      return ProxieShow(name: name, delay: -1);
+      return ProxieShow(name: name, subTitle: "", delay: -1);
     }
     var historys = proxie.history ?? [];
     if (proxie is Group) {
@@ -106,58 +96,15 @@ class ProxysController {
       subTitle.write(" [${proxie.now}]");
       return ProxieShow(
         name: proxie.name,
-        type: proxie.type.value,
-        delay: historys.isNotEmpty ? historys.last.delay : -1,
         subTitle: subTitle.toString(),
-        now: proxie.now,
+        delay: historys.isNotEmpty ? historys.last.delay : -1,
       );
     } else {
       return ProxieShow(
         name: proxie.name,
-        type: proxie.type,
+        subTitle: proxie.type,
         delay: historys.isNotEmpty ? historys.last.delay : -1,
       );
     }
-  }
-
-  void sortProxies({
-    required SortType type,
-    Map<String, List<ProxieShow>>? startMap,
-  }) {
-    if (type == SortType.Default) {
-      model.setState(
-        sortType: type,
-        proxiesMap: _buildProxieShowList(providers: model.providers),
-      );
-      return;
-    }
-
-    var proxiesMap = <String, List<ProxieShow>>{};
-    proxiesMap.addAll(startMap ?? model.proxiesMap);
-    var lastMap = proxiesMap.map((key, value) {
-      switch (type) {
-        case SortType.Delay:
-          if (value.any((element) => element.delay > 0)) {
-            value.sort((a, b) {
-              if (a.delay < 1 || b.delay < 1) {
-                return b.delay.compareTo(a.delay);
-              }
-              return a.delay.compareTo(b.delay);
-            });
-          }
-          break;
-        case SortType.Name:
-          value.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        default:
-          value = _buildProxieShowList(
-                providers: model.providers,
-                groupName: key,
-              )[key] ??
-              [];
-      }
-      return MapEntry(key, value);
-    });
-    model.setState(proxiesMap: lastMap, sortType: type);
   }
 }

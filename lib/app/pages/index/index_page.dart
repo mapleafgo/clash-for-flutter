@@ -4,14 +4,14 @@ import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
-import 'package:clash_for_flutter/app/utils/constants.dart';
-import 'package:flutter/material.dart' hide MenuItem;
+import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
 import 'package:protocol_handler/protocol_handler.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
 class IndexPage extends StatefulWidget {
@@ -21,20 +21,22 @@ class IndexPage extends StatefulWidget {
   State<IndexPage> createState() => _IndexPageState();
 }
 
-class _IndexPageState extends State<IndexPage>
-    with TrayListener, WindowListener, ProtocolListener, WidgetsBindingObserver {
+class _IndexPageState extends State<IndexPage> with WindowListener, ProtocolListener, WidgetsBindingObserver {
   final _config = Modular.get<GlobalConfig>();
   final _request = Modular.get<Request>();
   final PageController _page = PageController();
-  late final ReactionDisposer _disposeSystemProxy;
+  final SystemTray systemTray = SystemTray();
 
   @override
   void initState() {
-    _disposeSystemProxy = reaction(
+    reaction(
       (_) => _config.systemProxy,
-      (status) => trayMenuChange(status),
+      (status) => trayMenuChange(isChecked: status, mode: _config.clashConfig.mode!),
     );
-    trayManager.addListener(this);
+    reaction(
+      (_) => _config.clashConfig.mode,
+      (mode) => trayMenuChange(isChecked: _config.systemProxy, mode: mode!),
+    );
     windowManager.addListener(this);
     protocolHandler.addListener(this);
     WidgetsBinding.instance.addObserver(this);
@@ -45,71 +47,70 @@ class _IndexPageState extends State<IndexPage>
 
   Future<void> _init() async {
     await windowManager.setPreventClose(true);
-    await trayManager.setIcon(
-      Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
+    systemTray.initSystemTray(
+      iconPath: Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
+      toolTip: "ClashForFlutter",
     );
-    trayMenuChange(_config.systemProxy);
-    trayManager.setToolTip("ClashForFlutter").catchError((_) {});
+    trayMenuChange(isChecked: _config.systemProxy, mode: _config.clashConfig.mode ?? Mode.Rule);
+    systemTray.registerSystemTrayEventHandler((e) {
+      if (e == kSystemTrayEventClick) {
+        windowManager.show();
+      } else if (e == kSystemTrayEventRightClick) {
+        systemTray.popUpContextMenu();
+      }
+    });
   }
 
   @override
   void dispose() {
-    trayManager.removeListener(this);
     windowManager.removeListener(this);
     protocolHandler.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
-    _disposeSystemProxy();
     super.dispose();
   }
 
-  void trayMenuChange(bool isChecked) async {
-    List<MenuItem> items = [
-      MenuItem(
-        key: SystrayMenuKeys.systrayWinKey,
-        label: '显示窗口',
-      ),
-      MenuItem.separator(),
-      MenuItem.checkbox(
-        key: SystrayMenuKeys.systrayProxyKey,
-        label: '代理',
+  void trayMenuChange({required bool isChecked, required Mode mode}) async {
+    final menu = Menu();
+    await menu.buildFrom([
+      MenuItemLabel(label: "显示窗口", onClicked: (_) => windowManager.show()),
+      MenuSeparator(),
+      MenuItemCheckbox(
+        label: "代理",
         checked: isChecked,
+        onClicked: (b) async {
+          if (b.checked) {
+            await _config.closeProxy();
+          } else {
+            await _config.openProxy();
+          }
+        },
       ),
-      MenuItem(
-        key: SystrayMenuKeys.systrayExitKey,
-        label: '退出',
-      ),
-    ];
-    await trayManager.setContextMenu(Menu(items: items));
-  }
-
-  @override
-  void onTrayIconMouseDown() {
-    windowManager.show();
-  }
-
-  @override
-  void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu();
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) async {
-    switch (menuItem.key) {
-      case SystrayMenuKeys.systrayWinKey:
-        windowManager.show();
-        break;
-      case SystrayMenuKeys.systrayProxyKey:
-        if (menuItem.checked!) {
+      SubMenu(label: "模式", children: [
+        MenuItemCheckbox(
+          checked: mode == Mode.Rule,
+          label: Mode.Rule.value,
+          onClicked: (_) => _config.setState(mode: Mode.Rule),
+        ),
+        MenuItemCheckbox(
+          checked: mode == Mode.Global,
+          label: Mode.Global.value,
+          onClicked: (_) => _config.setState(mode: Mode.Global),
+        ),
+        MenuItemCheckbox(
+          checked: mode == Mode.Direct,
+          label: Mode.Direct.value,
+          onClicked: (_) => _config.setState(mode: Mode.Direct),
+        ),
+      ]),
+      MenuItemLabel(
+        label: "退出",
+        onClicked: (_) async {
           await _config.closeProxy();
-        } else {
-          await _config.openProxy();
-        }
-        break;
-      case SystrayMenuKeys.systrayExitKey:
-        await _config.closeProxy();
-        windowManager.close().then((_) => windowManager.destroy());
-        break;
-    }
+          windowManager.close().then((_) => windowManager.destroy());
+        },
+      ),
+    ]);
+    await systemTray.setContextMenu(menu);
   }
 
   @override

@@ -57,64 +57,17 @@ mixin _$ProxysModel on ProxysModelBase, Store {
     });
   }
 
-  late final _$allAtom = Atom(name: 'ProxysModelBase.all', context: context);
-
-  @override
-  List<dynamic> get all {
-    _$allAtom.reportRead();
-    return super.all;
-  }
-
-  @override
-  set all(List<dynamic> value) {
-    _$allAtom.reportWrite(value, super.all, () {
-      super.all = value;
-    });
-  }
-
-  late final _$proxiesAtom =
-      Atom(name: 'ProxysModelBase.proxies', context: context);
-
-  @override
-  List<Proxy> get proxies {
-    _$proxiesAtom.reportRead();
-    return super.proxies;
-  }
-
-  @override
-  set proxies(List<Proxy> value) {
-    _$proxiesAtom.reportWrite(value, super.proxies, () {
-      super.proxies = value;
-    });
-  }
-
-  late final _$providersAtom =
-      Atom(name: 'ProxysModelBase.providers', context: context);
-
-  @override
-  Map<String, Provider> get providers {
-    _$providersAtom.reportRead();
-    return super.providers;
-  }
-
-  @override
-  set providers(Map<String, Provider> value) {
-    _$providersAtom.reportWrite(value, super.providers, () {
-      super.providers = value;
-    });
-  }
-
   late final _$proxiesMapAtom =
       Atom(name: 'ProxysModelBase.proxiesMap', context: context);
 
   @override
-  Map<String, List<ProxieShow>> get proxiesMap {
+  Map<String, dynamic> get proxiesMap {
     _$proxiesMapAtom.reportRead();
     return super.proxiesMap;
   }
 
   @override
-  set proxiesMap(Map<String, List<ProxieShow>> value) {
+  set proxiesMap(Map<String, dynamic> value) {
     _$proxiesMapAtom.reportWrite(value, super.proxiesMap, () {
       super.proxiesMap = value;
     });
@@ -127,21 +80,15 @@ mixin _$ProxysModel on ProxysModelBase, Store {
   dynamic setState(
       {Group? global,
       SortType? sortType,
-      List<dynamic>? all,
       List<Group>? groups,
-      List<Proxy>? proxies,
-      Map<String, Provider>? providers,
-      Map<String, List<ProxieShow>>? proxiesMap}) {
+      Map<String, dynamic>? proxiesMap}) {
     final _$actionInfo = _$ProxysModelBaseActionController.startAction(
         name: 'ProxysModelBase.setState');
     try {
       return super.setState(
           global: global,
           sortType: sortType,
-          all: all,
           groups: groups,
-          proxies: proxies,
-          providers: providers,
           proxiesMap: proxiesMap);
     } finally {
       _$ProxysModelBaseActionController.endAction(_$actionInfo);
@@ -154,9 +101,6 @@ mixin _$ProxysModel on ProxysModelBase, Store {
 groups: ${groups},
 global: ${global},
 sortType: ${sortType},
-all: ${all},
-proxies: ${proxies},
-providers: ${providers},
 proxiesMap: ${proxiesMap}
     ''';
   }

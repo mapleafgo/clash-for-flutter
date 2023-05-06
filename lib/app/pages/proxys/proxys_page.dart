@@ -1,5 +1,4 @@
 import 'package:asuka/asuka.dart';
-import 'package:clash_for_flutter/app/bean/group_bean.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
@@ -45,7 +44,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
 
   sortAction() {
     change(sortType, BuildContext context) {
-      controller.sortProxies(type: sortType);
+      controller.sort(sortType);
       Navigator.of(context).pop();
     }
 
@@ -83,20 +82,14 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   Widget build(BuildContext context) {
     return Observer(builder: (c) {
       var groups = controller.model.groups;
-      var global = controller.model.global;
-      var proxiesMap = controller.model.proxiesMap;
-      List<Group> groupList = groups;
-      if (global != null) {
-        groupList = [global, ...groups];
-      }
       return DefaultTabController(
-        length: groupList.length,
+        length: groups.length,
         child: Scaffold(
           appBar: SysAppBar(
-            title: groupList.isNotEmpty
+            title: groups.isNotEmpty
                 ? TabBar(
                     labelColor: Theme.of(context).textTheme.titleLarge?.color,
-                    tabs: groupList.map((e) => Tab(text: e.name)).toList(),
+                    tabs: groups.map((e) => Tab(text: e.name)).toList(),
                     isScrollable: true,
                   )
                 : const Text("代理"),
@@ -108,31 +101,28 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
               ),
             ],
           ),
-          body: groupList.isNotEmpty
+          body: groups.isNotEmpty
               ? TabBarView(
-                  children: groupList.map((group) {
+                  children: groups.map((group) {
                     var groupName = group.name;
                     var groupNow = group.now;
+                    var list = controller.getShowList(group);
                     return ListView.separated(
                       itemBuilder: (_, i) {
-                        var name = group.all[i];
-                        var proxieShow = controller.getProxieShow(name);
-                        var delay = proxieShow!.delay < 0
-                            ? null
-                            : Text(
-                                proxieShow.delay == 0 ? "..." : proxieShow.delay.toString(),
-                              );
+                        var show = list[i];
+                        var name = show.name;
+                        var delay = show.delay < 0 ? null : Text(show.delay == 0 ? "..." : show.delay.toString());
                         return ListTile(
                           visualDensity: const VisualDensity(
                             vertical: VisualDensity.minimumDensity,
                           ),
                           selected: groupNow == name,
                           title: Text(
-                            proxieShow.name,
+                            name,
                             style: const TextStyle(fontSize: 14),
                           ),
                           subtitle: Text(
-                            proxieShow.subTitle ?? "",
+                            show.subTitle,
                             style: const TextStyle(fontSize: 12),
                           ),
                           trailing: delay,
@@ -143,50 +133,8 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                         );
                       },
                       separatorBuilder: (_, __) => const Divider(height: 5),
-                      itemCount: group.all.length,
+                      itemCount: list.length,
                     );
-/*
-                    var proxies = proxiesMap[groupName] ?? [];
-                    return ListView.separated(
-                      separatorBuilder: (_, __) => const Divider(height: 5),
-                      itemCount: proxies.length,
-                      itemBuilder: (_, i) {
-                        var proxie = proxies[i];
-                        var proxieName = proxie.name;
-                        var delay = proxie.delay < 0
-                            ? null
-                            : Text(
-                                proxie.delay == 0 ? "..." : proxie.delay.toString(),
-                              );
-                        var subTitle = StringBuffer();
-                        if (proxie.type != null) {
-                          subTitle.write(proxie.type);
-                        }
-                        if (proxie.now != null) {
-                          subTitle.write(" [${proxie.now}]");
-                        }
-                        return ListTile(
-                          visualDensity: const VisualDensity(
-                            vertical: VisualDensity.minimumDensity,
-                          ),
-                          selected: groupNow == proxieName,
-                          title: Text(
-                            proxieName,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          subtitle: Text(
-                            subTitle.toString(),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          onTap: () => controller.select(
-                            name: groupName,
-                            select: proxieName,
-                          ),
-                          trailing: delay,
-                        );
-                      },
-                    );
-*/
                   }).toList(),
                 )
               : const Center(child: Text("暂无可选代理节点")),
@@ -196,7 +144,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
               return FloatingActionButton(
                 tooltip: "测延迟",
                 onPressed: () {
-                  if (groupList.isNotEmpty) {
+                  if (groups.isNotEmpty) {
                     testDelay(tabController);
                   }
                 },
