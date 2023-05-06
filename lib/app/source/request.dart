@@ -17,22 +17,19 @@ class Request {
   final _clashDio = Dio(
     BaseOptions(
       baseUrl: "http://${Constants.localhost}:9090",
-      connectTimeout: 3000,
-      receiveTimeout: 3000,
+      connectTimeout: const Duration(seconds: 3),
+      receiveTimeout: const Duration(seconds: 3),
     ),
   );
 
   Future<Response> downFile({
     required String urlPath,
     required String savePath,
-    int? connectTimeout,
-    int? receiveTimeout,
     void Function(int, int)? onReceiveProgress,
   }) {
     return Dio(BaseOptions(
       headers: {'User-Agent': 'Clash For Flutter'},
-      connectTimeout: connectTimeout ?? 20000,
-      receiveTimeout: receiveTimeout ?? 20000,
+      connectTimeout: const Duration(seconds: 3),
     )).download(urlPath, savePath, onReceiveProgress: onReceiveProgress);
   }
 
@@ -140,7 +137,7 @@ class Request {
   Future<Stream<Uint8List>?> traffic() {
     var resp = _clashDio.get<ResponseBody>(
       "/traffic",
-      options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
+      options: Options(responseType: ResponseType.stream),
     );
     return resp.then((res) => res.data?.stream);
   }
@@ -148,7 +145,7 @@ class Request {
   Future<Stream<Uint8List>?> logs() {
     var resp = _clashDio.get<ResponseBody>(
       "/logs",
-      options: Options(responseType: ResponseType.stream, receiveTimeout: 0),
+      options: Options(responseType: ResponseType.stream),
     );
     return resp.then((res) => res.data?.stream);
   }

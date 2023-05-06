@@ -313,7 +313,6 @@ class _MmdbRefreshButtonState extends State<MmdbRefreshButton> {
         .downFile(
       urlPath: _config.clashForMe.mmdbUrl,
       savePath: mmdb.path,
-      receiveTimeout: 0,
       onReceiveProgress: (received, total) {
         setState(() => _value = received / total);
       },

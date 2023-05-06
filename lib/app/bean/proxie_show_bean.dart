@@ -4,6 +4,7 @@ import 'package:dart_json_mapper/dart_json_mapper.dart';
 @JsonSerializable()
 class ProxieShow {
   String name;
+  String? subTitle;
   String? now;
   String? type;
   int delay;
@@ -11,6 +12,7 @@ class ProxieShow {
   ProxieShow({
     required this.name,
     required this.delay,
+    this.subTitle,
     this.now,
     this.type,
   });

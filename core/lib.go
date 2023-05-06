@@ -14,7 +14,7 @@ import (
 var options []hub.Option
 
 func init() {
-	constant.Version = "v1.13.0"
+	constant.Version = "v1.15.1"
 }
 
 //export setHomeDir

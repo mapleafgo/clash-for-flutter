@@ -44,7 +44,6 @@ class _InitPageState extends State<InitPage> {
             .downFile(
               urlPath: _config.clashForMe.mmdbUrl,
               savePath: mmdb.path,
-              receiveTimeout: 0,
               onReceiveProgress: (received, total) {
                 setState(() => _loadingProgress = received / total);
               },

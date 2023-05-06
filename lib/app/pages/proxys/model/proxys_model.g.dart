@@ -57,6 +57,21 @@ mixin _$ProxysModel on ProxysModelBase, Store {
     });
   }
 
+  late final _$allAtom = Atom(name: 'ProxysModelBase.all', context: context);
+
+  @override
+  List<dynamic> get all {
+    _$allAtom.reportRead();
+    return super.all;
+  }
+
+  @override
+  set all(List<dynamic> value) {
+    _$allAtom.reportWrite(value, super.all, () {
+      super.all = value;
+    });
+  }
+
   late final _$proxiesAtom =
       Atom(name: 'ProxysModelBase.proxies', context: context);
 
@@ -112,6 +127,7 @@ mixin _$ProxysModel on ProxysModelBase, Store {
   dynamic setState(
       {Group? global,
       SortType? sortType,
+      List<dynamic>? all,
       List<Group>? groups,
       List<Proxy>? proxies,
       Map<String, Provider>? providers,
@@ -122,6 +138,7 @@ mixin _$ProxysModel on ProxysModelBase, Store {
       return super.setState(
           global: global,
           sortType: sortType,
+          all: all,
           groups: groups,
           proxies: proxies,
           providers: providers,
@@ -137,6 +154,7 @@ mixin _$ProxysModel on ProxysModelBase, Store {
 groups: ${groups},
 global: ${global},
 sortType: ${sortType},
+all: ${all},
 proxies: ${proxies},
 providers: ${providers},
 proxiesMap: ${proxiesMap}

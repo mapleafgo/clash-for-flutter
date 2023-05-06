@@ -19,6 +19,9 @@ abstract class ProxysModelBase with Store {
   @observable
   SortType sortType = SortType.Default;
 
+  @observable
+  List<dynamic> all = [];
+
   /// 代理列表
   @observable
   var proxies = <Proxy>[];
@@ -31,6 +34,7 @@ abstract class ProxysModelBase with Store {
   setState({
     Group? global,
     SortType? sortType,
+    List<dynamic>? all,
     List<Group>? groups,
     List<Proxy>? proxies,
     Map<String, Provider>? providers,
@@ -38,6 +42,7 @@ abstract class ProxysModelBase with Store {
   }) {
     if (global != null) this.global = global;
     if (sortType != null) this.sortType = sortType;
+    if (all != null) this.all = all;
     if (groups != null) this.groups = groups;
     if (proxies != null) this.proxies = proxies;
     if (providers != null) this.providers = providers;

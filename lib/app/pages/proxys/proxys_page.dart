@@ -1,4 +1,5 @@
 import 'package:asuka/asuka.dart';
+import 'package:clash_for_flutter/app/bean/group_bean.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
@@ -82,15 +83,20 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   Widget build(BuildContext context) {
     return Observer(builder: (c) {
       var groups = controller.model.groups;
+      var global = controller.model.global;
       var proxiesMap = controller.model.proxiesMap;
+      List<Group> groupList = groups;
+      if (global != null) {
+        groupList = [global, ...groups];
+      }
       return DefaultTabController(
-        length: groups.length,
+        length: groupList.length,
         child: Scaffold(
           appBar: SysAppBar(
-            title: groups.isNotEmpty
+            title: groupList.isNotEmpty
                 ? TabBar(
                     labelColor: Theme.of(context).textTheme.titleLarge?.color,
-                    tabs: groups.map((e) => Tab(text: e.name)).toList(),
+                    tabs: groupList.map((e) => Tab(text: e.name)).toList(),
                     isScrollable: true,
                   )
                 : const Text("代理"),
@@ -100,39 +106,46 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                 icon: const Icon(Icons.sort_outlined),
                 onPressed: sortAction,
               ),
-/*
-              PopupMenuButton(
-                onSelected: (MenuType type) => moreMenu(type),
-                itemBuilder: (_) => <PopupMenuEntry<MenuType>>[
-                  PopupMenuItem(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    value: MenuType.Sort,
-                    child: SizedBox(
-                      width: 100,
-                      child: Row(children: [
-                        Icon(
-                          Icons.sort_outlined,
-                          color: DefaultTextStyle.of(context).style.color,
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 10),
-                            child: const Text("排序"),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
-*/
             ],
           ),
-          body: groups.isNotEmpty
+          body: groupList.isNotEmpty
               ? TabBarView(
-                  children: groups.map((group) {
+                  children: groupList.map((group) {
                     var groupName = group.name;
                     var groupNow = group.now;
+                    return ListView.separated(
+                      itemBuilder: (_, i) {
+                        var name = group.all[i];
+                        var proxieShow = controller.getProxieShow(name);
+                        var delay = proxieShow!.delay < 0
+                            ? null
+                            : Text(
+                                proxieShow.delay == 0 ? "..." : proxieShow.delay.toString(),
+                              );
+                        return ListTile(
+                          visualDensity: const VisualDensity(
+                            vertical: VisualDensity.minimumDensity,
+                          ),
+                          selected: groupNow == name,
+                          title: Text(
+                            proxieShow.name,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            proxieShow.subTitle ?? "",
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: delay,
+                          onTap: () => controller.select(
+                            name: groupName,
+                            select: name,
+                          ),
+                        );
+                      },
+                      separatorBuilder: (_, __) => const Divider(height: 5),
+                      itemCount: group.all.length,
+                    );
+/*
                     var proxies = proxiesMap[groupName] ?? [];
                     return ListView.separated(
                       separatorBuilder: (_, __) => const Divider(height: 5),
@@ -173,6 +186,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                         );
                       },
                     );
+*/
                   }).toList(),
                 )
               : const Center(child: Text("暂无可选代理节点")),
@@ -182,7 +196,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
               return FloatingActionButton(
                 tooltip: "测延迟",
                 onPressed: () {
-                  if (groups.isNotEmpty) {
+                  if (groupList.isNotEmpty) {
                     testDelay(tabController);
                   }
                 },

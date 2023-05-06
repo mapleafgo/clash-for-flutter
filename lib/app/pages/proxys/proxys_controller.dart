@@ -39,7 +39,7 @@ class ProxysController {
       }
     });
 
-    model.setState(groups: groupList, proxies: proxieList.toList(), global: global);
+    model.setState(all: list, groups: groupList, proxies: proxieList.toList(), global: global);
   }
 
   Future<void> getProviders() async {
@@ -92,6 +92,32 @@ class ProxysController {
       }).toList();
     });
     return proxiesMap;
+  }
+
+  ProxieShow? getProxieShow(String name) {
+    var proxie = model.all.firstWhere((e) => e.name == name, orElse: () => null);
+    if (proxie == null) {
+      return ProxieShow(name: name, delay: -1);
+    }
+    var historys = proxie.history ?? [];
+    if (proxie is Group) {
+      var subTitle = StringBuffer();
+      subTitle.write(proxie.type.value);
+      subTitle.write(" [${proxie.now}]");
+      return ProxieShow(
+        name: proxie.name,
+        type: proxie.type.value,
+        delay: historys.isNotEmpty ? historys.last.delay : -1,
+        subTitle: subTitle.toString(),
+        now: proxie.now,
+      );
+    } else {
+      return ProxieShow(
+        name: proxie.name,
+        type: proxie.type,
+        delay: historys.isNotEmpty ? historys.last.delay : -1,
+      );
+    }
   }
 
   void sortProxies({
