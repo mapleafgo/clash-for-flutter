@@ -16,6 +16,8 @@ class Constants {
   static const mmdb_new = "/Country_new.mmdb";
 
   static const localhost = "127.0.0.1";
+
+  static const port = "9090";
 }
 
 /// 默认配置值

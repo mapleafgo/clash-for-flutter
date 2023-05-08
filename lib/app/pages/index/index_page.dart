@@ -5,6 +5,7 @@ import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/pages/index/index_module.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:flutter/material.dart';
@@ -164,23 +165,8 @@ class _IndexPageState extends State<IndexPage> with WindowListener, ProtocolList
       Expanded(
         child: PageView.builder(
           controller: _page,
-          itemCount: 4,
-          onPageChanged: (i) {
-            switch (i) {
-              case 0:
-                Modular.to.navigate("/tab/home/");
-                break;
-              case 1:
-                Modular.to.navigate("/tab/proxys/");
-                break;
-              case 2:
-                Modular.to.navigate("/tab/profiles/");
-                break;
-              case 3:
-                Modular.to.navigate("/tab/settings/");
-                break;
-            }
-          },
+          itemCount: menu.size,
+          onPageChanged: (i) => Modular.to.navigate("/tab${menu.getPath(i)}/"),
           itemBuilder: (_, __) => const RouterOutlet(),
         ),
       )

@@ -19,11 +19,6 @@ class _HomePageState extends State<HomePage> {
   final GlobalConfig _config = Modular.get<GlobalConfig>();
   bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
   click() {
     setState(() => _loading = true);
     Future(() {

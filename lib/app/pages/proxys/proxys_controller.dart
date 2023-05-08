@@ -30,7 +30,7 @@ class ProxysController {
     Map<String, dynamic> proxiesMap = {};
     for (var item in list) {
       proxiesMap[item.name] = item;
-      if (item is Group) {
+      if (item is Group && item.type == GroupType.Selector) { // 可选的分组
         groupList.add(item);
       }
     }

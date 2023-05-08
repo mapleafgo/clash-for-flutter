@@ -57,6 +57,9 @@ dependencies:
   settings_ui: ^2.0.2
   cupertino_icons: ^1.0.5
   local_notifier: ^0.1.5
+  data_table_2: ^2.4.2
+  web_socket_channel: ^2.4.0
+  timeago: ^3.3.0
 
 dev_dependencies:
   flutter_test:

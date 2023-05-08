@@ -1,24 +1,30 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
+import 'package:clash_for_flutter/app/bean/connection_bean.dart';
 import 'package:clash_for_flutter/app/bean/group_bean.dart';
+import 'package:clash_for_flutter/app/bean/log_bean.dart';
+import 'package:clash_for_flutter/app/bean/net_speed.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxies_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_bean.dart';
 import 'package:clash_for_flutter/app/bean/proxy_providers_bean.dart';
 import 'package:clash_for_flutter/app/bean/sub_userinfo_bean.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:dio/dio.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Request {
   final _clashDio = Dio(
     BaseOptions(
-      baseUrl: "http://${Constants.localhost}:9090",
+      baseUrl: "http://${Constants.localhost}:${Constants.port}",
       connectTimeout: const Duration(seconds: 3),
-      receiveTimeout: const Duration(seconds: 3),
+      receiveTimeout: const Duration(seconds: 5),
     ),
   );
 
@@ -134,19 +140,29 @@ class Request {
     return res.data?["version"];
   }
 
-  Future<Stream<Uint8List>?> traffic() {
-    var resp = _clashDio.get<ResponseBody>(
-      "/traffic",
-      options: Options(responseType: ResponseType.stream),
-    );
-    return resp.then((res) => res.data?.stream);
+  Stream<NetSpeed?> traffic() {
+    var channel = WebSocketChannel.connect(Uri.parse("ws://${Constants.localhost}:${Constants.port}/traffic"));
+    return channel.stream.map((event) => JsonMapper.deserialize<NetSpeed>(event));
   }
 
-  Future<Stream<Uint8List>?> logs() {
-    var resp = _clashDio.get<ResponseBody>(
-      "/logs",
-      options: Options(responseType: ResponseType.stream),
-    );
-    return resp.then((res) => res.data?.stream);
+  Stream<LogData?> logs(LogLevel level) {
+    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level.value}}");
+    var channel = WebSocketChannel.connect(uri);
+    return channel.stream.map((event) => JsonMapper.deserialize<LogData>(event)?..time = DateTime.now());
+  }
+
+  Stream<Snapshot?> connections() {
+    var channel = WebSocketChannel.connect(Uri.parse("ws://${Constants.localhost}:${Constants.port}/connections"));
+    return channel.stream.map((event) => JsonMapper.deserialize<Snapshot>(event));
+  }
+
+  Future<bool> closeAllConnections() async {
+    var resp = await _clashDio.delete<ResponseBody>("/connections");
+    return resp.statusCode == HttpStatus.noContent;
+  }
+
+  Future<bool> closeConnections(String id) async {
+    var resp = await _clashDio.delete<ResponseBody>("/connections/$id");
+    return resp.statusCode == HttpStatus.noContent;
   }
 }
