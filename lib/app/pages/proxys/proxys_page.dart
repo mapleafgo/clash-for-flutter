@@ -4,6 +4,7 @@ import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/proxys/proxys_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -18,10 +19,29 @@ class ProxysPage extends StatefulWidget {
 }
 
 class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showFab = true;
+
   @override
   void initState() {
     super.initState();
     controller.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse && _showFab) {
+      setState(() => _showFab = false);
+    }
+    if (_scrollController.position.userScrollDirection == ScrollDirection.forward && !_showFab) {
+      setState(() => _showFab = true);
+    }
   }
 
   void testDelay(TabController tabController) async {
@@ -108,6 +128,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                     var groupNow = group.now;
                     var list = controller.getShowList(group);
                     return ListView.separated(
+                      controller: _scrollController,
                       itemBuilder: (_, i) {
                         var show = list[i];
                         var name = show.name;
@@ -138,20 +159,22 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   }).toList(),
                 )
               : const Center(child: Text("暂无可选代理节点")),
-          floatingActionButton: Builder(
-            builder: (cxt) {
-              var tabController = DefaultTabController.of(cxt);
-              return FloatingActionButton(
-                tooltip: "测延迟",
-                onPressed: () {
-                  if (groups.isNotEmpty) {
-                    testDelay(tabController);
-                  }
-                },
-                child: const Icon(Icons.flash_on),
-              );
-            },
-          ),
+          floatingActionButton: _showFab
+              ? Builder(
+                  builder: (cxt) {
+                    var tabController = DefaultTabController.of(cxt);
+                    return FloatingActionButton(
+                      tooltip: "测延迟",
+                      onPressed: () {
+                        if (groups.isNotEmpty) {
+                          testDelay(tabController);
+                        }
+                      },
+                      child: const Icon(Icons.flash_on),
+                    );
+                  },
+                )
+              : null,
         ),
       );
     });

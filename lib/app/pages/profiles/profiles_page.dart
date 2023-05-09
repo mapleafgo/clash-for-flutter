@@ -10,6 +10,7 @@ import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +31,29 @@ class ProfilesPage extends StatefulWidget {
 class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   final _config = Modular.get<GlobalConfig>();
   String? _loadingFile;
+  final ScrollController _scrollController = ScrollController();
+  bool _showFab = true;
+
+  @override
+  initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse && _showFab) {
+      setState(() => _showFab = false);
+    }
+    if (_scrollController.position.userScrollDirection == ScrollDirection.forward && !_showFab) {
+      setState(() => _showFab = true);
+    }
+  }
 
   showAddProfiles() {
     Asuka.showModalBottomSheet(
@@ -252,6 +276,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
       body: Observer(
         builder: (_) {
           return ListView.builder(
+            controller: _scrollController,
             itemCount: _config.profiles.length,
             itemBuilder: (_, i) {
               var profile = _config.profiles[i];
@@ -326,11 +351,13 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: "新增",
-        onPressed: showAddProfiles,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _showFab
+          ? FloatingActionButton(
+              tooltip: "新增",
+              onPressed: showAddProfiles,
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/connections/connection_bean.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/app/utils/clash_custom_messages.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -29,7 +30,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   @override
   void initState() {
     super.initState();
-    timeago.setLocaleMessages('zh_cn', timeago.ZhCnMessages());
+    timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
     _subscription = _request.connections().listen((event) {
       setState(() {
         var newSnapshot = event ?? Snapshot.empty();
