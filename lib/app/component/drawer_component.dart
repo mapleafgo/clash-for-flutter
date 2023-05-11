@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:clash_for_flutter/app/bean/net_speed.dart';
-import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/pages/index/index_module.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/app/utils/utils.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -41,15 +41,6 @@ class _AppDrawerState extends State<AppDrawer> {
     super.dispose();
   }
 
-  String format(int value) {
-    double num = value.toDouble();
-    var level = 0;
-    for (; num.compareTo(1024) > 0; level++) {
-      num /= 1024;
-    }
-    return "${num.toStringAsFixed(1)} ${DataUnit.values[level].value}/s";
-  }
-
   @override
   Widget build(BuildContext context) {
     var themeData = Theme.of(context);
@@ -80,7 +71,7 @@ class _AppDrawerState extends State<AppDrawer> {
         child: Column(
           children: [
             Text(
-              "↑ ${format(_speed.up)}\n↓ ${format(_speed.down)}",
+              "↑ ${dataformat(_speed.up)}/s\n↓ ${dataformat(_speed.down)}/s",
               style: Theme.of(context).textTheme.titleSmall,
             ),
             Container(

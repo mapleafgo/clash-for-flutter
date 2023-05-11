@@ -12,6 +12,24 @@ import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+class ProfileShow {
+  final String title;
+  final ProfileType type;
+  int? use;
+  int? total;
+  DateTime? expire;
+  final DateTime lastUpdate;
+
+  ProfileShow({
+    required this.title,
+    required this.type,
+    this.use,
+    this.total,
+    this.expire,
+    required this.lastUpdate,
+  });
+}
+
 class ProfileController {
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();

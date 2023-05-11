@@ -2,16 +2,19 @@ import 'dart:io';
 
 import 'package:clash_for_flutter/app/app_module.dart';
 import 'package:clash_for_flutter/app/app_widget.dart';
+import 'package:clash_for_flutter/app/utils/clash_custom_messages.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:dart_json_mapper_mobx/dart_json_mapper_mobx.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:protocol_handler/protocol_handler.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
 import 'main.mapper.g.dart' show initializeJsonMapper;
 
 void main() async {
+  timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
   initializeJsonMapper(adapters: [mobXAdapter]);
   JsonMapper().useAdapter(JsonMapperAdapter(valueDecorators: {
     typeOf<Map<String, String>>(): (value) {

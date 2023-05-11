@@ -60,6 +60,7 @@ dependencies:
   data_table_2: ^2.4.2
   web_socket_channel: ^2.4.0
   timeago: ^3.3.0
+  flutter_staggered_grid_view: ^0.6.2
 
 dev_dependencies:
   flutter_test:
