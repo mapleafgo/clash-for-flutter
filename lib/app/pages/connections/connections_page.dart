@@ -7,6 +7,7 @@ import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/utils.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -25,6 +26,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
   StreamSubscription? _subscription;
   Snapshot _snapshot = Snapshot.empty();
   List<ConnectionShow> _data = [];
+  bool _showFab = true;
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
         _snapshot = newSnapshot;
       });
     });
+    _controller.addListener(_scrollListener);
   }
 
   @override
@@ -44,6 +47,15 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
     _controller.dispose();
     _horizontalController.dispose();
     super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_controller.position.userScrollDirection == ScrollDirection.reverse && _showFab) {
+      setState(() => _showFab = false);
+    }
+    if (_controller.position.userScrollDirection == ScrollDirection.forward && !_showFab) {
+      setState(() => _showFab = true);
+    }
   }
 
   List<ConnectionShow> toShow(List<Connection> oldValue, List<Connection> newValue) {
@@ -242,13 +254,6 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: "断开所有连接",
-            icon: const Icon(Icons.clear_all),
-            onPressed: () => _request.closeAllConnections(),
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -342,6 +347,13 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
           )
         ],
       ),
+      floatingActionButton: _showFab
+          ? FloatingActionButton(
+              tooltip: "断开所有连接",
+              child: const Icon(Icons.clear_all),
+              onPressed: () => _request.closeAllConnections(),
+            )
+          : null,
     );
   }
 }
