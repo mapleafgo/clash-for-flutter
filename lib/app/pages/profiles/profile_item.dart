@@ -159,7 +159,7 @@ class SelectableCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: isLoading
-                          ? [const SizedBox(width: 25, height: 25, child: CircularProgressIndicator())]
+                          ? [const SizedBox(width: 20, height: 20, child: CircularProgressIndicator())]
                           : btnList,
                     ),
                     // 添加蒙层及进度条
