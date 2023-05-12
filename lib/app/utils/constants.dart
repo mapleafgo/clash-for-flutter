@@ -18,6 +18,9 @@ class Constants {
   static const localhost = "127.0.0.1";
 
   static const port = "9090";
+
+  /// 日志最大容量
+  static const logsCapacity = 1000;
 }
 
 /// 默认配置值

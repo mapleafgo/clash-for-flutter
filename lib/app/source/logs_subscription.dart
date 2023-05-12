@@ -1,19 +1,22 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:clash_for_flutter/app/bean/log_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
+import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+/// 日志订阅
 class LogsSubscription extends ChangeNotifier implements Disposable {
   final _request = Modular.get<Request>();
   final _config = Modular.get<GlobalConfig>();
-  final List<LogData> _logList = [];
+  final Queue<LogData> _logQueue = Queue<LogData>();
   StreamSubscription? _subscription;
 
-  List<LogData> get logList => _logList;
+  List<LogData> get logList => _logQueue.toList();
 
   @override
   void dispose() {
@@ -28,13 +31,13 @@ class LogsSubscription extends ChangeNotifier implements Disposable {
         return;
       }
 
-      if (_logList.length >= 1000) {
-        _logList.removeAt(0);
+      if (_logQueue.length >= Constants.logsCapacity) {
+        _logQueue.removeFirst();
       }
-      _logList.add(event);
+      _logQueue.add(event);
       notifyListeners();
     });
   }
 
-  void clearLogs() => _logList.clear();
+  void clearLogs() => _logQueue.clear();
 }
