@@ -24,7 +24,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _config = Modular.get<GlobalConfig>();
   final _request = Modular.get<Request>();
-  String _version = "1.1.0";
+  String _version = "1.2.0";
 
   @override
   void initState() {
