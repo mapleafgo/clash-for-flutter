@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   proxy_manager
   screen_retriever
   system_tray
+  url_launcher_windows
   vclibs
   window_manager
 )

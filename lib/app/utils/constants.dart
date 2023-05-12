@@ -1,5 +1,11 @@
 /// 常量类
 class Constants {
+  /// 开源地址
+  static const sourceUrl = "https://github.com/mapleafgo/clash-for-flutter";
+
+  /// 官网
+  static const homeUrl = "https://mapleafgo.github.io/clash-for-flutter";
+
   /// 下载的配置文件路径
   static const profilesPath = "/profiles";
 

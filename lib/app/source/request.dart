@@ -165,4 +165,15 @@ class Request {
     var resp = await _clashDio.delete<ResponseBody>("/connections/$id");
     return resp.statusCode == HttpStatus.noContent;
   }
+
+  Future<String> latest() async {
+    var resp = await Dio().get<Map<String, dynamic>>(
+      "https://api.github.com/repos/mapleafgo/clash-for-flutter/releases/latest",
+    );
+    if (resp.data?.containsKey("tag_name") ?? false) {
+      return resp.data!["tag_name"];
+    } else {
+      throw resp.data?["message"];
+    }
+  }
 }

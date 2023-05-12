@@ -44,6 +44,9 @@ dependencies:
   protocol_handler: ^0.1.4
   proxy_manager: ^0.0.3
   file_picker: ^5.1.0
+  package_info_plus: ^4.0.0
+  url_launcher: ^6.1.11
+  web_socket_channel: ^2.4.0
 
   dart_json_mapper: ^2.2.7
   dart_json_mapper_mobx: ^2.0.5
@@ -58,7 +61,6 @@ dependencies:
   cupertino_icons: ^1.0.5
   local_notifier: ^0.1.5
   data_table_2: ^2.4.2
-  web_socket_channel: ^2.4.0
   timeago: ^3.3.0
   flutter_staggered_grid_view: ^0.6.2
 

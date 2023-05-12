@@ -9,7 +9,9 @@ import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:settings_ui/settings_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// 配置文件页
 class SettingsPage extends StatefulWidget {
@@ -21,6 +23,36 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _config = Modular.get<GlobalConfig>();
+  final _request = Modular.get<Request>();
+  String _version = "1.1.0";
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) {
+        setState(() => _version = info.version);
+      }
+    });
+  }
+
+  void checkUpdate() async {
+    _request.latest().then((value) {
+      if (_version == value) {
+        Asuka.showSnackBar(
+          const SnackBar(content: Text('当前已经是最新版本！')),
+        );
+      } else {
+        Asuka.showSnackBar(SnackBar(
+          content: Text("最新版本号为: $value"),
+          action: SnackBarAction(
+            label: "前往下载最新版",
+            onPressed: () => launchUrl(Uri.parse("${Constants.sourceUrl}/releases/latest")),
+          ),
+        ));
+      }
+    }).catchError((err) {});
+  }
 
   setValue({
     required String title,
@@ -278,6 +310,26 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+            SettingsSection(
+              title: const Text("关于"),
+              tiles: [
+                SettingsTile.navigation(
+                  title: const Text("官网"),
+                  value: const Text(Constants.homeUrl),
+                  onPressed: (_) => launchUrl(Uri.parse(Constants.homeUrl)),
+                ),
+                SettingsTile.navigation(
+                  title: const Text("开源地址"),
+                  value: const Text(Constants.sourceUrl),
+                  onPressed: (_) => launchUrl(Uri.parse(Constants.sourceUrl)),
+                ),
+                SettingsTile.navigation(
+                  title: const Text("版本号"),
+                  value: Text(_version),
+                  onPressed: (_) => checkUpdate(),
+                ),
+              ],
+            )
           ],
         );
       }),
