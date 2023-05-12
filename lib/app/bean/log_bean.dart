@@ -3,12 +3,12 @@ import 'package:dart_json_mapper/dart_json_mapper.dart';
 
 @JsonSerializable()
 class LogData {
-  DateTime time;
+  DateTime? time;
   LogLevel type;
   String payload;
 
   LogData({
-    required this.time,
+    this.time,
     required this.type,
     required this.payload,
   });

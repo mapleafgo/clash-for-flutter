@@ -123,7 +123,7 @@ class _SettingsPageState extends State<SettingsPage> {
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                 onTap: () => change(LogLevel.values[i], cxt),
-                title: Text(LogLevel.values[i].value),
+                title: Text(LogLevel.values[i].value.toUpperCase()),
                 trailing: Radio<LogLevel>(
                   value: LogLevel.values[i],
                   groupValue: _config.clashConfig.logLevel ?? LogLevel.info,
@@ -239,7 +239,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 SettingsTile.navigation(
                   title: const Text('日志等级'),
-                  value: Text(logLevel.value),
+                  value: Text(logLevel.value.toUpperCase()),
                   onPressed: (_) => selectLogLevel(),
                 ),
               ],

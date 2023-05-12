@@ -146,7 +146,7 @@ class Request {
   }
 
   Stream<LogData?> logs(LogLevel level) {
-    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level.value}}");
+    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level.value}");
     var channel = WebSocketChannel.connect(uri);
     return channel.stream.map((event) => JsonMapper.deserialize<LogData>(event)?..time = DateTime.now());
   }

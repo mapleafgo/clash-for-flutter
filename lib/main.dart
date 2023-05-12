@@ -14,7 +14,6 @@ import 'package:window_manager/window_manager.dart';
 import 'main.mapper.g.dart' show initializeJsonMapper;
 
 void main() async {
-  timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
   initializeJsonMapper(adapters: [mobXAdapter]);
   JsonMapper().useAdapter(JsonMapperAdapter(valueDecorators: {
     typeOf<Map<String, String>>(): (value) {
@@ -41,6 +40,8 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
+
+  timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
 
   runApp(ModularApp(
     module: AppModule(),

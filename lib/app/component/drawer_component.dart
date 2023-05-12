@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:clash_for_flutter/app/bean/net_speed.dart';
-import 'package:clash_for_flutter/app/pages/index/index_module.dart';
+import 'package:clash_for_flutter/app/pages/router.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/utils.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';

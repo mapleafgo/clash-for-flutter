@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/logs_subscription.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:ffi/ffi.dart';
@@ -19,6 +20,7 @@ class InitPage extends StatefulWidget {
 class _InitPageState extends State<InitPage> {
   final _config = Modular.get<GlobalConfig>();
   final _request = Modular.get<Request>();
+  final _logs = Modular.get<LogsSubscription>();
   double _loadingProgress = 0;
   bool _isLoading = false;
 
@@ -50,7 +52,8 @@ class _InitPageState extends State<InitPage> {
             )
             .then((value) => setState(() => _isLoading = false));
       }
-      if (_config.start()) {
+      if (_config.start()) { // 启动服务
+        _logs.startSubLogs(); // 启动日志订阅
         Modular.to.navigate("/tab");
       } else {
         Asuka.showSnackBar(const SnackBar(content: Text("启动服务失败")));
