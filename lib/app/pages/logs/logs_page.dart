@@ -24,6 +24,7 @@ class _LogsPageState extends State<LogsPage> {
   @override
   void initState() {
     super.initState();
+    _logsListener();
     _logs.addListener(_logsListener);
     _controller.addListener(_scrollListener);
   }
@@ -38,11 +39,13 @@ class _LogsPageState extends State<LogsPage> {
   void _logsListener() {
     // 等待组件渲染完成再滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.animateTo(
-        _controller.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      if (_controller.hasClients) {
+        _controller.animateTo(
+          _controller.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -110,7 +113,7 @@ class _LogsPageState extends State<LogsPage> {
         margin: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: Theme.of(context).primaryColor.withAlpha(40),
+          color: Theme.of(context).primaryColor.withAlpha(20),
         ),
         child: ListView.builder(
           controller: _controller,

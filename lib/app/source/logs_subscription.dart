@@ -39,5 +39,8 @@ class LogsSubscription extends ChangeNotifier implements Disposable {
     });
   }
 
-  void clearLogs() => _logQueue.clear();
+  void clearLogs() {
+    _logQueue.clear();
+    notifyListeners();
+  }
 }

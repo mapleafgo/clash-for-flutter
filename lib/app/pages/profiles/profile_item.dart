@@ -144,7 +144,7 @@ class SelectableCard extends StatelessWidget {
                     0,
                     IconButton(
                       tooltip: "更新",
-                      icon: Icon(Icons.cached_outlined, color: Theme.of(ctx).textSelectionTheme.selectionColor),
+                      icon: Icon(Icons.refresh_rounded, color: Theme.of(ctx).textSelectionTheme.selectionColor),
                       onPressed: () => onUpdate(),
                     ));
               }
