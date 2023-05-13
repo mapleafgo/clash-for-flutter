@@ -24,9 +24,14 @@ class _LogsPageState extends State<LogsPage> {
   @override
   void initState() {
     super.initState();
-    _logsListener();
     _logs.addListener(_logsListener);
     _controller.addListener(_scrollListener);
+    // 初始时跳转到最底部，不带动画
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_controller.hasClients) {
+        _controller.jumpTo(_controller.position.maxScrollExtent);
+      }
+    });
   }
 
   @override
