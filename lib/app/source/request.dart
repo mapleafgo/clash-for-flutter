@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/connection_bean.dart';
@@ -48,19 +46,35 @@ class Request {
     var file = "${time.millisecondsSinceEpoch}.yaml";
     var savePath = "$profilesDir/$file";
     return downFile(urlPath: profile.url, savePath: savePath).then((resp) {
+      String? filename;
+      // 解析文件名
       if (profile.name.isEmpty) {
-        resp.headers["content-disposition"]?.forEach((v) {
-          var filename = HeaderValue.parse(v).parameters["filename"];
-          if (filename != null) {
-            profile.name = filename;
-          } else {
-            profile.name = file;
-          }
-        });
+        var headerDis = resp.headers.value("content-disposition");
+        if (headerDis != null) {
+          var disposition = HeaderValue.parse(headerDis);
+          disposition.parameters.forEach((key, value) {
+            if (key.startsWith("filename")) {
+              if (key == "filename*") {
+                filename = Uri.decodeComponent((value ?? "").split("'").last);
+              } else {
+                filename = value;
+              }
+            }
+          });
+        }
+        // 赋值文件名
+        if (filename?.isNotEmpty ?? false) {
+          profile.name = filename!;
+        } else {
+          profile.name = file;
+        }
       }
-      resp.headers["subscription-userinfo"]?.forEach((v) {
-        profile.userinfo = SubUserinfo.formHString(v);
-      });
+      // 解析流量信息
+      var headerInfo = resp.headers.value("subscription-userinfo");
+      if (headerInfo != null) {
+        profile.userinfo = SubUserinfo.formHString(headerInfo);
+      }
+      // 解析更新间隔
       var value = resp.headers.value("profile-update-interval");
       if (value != null && profile.interval == 0) {
         profile.interval = int.parse(value);
