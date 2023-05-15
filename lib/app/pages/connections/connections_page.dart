@@ -60,6 +60,8 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
 
   List<ConnectionShow> toShow(List<Connection> oldValue, List<Connection> newValue) {
     var result = <ConnectionShow>[];
+    // 对数据进行按时间排序
+    newValue.sort((a, b) => DateTime.parse(a.start).compareTo(DateTime.parse(b.start)));
     for (var c in newValue) {
       var o = oldValue.firstWhere((element) => element.id == c.id, orElse: () => Connection.empty());
       var speed = StringBuffer();
