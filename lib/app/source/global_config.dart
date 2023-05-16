@@ -22,7 +22,7 @@ class GlobalConfig = ConfigFileBase with _$GlobalConfig;
 
 final proxyManager = ProxyManager();
 
-abstract class ConfigFileBase extends Disposable with Store {
+abstract class ConfigFileBase with Store {
   final _request = Modular.get<Request>();
   static bool isStartClash = false;
 
@@ -32,20 +32,12 @@ abstract class ConfigFileBase extends Disposable with Store {
   late final String clashForMePath;
   late final String profilesPath;
 
-  final List<ReactionDisposer> _disposers = [];
   @observable
   bool systemProxy = false;
   @observable
   Config clashConfig = Config.defaultConfig();
   @observable
   ClashForMeConfig clashForMe = ClashForMeConfig.defaultConfig();
-
-  @override
-  dispose() {
-    for (ReactionDisposer item in _disposers) {
-      item();
-    }
-  }
 
   Future<void> init() async {
     await getApplicationSupportDirectory().then((dir) => configDir = dir);
@@ -56,7 +48,7 @@ abstract class ConfigFileBase extends Disposable with Store {
 
     await _initClash();
     _initConfig();
-    _initDispose();
+    _initAction();
   }
 
   @action
@@ -84,39 +76,36 @@ abstract class ConfigFileBase extends Disposable with Store {
     clash = Clash(lib);
   }
 
-  _initDispose() {
-    _disposers.clear();
-    _disposers.addAll([
-      reaction(
-        (_) => clashConfig,
-        (Config config) {
-          config.saveFile(clashConfigPath);
-          if (isStartClash) {
-            _request.patchConfigs(config);
-          }
-          if (systemProxy) {
-            openProxy();
-          }
-        },
-        delay: 1000,
-      ),
-      reaction(
-        (_) => clashForMe,
-        (ClashForMeConfig config) => config.saveFile(clashForMePath),
-        delay: 1000,
-      ),
-      reaction(
-        (_) => selectedFile ?? clashConfigPath,
-        (String file) {
-          if (!File(file).isAbsolute) {
-            file = "$profilesPath/$file";
-          }
-          if (isStartClash) {
-            _changeProfile(file);
-          }
-        },
-      ),
-    ]);
+  _initAction() {
+    reaction(
+      (_) => clashConfig,
+      (Config config) {
+        config.saveFile(clashConfigPath);
+        if (isStartClash) {
+          _request.patchConfigs(config);
+        }
+        if (systemProxy) {
+          openProxy();
+        }
+      },
+      delay: 1000,
+    );
+    reaction(
+      (_) => clashForMe,
+      (ClashForMeConfig config) => config.saveFile(clashForMePath),
+      delay: 1000,
+    );
+    reaction(
+      (_) => selectedFile ?? clashConfigPath,
+      (String file) {
+        if (!File(file).isAbsolute) {
+          file = "$profilesPath/$file";
+        }
+        if (isStartClash) {
+          _changeProfile(file);
+        }
+      },
+    );
   }
 
   /// 校验本地订阅文件与配置里对应
