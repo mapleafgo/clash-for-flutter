@@ -28,7 +28,7 @@ class LogsSubscription extends ChangeNotifier implements Disposable {
   void startSubLogs() {
     reaction((_) => _config.clashConfig.logLevel, (level) {
       _subscription?.cancel();
-      _subscription = _request.logs(level ?? LogLevel.info).listen((event) {
+      _subscription = _request.logs(level).listen((event) {
         if (event == null) {
           return;
         }

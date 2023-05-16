@@ -159,8 +159,8 @@ class Request {
     return channel.stream.map((event) => JsonMapper.deserialize<NetSpeed>(event));
   }
 
-  Stream<LogData?> logs(LogLevel level) {
-    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level.value}");
+  Stream<LogData?> logs(LogLevel? level) {
+    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level?.value ?? ""}");
     var channel = WebSocketChannel.connect(uri);
     return channel.stream.map((event) => JsonMapper.deserialize<LogData>(event)?..time = DateTime.now());
   }
@@ -181,9 +181,7 @@ class Request {
   }
 
   Future<String> latest() async {
-    var resp = await Dio().get<Map<String, dynamic>>(
-      "https://api.github.com/repos/mapleafgo/clash-for-flutter/releases/latest",
-    );
+    var resp = await Dio().get<Map<String, dynamic>>(Constants.releaseUrl);
     if (resp.data?.containsKey("tag_name") ?? false) {
       return resp.data!["tag_name"];
     } else {

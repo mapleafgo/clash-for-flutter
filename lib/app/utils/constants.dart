@@ -6,6 +6,9 @@ class Constants {
   /// 官网
   static const homeUrl = "https://mapleafgo.github.io/clash-for-flutter";
 
+  /// 检测最新版本
+  static const releaseUrl = "https://api.github.com/repos/mapleafgo/clash-for-flutter/releases/latest";
+
   /// 下载的配置文件路径
   static const profilesPath = "/profiles";
 
