@@ -8,6 +8,7 @@ import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:mobx/mobx.dart';
 
 /// 日志订阅
 class LogsSubscription extends ChangeNotifier implements Disposable {
@@ -25,17 +26,19 @@ class LogsSubscription extends ChangeNotifier implements Disposable {
   }
 
   void startSubLogs() {
-    _subscription?.cancel();
-    _subscription = _request.logs(_config.clashConfig.logLevel ?? LogLevel.info).listen((event) {
-      if (event == null) {
-        return;
-      }
+    reaction((_) => _config.clashConfig.logLevel, (level) {
+      _subscription?.cancel();
+      _subscription = _request.logs(level ?? LogLevel.info).listen((event) {
+        if (event == null) {
+          return;
+        }
 
-      if (_logQueue.length >= Constants.logsCapacity) {
-        _logQueue.removeFirst();
-      }
-      _logQueue.add(event);
-      notifyListeners();
+        if (_logQueue.length >= Constants.logsCapacity) {
+          _logQueue.removeFirst();
+        }
+        _logQueue.add(event);
+        notifyListeners();
+      });
     });
   }
 

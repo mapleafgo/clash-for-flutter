@@ -67,7 +67,6 @@ class _LogsPageState extends State<LogsPage> {
     change(LogLevel? level, BuildContext context) {
       _config.setState(logLevel: level);
       Navigator.of(context).pop();
-      _logs.startSubLogs();
     }
 
     Asuka.showModalBottomSheet(
