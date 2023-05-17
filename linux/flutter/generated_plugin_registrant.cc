@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <desktop_lifecycle/desktop_lifecycle_plugin.h>
 #include <local_notifier/local_notifier_plugin.h>
 #include <proxy_manager/proxy_manager_plugin.h>
 #include <screen_retriever/screen_retriever_plugin.h>
@@ -14,6 +15,9 @@
 #include <window_manager/window_manager_plugin.h>
 
 void fl_register_plugins(FlPluginRegistry* registry) {
+  g_autoptr(FlPluginRegistrar) desktop_lifecycle_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "DesktopLifecyclePlugin");
+  desktop_lifecycle_plugin_register_with_registrar(desktop_lifecycle_registrar);
   g_autoptr(FlPluginRegistrar) local_notifier_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "LocalNotifierPlugin");
   local_notifier_plugin_register_with_registrar(local_notifier_registrar);

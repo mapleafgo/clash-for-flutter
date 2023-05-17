@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_lifecycle
   local_notifier
   protocol_handler
   proxy_manager

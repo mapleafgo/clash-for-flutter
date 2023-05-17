@@ -18,7 +18,7 @@
 
 - 基础环境
 
-  `GCC`、`Go v1.19+`、`Flutter v3.3.9+`
+  `GCC`、`Go v1.20+`、`Flutter v3.7+`
 
   > `Linux`环境下 [tray_manager](https://github.com/leanflutter/tray_manager) 需要 `libayatana-appindicator3-dev`
   or `libappindicator3-dev`
@@ -62,7 +62,7 @@
 - [Go](https://go.dev/)
 - [Clash](https://github.com/Dreamacro/clash)
 - [Flutter](https://flutter.dev)
-- [tray_manager](https://github.com/leanflutter/tray_manager)
+- [system_tray](https://github.com/antler119/system_tray)
 - [window_manager](https://github.com/leanflutter/window_manager)
 - [proxy_manager](https://github.com/Kingtous/proxy_manager)
 - [flutter_modular](https://github.com/Flutterando/modular)

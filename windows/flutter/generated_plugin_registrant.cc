@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <desktop_lifecycle/desktop_lifecycle_plugin.h>
 #include <local_notifier/local_notifier_plugin.h>
 #include <protocol_handler/protocol_handler_plugin.h>
 #include <proxy_manager/proxy_manager_plugin.h>
@@ -16,6 +17,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  DesktopLifecyclePluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("DesktopLifecyclePlugin"));
   LocalNotifierPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("LocalNotifierPlugin"));
   ProtocolHandlerPluginRegisterWithRegistrar(

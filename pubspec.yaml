@@ -47,6 +47,7 @@ dependencies:
   package_info_plus: ^4.0.0
   url_launcher: ^6.1.11
   web_socket_channel: ^2.4.0
+  desktop_lifecycle: ^0.1.1
 
   dart_json_mapper: ^2.2.7
   dart_json_mapper_mobx: ^2.0.5
