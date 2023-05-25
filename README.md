@@ -18,7 +18,7 @@
 
 - 基础环境
 
-  `GCC`、`Go v1.20+`、`Flutter v3.7+`
+  `GCC`、`Go v1.20+`、`Flutter v3.10+`
 
   > `Linux`环境下 [tray_manager](https://github.com/leanflutter/tray_manager) 需要 `libayatana-appindicator3-dev`
   or `libappindicator3-dev`
@@ -29,7 +29,7 @@
   # 1. 获取项目依赖
   $ flutter pub get
   # 2. 生成 .g.dart 文件
-  $ flutter pub run build_runner build --delete-conflicting-outputs
+  $ dart run build_runner build --delete-conflicting-outputs
 
   # 3. 编译 Clash 内核
   $ cd core
