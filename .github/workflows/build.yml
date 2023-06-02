@@ -110,7 +110,7 @@ jobs:
           name: macos-arm64-lib
           path: core/libclash.dylib
   build-macos:
-    runs-on: macos-10.15
+    runs-on: macos-latest
     needs: [ get-release, build-macos-arm64-lib ]
     steps:
       - uses: actions/checkout@v3
