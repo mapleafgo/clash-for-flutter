@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:clash_for_flutter/app/bean/log_bean.dart';
-import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';

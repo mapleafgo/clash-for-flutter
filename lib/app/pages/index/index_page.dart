@@ -7,7 +7,6 @@ import 'package:clash_for_flutter/app/pages/router.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:desktop_lifecycle/desktop_lifecycle.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:protocol_handler/protocol_handler.dart';

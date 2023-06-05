@@ -280,8 +280,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('其他设置'),
               tiles: <SettingsTile>[
                 SettingsTile.navigation(
-                  title: Row(
-                    children: const [
+                  title: const Row(
+                    children: [
                       Text("MMDB Url"),
                       MmdbRefreshButton(),
                     ],
