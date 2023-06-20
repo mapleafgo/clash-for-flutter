@@ -105,6 +105,7 @@ class SelectableCard extends StatelessWidget {
                   const SizedBox(height: 16.0),
                   LinearProgressIndicator(value: profile.use! / profile.total!),
                 ]);
+                expireRow.add(const SizedBox());
                 expireRow.add(Text(
                   '${dataformat(profile.use!)}/${dataformat(profile.total!)}',
                   style: Theme.of(ctx)
