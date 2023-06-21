@@ -233,7 +233,9 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
       var userinfo = profile.userinfo;
       if (userinfo != null) {
         show
-          ..expire = DateTime.fromMillisecondsSinceEpoch((userinfo.expire ?? 0) * 1000)
+          ..expire = userinfo.expire == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch((userinfo.expire!) * 1000)
           ..use = (userinfo.upload ?? 0) + (userinfo.download ?? 0)
           ..total = userinfo.total ?? 0;
       }

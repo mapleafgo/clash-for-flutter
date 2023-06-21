@@ -17,10 +17,10 @@ class SubUserinfo {
 
   factory SubUserinfo.formHString(String info) {
     var list = info.split(";");
-    Map<String, int> map = {};
+    Map<String, int?> map = {};
     for (var i in list) {
       var j = i.trim().split("=");
-      map[j[0]] = int.parse(j[1]);
+      map[j[0]] = int.tryParse(j[1]);
     }
     return SubUserinfo(
       upload: map["upload"],
