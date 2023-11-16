@@ -16,7 +16,7 @@ class SelectableCard extends StatelessWidget {
   final VoidCallback onRemove;
 
   const SelectableCard({
-    Key? key,
+    super.key,
     required this.profile,
     this.selected = false,
     this.isLoading = false,
@@ -25,7 +25,7 @@ class SelectableCard extends StatelessWidget {
     required this.onEdit,
     required this.onChangeName,
     required this.onRemove,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

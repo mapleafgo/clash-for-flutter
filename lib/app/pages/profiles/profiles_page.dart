@@ -20,11 +20,12 @@ class ProfilesPage extends StatefulWidget {
   const ProfilesPage({super.key});
 
   @override
-  ModularState<ProfilesPage, ProfileController> createState() => _ProfilesPageState();
+  State<ProfilesPage> createState() => _ProfilesPageState();
 }
 
-class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
+class _ProfilesPageState extends State<ProfilesPage> {
   final _config = Modular.get<GlobalConfig>();
+  final ProfileController _controller = Modular.get<ProfileController>();
   final ScrollController _scrollController = ScrollController();
   final List<String> _loadingList = [];
   bool _showFab = true;
@@ -98,7 +99,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
   addProfile(ProfileBase profile) {
     var loading = Loading.builder();
     Asuka.addOverlay(loading);
-    controller.addProfile(profile).then((_) => loading.remove()).catchError((e) {
+    _controller.addProfile(profile).then((_) => loading.remove()).catchError((e) {
       loading.remove();
       Asuka.showSnackBar(SnackBar(content: Text("导入异常: $e")));
     });
@@ -186,13 +187,13 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
       dialogPickerFile(
         label: "文件",
         initialValue: profile.path,
-        onOk: (v) => controller.edit(profile..path = v),
+        onOk: (v) => _controller.edit(profile..path = v),
       );
     } else if (profile is ProfileURL) {
       dialogInputValue(
         label: "URL",
         initialValue: profile.url,
-        onOk: (v) => controller.edit(profile..url = v),
+        onOk: (v) => _controller.edit(profile..url = v),
       );
     }
   }
@@ -201,13 +202,13 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
     dialogInputValue(
       label: "名称",
       initialValue: profile.name,
-      onOk: (v) => controller.edit(profile..name = v),
+      onOk: (v) => _controller.edit(profile..name = v),
     );
   }
 
   upgradeProfile(String file) {
     setState(() => _loadingList.add(file));
-    controller.updateProfile(file).catchError((err) {
+    _controller.updateProfile(file).catchError((err) {
       Asuka.showSnackBar(SnackBar(content: Text(err.message ?? "未知异常")));
     }).then((value) => setState(() => _loadingList.remove(file)));
   }
@@ -217,7 +218,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
       content: const Text("确定移除？"),
       action: SnackBarAction(
         label: "确定",
-        onPressed: () => controller.removeProfile(file),
+        onPressed: () => _controller.removeProfile(file),
       ),
     ));
   }
@@ -233,9 +234,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
       var userinfo = profile.userinfo;
       if (userinfo != null) {
         show
-          ..expire = userinfo.expire == null
-              ? null
-              : DateTime.fromMillisecondsSinceEpoch((userinfo.expire!) * 1000)
+          ..expire = userinfo.expire == null ? null : DateTime.fromMillisecondsSinceEpoch((userinfo.expire!) * 1000)
           ..use = (userinfo.upload ?? 0) + (userinfo.download ?? 0)
           ..total = userinfo.total ?? 0;
       }
@@ -245,7 +244,7 @@ class _ProfilesPageState extends ModularState<ProfilesPage, ProfileController> {
         profile: show,
         selected: profile.file == _config.selectedFile,
         isLoading: _loadingList.contains(profile.file),
-        onTap: () => controller.select(profile.file),
+        onTap: () => _controller.select(profile.file),
         onUpdate: () => upgradeProfile(profile.file),
         onEdit: () => edit(profile),
         onRemove: () => removeProfile(profile.file),

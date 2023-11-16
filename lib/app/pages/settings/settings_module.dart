@@ -3,7 +3,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class SettingsModule extends Module {
   @override
-  final List<ModularRoute> routes = [
-    ChildRoute("/", child: (_, __) => const SettingsPage()),
-  ];
+  void routes(r) {
+    r.child("/", child: (_) => const SettingsPage());
+  }
 }

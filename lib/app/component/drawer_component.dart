@@ -11,7 +11,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 class AppDrawer extends StatefulWidget {
   final PageController page;
 
-  const AppDrawer({Key? key, required this.page}) : super(key: key);
+  const AppDrawer({super.key, required this.page});
 
   @override
   State<AppDrawer> createState() => _AppDrawerState();

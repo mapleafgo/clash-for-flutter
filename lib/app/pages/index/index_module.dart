@@ -11,19 +11,21 @@ class IndexModule extends Module {
   List<Module> get imports => menu.moduleList;
 
   @override
-  final List<Bind> binds = [Bind.singleton((_) => TrayController())];
+  void binds(i) {
+    i.addSingleton(TrayController.new);
+  }
 
   @override
-  final List<ModularRoute> routes = [
-    ChildRoute("/", child: (_, __) => const InitPage(), children: [
+  void routes(r) {
+    r.child("/", child: (_) => const InitPage(), children: [
       ChildRoute(
         "/error",
-        child: (_, __) => const Scaffold(
+        child: (_) => const Scaffold(
           appBar: SysAppBar(title: Text("Clash For Flutter")),
           body: Center(child: Text("初始化失败")),
         ),
       ),
-    ]),
-    ChildRoute("/tab", child: (_, __) => const IndexPage(), children: menu.routes),
-  ];
+    ]);
+    r.child("/tab", child: (_) => const IndexPage(), children: menu.routes);
+  }
 }

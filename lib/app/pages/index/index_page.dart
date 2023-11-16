@@ -60,6 +60,11 @@ class _IndexPageState extends State<IndexPage> with WindowListener, ProtocolList
     }
   }
 
+  @override
+  void onWindowFocus() {
+    setState(() {});
+  }
+
   /// 处理在移动端前后台
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

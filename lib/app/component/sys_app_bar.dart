@@ -9,7 +9,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final List<Widget>? actions;
 
-  const SysAppBar({Key? key, this.toolbarHeight, this.title, this.actions}) : super(key: key);
+  const SysAppBar({super.key, this.toolbarHeight, this.title, this.actions});
 
   @override
   Widget build(BuildContext context) {

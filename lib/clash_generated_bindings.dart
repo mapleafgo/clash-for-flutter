@@ -42,10 +42,10 @@ class Clash {
       ___security_init_cookiePtr.asFunction<void Function()>();
 
   void __security_check_cookie(
-    int _StackCookie,
+    int StackCookie,
   ) {
     return ___security_check_cookie(
-      _StackCookie,
+      StackCookie,
     );
   }
 
@@ -56,10 +56,10 @@ class Clash {
       ___security_check_cookiePtr.asFunction<void Function(int)>();
 
   void __report_gsfailure(
-    int _StackCookie,
+    int StackCookie,
   ) {
     return ___report_gsfailure(
-      _StackCookie,
+      StackCookie,
     );
   }
 
@@ -97,18 +97,18 @@ class Clash {
       __invalid_parameter_noinfo_noreturnPtr.asFunction<void Function()>();
 
   void _invoke_watson(
-    ffi.Pointer<ffi.WChar> _Expression,
-    ffi.Pointer<ffi.WChar> _FunctionName,
-    ffi.Pointer<ffi.WChar> _FileName,
-    int _LineNo,
-    int _Reserved,
+    ffi.Pointer<ffi.WChar> Expression,
+    ffi.Pointer<ffi.WChar> FunctionName,
+    ffi.Pointer<ffi.WChar> FileName,
+    int LineNo,
+    int Reserved,
   ) {
     return __invoke_watson(
-      _Expression,
-      _FunctionName,
-      _FileName,
-      _LineNo,
-      _Reserved,
+      Expression,
+      FunctionName,
+      FileName,
+      LineNo,
+      Reserved,
     );
   }
 
@@ -133,10 +133,10 @@ class Clash {
   late final __errno = __errnoPtr.asFunction<ffi.Pointer<ffi.Int> Function()>();
 
   int _set_errno(
-    int _Value,
+    int Value,
   ) {
     return __set_errno(
-      _Value,
+      Value,
     );
   }
 
@@ -145,10 +145,10 @@ class Clash {
   late final __set_errno = __set_errnoPtr.asFunction<int Function(int)>();
 
   int _get_errno(
-    ffi.Pointer<ffi.Int> _Value,
+    ffi.Pointer<ffi.Int> Value,
   ) {
     return __get_errno(
-      _Value,
+      Value,
     );
   }
 
@@ -175,10 +175,10 @@ class Clash {
   late final ___threadhandle = ___threadhandlePtr.asFunction<int Function()>();
 
   double cabs(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cabs(
-      _Z,
+      Z,
     );
   }
 
@@ -187,10 +187,10 @@ class Clash {
   late final _cabs = _cabsPtr.asFunction<double Function(_Dcomplex)>();
 
   _Dcomplex cacos(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cacos(
-      _Z,
+      Z,
     );
   }
 
@@ -199,10 +199,10 @@ class Clash {
   late final _cacos = _cacosPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex cacosh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cacosh(
-      _Z,
+      Z,
     );
   }
 
@@ -211,10 +211,10 @@ class Clash {
   late final _cacosh = _cacoshPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   double carg(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _carg(
-      _Z,
+      Z,
     );
   }
 
@@ -223,10 +223,10 @@ class Clash {
   late final _carg = _cargPtr.asFunction<double Function(_Dcomplex)>();
 
   _Dcomplex casin(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _casin(
-      _Z,
+      Z,
     );
   }
 
@@ -235,10 +235,10 @@ class Clash {
   late final _casin = _casinPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex casinh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _casinh(
-      _Z,
+      Z,
     );
   }
 
@@ -247,10 +247,10 @@ class Clash {
   late final _casinh = _casinhPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex catan(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _catan(
-      _Z,
+      Z,
     );
   }
 
@@ -259,10 +259,10 @@ class Clash {
   late final _catan = _catanPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex catanh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _catanh(
-      _Z,
+      Z,
     );
   }
 
@@ -271,10 +271,10 @@ class Clash {
   late final _catanh = _catanhPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex ccos(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _ccos(
-      _Z,
+      Z,
     );
   }
 
@@ -283,10 +283,10 @@ class Clash {
   late final _ccos = _ccosPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex ccosh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _ccosh(
-      _Z,
+      Z,
     );
   }
 
@@ -295,10 +295,10 @@ class Clash {
   late final _ccosh = _ccoshPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex cexp(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cexp(
-      _Z,
+      Z,
     );
   }
 
@@ -307,10 +307,10 @@ class Clash {
   late final _cexp = _cexpPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   double cimag(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cimag(
-      _Z,
+      Z,
     );
   }
 
@@ -319,10 +319,10 @@ class Clash {
   late final _cimag = _cimagPtr.asFunction<double Function(_Dcomplex)>();
 
   _Dcomplex clog(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _clog(
-      _Z,
+      Z,
     );
   }
 
@@ -331,10 +331,10 @@ class Clash {
   late final _clog = _clogPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex clog10(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _clog10(
-      _Z,
+      Z,
     );
   }
 
@@ -343,10 +343,10 @@ class Clash {
   late final _clog10 = _clog10Ptr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex conj(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _conj(
-      _Z,
+      Z,
     );
   }
 
@@ -355,12 +355,12 @@ class Clash {
   late final _conj = _conjPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex cpow(
-    _Dcomplex _X,
-    _Dcomplex _Y,
+    _Dcomplex X,
+    _Dcomplex Y,
   ) {
     return _cpow(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 
@@ -371,10 +371,10 @@ class Clash {
       _cpowPtr.asFunction<_Dcomplex Function(_Dcomplex, _Dcomplex)>();
 
   _Dcomplex cproj(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _cproj(
-      _Z,
+      Z,
     );
   }
 
@@ -383,10 +383,10 @@ class Clash {
   late final _cproj = _cprojPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   double creal(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _creal(
-      _Z,
+      Z,
     );
   }
 
@@ -395,10 +395,10 @@ class Clash {
   late final _creal = _crealPtr.asFunction<double Function(_Dcomplex)>();
 
   _Dcomplex csin(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _csin(
-      _Z,
+      Z,
     );
   }
 
@@ -407,10 +407,10 @@ class Clash {
   late final _csin = _csinPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex csinh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _csinh(
-      _Z,
+      Z,
     );
   }
 
@@ -419,10 +419,10 @@ class Clash {
   late final _csinh = _csinhPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex csqrt(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _csqrt(
-      _Z,
+      Z,
     );
   }
 
@@ -431,10 +431,10 @@ class Clash {
   late final _csqrt = _csqrtPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex ctan(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _ctan(
-      _Z,
+      Z,
     );
   }
 
@@ -443,10 +443,10 @@ class Clash {
   late final _ctan = _ctanPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   _Dcomplex ctanh(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _ctanh(
-      _Z,
+      Z,
     );
   }
 
@@ -455,10 +455,10 @@ class Clash {
   late final _ctanh = _ctanhPtr.asFunction<_Dcomplex Function(_Dcomplex)>();
 
   double norm(
-    _Dcomplex _Z,
+    _Dcomplex Z,
   ) {
     return _norm(
-      _Z,
+      Z,
     );
   }
 
@@ -467,10 +467,10 @@ class Clash {
   late final _norm = _normPtr.asFunction<double Function(_Dcomplex)>();
 
   double cabsf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cabsf(
-      _Z,
+      Z,
     );
   }
 
@@ -479,10 +479,10 @@ class Clash {
   late final _cabsf = _cabsfPtr.asFunction<double Function(_Fcomplex)>();
 
   _Fcomplex cacosf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cacosf(
-      _Z,
+      Z,
     );
   }
 
@@ -491,10 +491,10 @@ class Clash {
   late final _cacosf = _cacosfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex cacoshf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cacoshf(
-      _Z,
+      Z,
     );
   }
 
@@ -503,10 +503,10 @@ class Clash {
   late final _cacoshf = _cacoshfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   double cargf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cargf(
-      _Z,
+      Z,
     );
   }
 
@@ -515,10 +515,10 @@ class Clash {
   late final _cargf = _cargfPtr.asFunction<double Function(_Fcomplex)>();
 
   _Fcomplex casinf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _casinf(
-      _Z,
+      Z,
     );
   }
 
@@ -527,10 +527,10 @@ class Clash {
   late final _casinf = _casinfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex casinhf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _casinhf(
-      _Z,
+      Z,
     );
   }
 
@@ -539,10 +539,10 @@ class Clash {
   late final _casinhf = _casinhfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex catanf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _catanf(
-      _Z,
+      Z,
     );
   }
 
@@ -551,10 +551,10 @@ class Clash {
   late final _catanf = _catanfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex catanhf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _catanhf(
-      _Z,
+      Z,
     );
   }
 
@@ -563,10 +563,10 @@ class Clash {
   late final _catanhf = _catanhfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex ccosf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _ccosf(
-      _Z,
+      Z,
     );
   }
 
@@ -575,10 +575,10 @@ class Clash {
   late final _ccosf = _ccosfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex ccoshf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _ccoshf(
-      _Z,
+      Z,
     );
   }
 
@@ -587,10 +587,10 @@ class Clash {
   late final _ccoshf = _ccoshfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex cexpf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cexpf(
-      _Z,
+      Z,
     );
   }
 
@@ -599,10 +599,10 @@ class Clash {
   late final _cexpf = _cexpfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   double cimagf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cimagf(
-      _Z,
+      Z,
     );
   }
 
@@ -611,10 +611,10 @@ class Clash {
   late final _cimagf = _cimagfPtr.asFunction<double Function(_Fcomplex)>();
 
   _Fcomplex clogf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _clogf(
-      _Z,
+      Z,
     );
   }
 
@@ -623,10 +623,10 @@ class Clash {
   late final _clogf = _clogfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex clog10f(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _clog10f(
-      _Z,
+      Z,
     );
   }
 
@@ -635,10 +635,10 @@ class Clash {
   late final _clog10f = _clog10fPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex conjf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _conjf(
-      _Z,
+      Z,
     );
   }
 
@@ -647,12 +647,12 @@ class Clash {
   late final _conjf = _conjfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex cpowf(
-    _Fcomplex _X,
-    _Fcomplex _Y,
+    _Fcomplex X,
+    _Fcomplex Y,
   ) {
     return _cpowf(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 
@@ -663,10 +663,10 @@ class Clash {
       _cpowfPtr.asFunction<_Fcomplex Function(_Fcomplex, _Fcomplex)>();
 
   _Fcomplex cprojf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _cprojf(
-      _Z,
+      Z,
     );
   }
 
@@ -675,10 +675,10 @@ class Clash {
   late final _cprojf = _cprojfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   double crealf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _crealf(
-      _Z,
+      Z,
     );
   }
 
@@ -687,10 +687,10 @@ class Clash {
   late final _crealf = _crealfPtr.asFunction<double Function(_Fcomplex)>();
 
   _Fcomplex csinf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _csinf(
-      _Z,
+      Z,
     );
   }
 
@@ -699,10 +699,10 @@ class Clash {
   late final _csinf = _csinfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex csinhf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _csinhf(
-      _Z,
+      Z,
     );
   }
 
@@ -711,10 +711,10 @@ class Clash {
   late final _csinhf = _csinhfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex csqrtf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _csqrtf(
-      _Z,
+      Z,
     );
   }
 
@@ -723,10 +723,10 @@ class Clash {
   late final _csqrtf = _csqrtfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex ctanf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _ctanf(
-      _Z,
+      Z,
     );
   }
 
@@ -735,10 +735,10 @@ class Clash {
   late final _ctanf = _ctanfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   _Fcomplex ctanhf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _ctanhf(
-      _Z,
+      Z,
     );
   }
 
@@ -747,10 +747,10 @@ class Clash {
   late final _ctanhf = _ctanhfPtr.asFunction<_Fcomplex Function(_Fcomplex)>();
 
   double normf(
-    _Fcomplex _Z,
+    _Fcomplex Z,
   ) {
     return _normf(
-      _Z,
+      Z,
     );
   }
 
@@ -759,12 +759,12 @@ class Clash {
   late final _normf = _normfPtr.asFunction<double Function(_Fcomplex)>();
 
   _Dcomplex _Cbuild(
-    double _Re,
-    double _Im,
+    double Re,
+    double Im,
   ) {
     return __Cbuild(
-      _Re,
-      _Im,
+      Re,
+      Im,
     );
   }
 
@@ -775,12 +775,12 @@ class Clash {
       __CbuildPtr.asFunction<_Dcomplex Function(double, double)>();
 
   _Dcomplex _Cmulcc(
-    _Dcomplex _X,
-    _Dcomplex _Y,
+    _Dcomplex X,
+    _Dcomplex Y,
   ) {
     return __Cmulcc(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 
@@ -791,12 +791,12 @@ class Clash {
       __CmulccPtr.asFunction<_Dcomplex Function(_Dcomplex, _Dcomplex)>();
 
   _Dcomplex _Cmulcr(
-    _Dcomplex _X,
-    double _Y,
+    _Dcomplex X,
+    double Y,
   ) {
     return __Cmulcr(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 
@@ -807,12 +807,12 @@ class Clash {
       __CmulcrPtr.asFunction<_Dcomplex Function(_Dcomplex, double)>();
 
   _Fcomplex _FCbuild(
-    double _Re,
-    double _Im,
+    double Re,
+    double Im,
   ) {
     return __FCbuild(
-      _Re,
-      _Im,
+      Re,
+      Im,
     );
   }
 
@@ -823,12 +823,12 @@ class Clash {
       __FCbuildPtr.asFunction<_Fcomplex Function(double, double)>();
 
   _Fcomplex _FCmulcc(
-    _Fcomplex _X,
-    _Fcomplex _Y,
+    _Fcomplex X,
+    _Fcomplex Y,
   ) {
     return __FCmulcc(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 
@@ -839,12 +839,12 @@ class Clash {
       __FCmulccPtr.asFunction<_Fcomplex Function(_Fcomplex, _Fcomplex)>();
 
   _Fcomplex _FCmulcr(
-    _Fcomplex _X,
-    double _Y,
+    _Fcomplex X,
+    double Y,
   ) {
     return __FCmulcr(
-      _X,
-      _Y,
+      X,
+      Y,
     );
   }
 

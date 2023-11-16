@@ -22,8 +22,7 @@ class _AppWidgetState extends State<AppWidget> {
         useMaterial3: true,
         primarySwatch: Colors.blue,
       ),
-      routeInformationParser: Modular.routeInformationParser,
-      routerDelegate: Modular.routerDelegate,
+      routerConfig: Modular.routerConfig,
       builder: Asuka.builder,
       // navigatorObservers: [Asuka.asukaHeroController],
     );

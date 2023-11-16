@@ -9,14 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class MenuRouteItem {
-  final int priority;
   final String title;
   final Icon icon;
   final String path;
   final Module module;
 
   const MenuRouteItem({
-    required this.priority,
     required this.title,
     required this.icon,
     required this.path,
@@ -40,9 +38,7 @@ class MenuRoute {
   }
 
   List<SideMenuItem> get sideMenuList {
-    return menuList
-        .map((e) => SideMenuItem(priority: e.priority, title: e.title, icon: e.icon, onTap: (i, c) => c.changePage(i)))
-        .toList();
+    return menuList.map((e) => SideMenuItem(title: e.title, icon: e.icon, onTap: (i, c) => c.changePage(i))).toList();
   }
 
   getPath(int index) {
@@ -52,42 +48,36 @@ class MenuRoute {
 
 final MenuRoute menu = MenuRoute([
   MenuRouteItem(
-    priority: 0,
     title: "首页",
     icon: const Icon(Icons.home_outlined),
     path: "/home",
     module: HomeModule(),
   ),
   MenuRouteItem(
-    priority: 1,
     title: "代理",
     icon: const Icon(Icons.cloud_outlined),
     path: "/proxys",
     module: ProxysModule(),
   ),
   MenuRouteItem(
-    priority: 2,
     title: "日志",
     icon: const Icon(Icons.list_alt_outlined),
     path: "/logs",
     module: LogsModule(),
   ),
   MenuRouteItem(
-    priority: 3,
     title: "连接",
     icon: const Icon(Icons.link_rounded),
     path: "/connections",
     module: ConnectionsModule(),
   ),
   MenuRouteItem(
-    priority: 4,
-    title: "配置",
+    title: "订阅",
     icon: const Icon(Icons.code_rounded),
     path: "/profiles",
     module: ProfilesModule(),
   ),
   MenuRouteItem(
-    priority: 5,
     title: "设置",
     icon: const Icon(Icons.settings_outlined),
     path: "/settings",

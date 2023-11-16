@@ -339,7 +339,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 ///MMDB 更新按钮
 class MmdbRefreshButton extends StatefulWidget {
-  const MmdbRefreshButton({Key? key}) : super(key: key);
+  const MmdbRefreshButton({super.key});
 
   @override
   State<MmdbRefreshButton> createState() => _MmdbRefreshButtonState();

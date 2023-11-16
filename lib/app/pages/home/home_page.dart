@@ -60,7 +60,7 @@ class _HomePageState extends State<HomePage> {
 class OnButton extends StatelessWidget {
   final Function() onTap;
 
-  const OnButton({Key? key, required this.onTap}) : super(key: key);
+  const OnButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +98,7 @@ class OnButton extends StatelessWidget {
 class OffButton extends StatelessWidget {
   final Function() onTap;
 
-  const OffButton({Key? key, required this.onTap}) : super(key: key);
+  const OffButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +134,7 @@ class OffButton extends StatelessWidget {
 }
 
 class LoadingButton extends StatelessWidget {
-  const LoadingButton({Key? key}) : super(key: key);
+  const LoadingButton({super.key});
 
   @override
   Widget build(BuildContext context) {

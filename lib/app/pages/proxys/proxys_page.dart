@@ -15,17 +15,18 @@ class ProxysPage extends StatefulWidget {
   const ProxysPage({super.key});
 
   @override
-  ModularState<ProxysPage, ProxysController> createState() => _ProxysPageState();
+  State<ProxysPage> createState() => _ProxysPageState();
 }
 
-class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
+class _ProxysPageState extends State<ProxysPage> {
   final ScrollController _scrollController = ScrollController();
+  final ProxysController _controller = Modular.get<ProxysController>();
   bool _showFab = true;
 
   @override
   void initState() {
     super.initState();
-    controller.initState();
+    _controller.initState();
     _scrollController.addListener(_scrollListener);
   }
 
@@ -47,8 +48,8 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   void testDelay(TabController tabController) async {
     var overlay = Loading.builder();
     Asuka.addOverlay(overlay);
-    await controller.delayGroup(
-      controller.model.groups[tabController.index],
+    await _controller.delayGroup(
+      _controller.model.groups[tabController.index],
     );
     overlay.remove();
   }
@@ -64,7 +65,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
 
   sortAction() {
     change(sortType, BuildContext context) {
-      controller.sort(sortType);
+      _controller.sort(sortType);
       Navigator.of(context).pop();
     }
 
@@ -87,7 +88,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                 title: Text(SortType.values[i].showName),
                 trailing: Radio<SortType>(
                   value: SortType.values[i],
-                  groupValue: controller.model.sortType,
+                  groupValue: _controller.model.sortType,
                   onChanged: (v) => change(v, cxt),
                 ),
               );
@@ -101,7 +102,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
   @override
   Widget build(BuildContext context) {
     return Observer(builder: (c) {
-      var groups = controller.model.groups;
+      var groups = _controller.model.groups;
       return DefaultTabController(
         length: groups.length,
         child: Scaffold(
@@ -126,7 +127,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                   children: groups.map((group) {
                     var groupName = group.name;
                     var groupNow = group.now;
-                    var list = controller.getShowList(group);
+                    var list = _controller.getShowList(group);
                     return ListView.separated(
                       controller: _scrollController,
                       itemBuilder: (_, i) {
@@ -147,7 +148,7 @@ class _ProxysPageState extends ModularState<ProxysPage, ProxysController> {
                             style: const TextStyle(fontSize: 12),
                           ),
                           trailing: delay,
-                          onTap: () => controller.select(
+                          onTap: () => _controller.select(
                             name: groupName,
                             select: name,
                           ),

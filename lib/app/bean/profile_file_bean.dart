@@ -10,11 +10,11 @@ class ProfileFile extends ProfileBase {
   String? path;
 
   ProfileFile({
-    required String file,
-    required String name,
-    required DateTime time,
+    required super.file,
+    required super.name,
+    required super.time,
     this.path,
-  }) : super(name: name, file: file, type: ProfileType.FILE, time: time);
+  }) : super(type: ProfileType.FILE);
 
   factory ProfileFile.defaultBean({
     required String file,

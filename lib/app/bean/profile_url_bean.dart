@@ -17,13 +17,13 @@ class ProfileURL extends ProfileBase {
   SubUserinfo? userinfo;
 
   ProfileURL({
-    required String file,
-    required String name,
-    required DateTime time,
+    required super.file,
+    required super.name,
+    required super.time,
     required this.url,
     required this.interval,
     this.userinfo,
-  }) : super(name: name, file: file, type: ProfileType.URL, time: time);
+  }) : super(type: ProfileType.URL);
 
   factory ProfileURL.defaultBean({
     required String url,

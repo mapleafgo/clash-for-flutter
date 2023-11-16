@@ -71,7 +71,7 @@ class _InitPageState extends State<InitPage> {
 }
 
 class LoadingWidget extends StatelessWidget {
-  const LoadingWidget({Key? key, required this.value}) : super(key: key);
+  const LoadingWidget({super.key, required this.value});
 
   final double value;
 

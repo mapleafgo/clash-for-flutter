@@ -12,7 +12,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class ConnectionsPage extends StatefulWidget {
-  const ConnectionsPage({Key? key}) : super(key: key);
+  const ConnectionsPage({super.key});
 
   @override
   State<ConnectionsPage> createState() => _ConnectionsPageState();
