@@ -166,12 +166,12 @@ jobs:
         run: |
           cd core
           go install src.techknowlogick.com/xgo@latest
-          xgo --targets=darwin/arm64 -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libclash .
+          xgo --targets=darwin/arm64 -ldflags="-w -s" -buildmode=c-shared -out=libclash .
           mv libclash-*.dylib libclash.dylib
       - uses: actions/upload-artifact@v3
         with:
           name: macos-arm64-lib
-          path: libclash.dylib
+          path: core/libclash.dylib
   build-macos:
     runs-on: macos-latest
     needs: [ get-release, build-macos-arm64-lib ]
