@@ -49,7 +49,7 @@ jobs:
           cp $system\vcruntime140.dll $release
           cp $system\vcruntime140_1.dll $release
 
-          New-Item -Path build\windows\Output -ItemType Directory
+          New-Item -Path build\windows\x64\Output -ItemType Directory
           Compress-Archive -Path "$release*" -DestinationPath "build\windows\x64\Output\clash_for_flutter-$env:VERSION-windows-amd64-portable.zip"
 
           cd build/windows/x64
@@ -203,8 +203,9 @@ jobs:
 
           cd $PROJECT_DIR/core
           go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dylib mapleafgo.cn/clash_for_flutter/core
-          cp ./dist/libclash.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib/libclash.dylib
-          cp $PROJECT_DIR/lib-arm64/libclash.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib/libclash.dylib
+          mkdir -p $PROJECT_DIR/macos/Frameworks
+          cp ./dist/libclash.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
+          cp $PROJECT_DIR/lib-arm64/libclash.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
 
           cd $PROJECT_DIR/macos/Frameworks
           lipo -create -output libclash.dylib amd64-lib arm64-lib
