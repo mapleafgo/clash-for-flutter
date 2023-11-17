@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// 常量类
 class Constants {
   /// 开源地址
@@ -26,7 +28,8 @@ class Constants {
 
   static const localhost = "127.0.0.1";
 
-  static const port = "9090";
+  /// 采用随机端口
+  static final port = Random().nextInt(1000) + 10000;
 
   /// 日志最大容量
   static const logsCapacity = 1000;
