@@ -50,7 +50,7 @@ jobs:
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\clash_for_flutter-$env:VERSION-windows-amd64-portable.zip"
+          Compress-Archive -Path "$release*" -DestinationPath "build\windows\x64\Output\clash_for_flutter-$env:VERSION-windows-amd64-portable.zip"
 
           cd build/windows/x64
           echo @"
@@ -117,7 +117,7 @@ jobs:
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: build/windows/Output/*
+          asset_path: build/windows/x64/Output/*
           overwrite: true
   build-linux:
     runs-on: ubuntu-20.04
@@ -166,12 +166,12 @@ jobs:
         run: |
           cd core
           go install src.techknowlogick.com/xgo@latest
-          xgo -go go-$GO_VERSION.x --targets=darwin/arm64 -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libclash .
+          xgo --targets=darwin/arm64 -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libclash .
           mv libclash-*.dylib libclash.dylib
       - uses: actions/upload-artifact@v3
         with:
           name: macos-arm64-lib
-          path: core/libclash.dylib
+          path: libclash.dylib
   build-macos:
     runs-on: macos-latest
     needs: [ get-release, build-macos-arm64-lib ]
@@ -204,8 +204,8 @@ jobs:
           cd $PROJECT_DIR/core
           go build -ldflags="-w -s" -buildmode=c-shared -o ./dist/libclash.dylib mapleafgo.cn/clash_for_flutter/core
           cp ./dist/libclash.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib/libclash.dylib
-          cd $PROJECT_DIR
-          cp lib-arm64/libclash.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib/libclash.dylib
+          cp $PROJECT_DIR/lib-arm64/libclash.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib/libclash.dylib
+
           cd $PROJECT_DIR/macos/Frameworks
           lipo -create -output libclash.dylib amd64-lib arm64-lib
 
