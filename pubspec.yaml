@@ -40,7 +40,6 @@ dependencies:
   flutter_modular: ^6.3.2
   path_provider: ^2.1.0
   ffi: ^2.1.0
-  vclibs: ^0.1.0
   protocol_handler: ^0.1.5
   proxy_manager: ^0.0.3
   file_picker: ^6.1.1
