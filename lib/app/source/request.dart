@@ -26,15 +26,23 @@ class Request {
     ),
   );
 
+  final _dio = Dio(
+    BaseOptions(
+      headers: {'User-Agent': 'Clash For Flutter'},
+      connectTimeout: const Duration(seconds: 3),
+    ),
+  );
+
   Future<Response> downFile({
     required String urlPath,
     required String savePath,
     void Function(int, int)? onReceiveProgress,
   }) {
-    return Dio(BaseOptions(
-      headers: {'User-Agent': 'Clash For Flutter'},
-      connectTimeout: const Duration(seconds: 3),
-    )).download(urlPath, savePath, onReceiveProgress: onReceiveProgress);
+    return _dio.download(
+      urlPath,
+      savePath,
+      onReceiveProgress: onReceiveProgress,
+    );
   }
 
   /// 下载订阅
