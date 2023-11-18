@@ -17,10 +17,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.5
+version: 1.2.6
 
 environment:
-  sdk: '>=2.18.4 <4.0.0'
+  sdk: '>=3.2.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -62,7 +62,7 @@ dependencies:
   data_table_2: ^2.5.8
   timeago: ^3.6.0
   flutter_staggered_grid_view: ^0.7.0
-  extended_text: ^11.1.0
+  extended_text: ^12.0.0
   local_notifier: ^0.1.5
 
 dev_dependencies:
@@ -124,4 +124,4 @@ ffigen:
     entry-points:
       - 'core/dist/libclash.h'
   llvm-path:
-    - 'C:/Users/Casbin/Scoop/apps/llvm/current'
+    - 'D:\Scoop\apps\llvm\current'
