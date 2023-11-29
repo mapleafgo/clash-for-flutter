@@ -25,7 +25,7 @@ class TrayController {
     );
     _tray.initSystemTray(
       iconPath: Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
-      toolTip: "Clash For Flutter",
+      toolTip: "Clash for Flutter",
     );
     _tray.registerSystemTrayEventHandler((e) {
       if (e == kSystemTrayEventClick) {

@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'dart:math';
 
 /// 常量类
 class Constants {
+  static final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
   /// 开源地址
   static const sourceUrl = "https://github.com/mapleafgo/clash-for-flutter";
 

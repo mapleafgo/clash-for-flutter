@@ -28,7 +28,7 @@ class Request {
 
   final _dio = Dio(
     BaseOptions(
-      headers: {'User-Agent': 'Clash For Flutter'},
+      headers: {'User-Agent': 'Clash for Flutter'},
       connectTimeout: const Duration(seconds: 3),
     ),
   );

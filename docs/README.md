@@ -1,4 +1,4 @@
-# Clash For Flutter
+# Clash for Flutter
 
 > 该软件是 Clash 的桌面端实现，使用[Flutter](https://flutter.dev/)开发。支持 Windows、~~Linux、MacOS~~
 

@@ -855,83 +855,69 @@ class Clash {
   late final __FCmulcr =
       __FCmulcrPtr.asFunction<_Fcomplex Function(_Fcomplex, double)>();
 
-  int setHomeDir(
+  int SetHomeDir(
     ffi.Pointer<ffi.Char> homeStr,
   ) {
-    return _setHomeDir(
+    return _SetHomeDir(
       homeStr,
     );
   }
 
-  late final _setHomeDirPtr =
+  late final _SetHomeDirPtr =
       _lookup<ffi.NativeFunction<GoUint8 Function(ffi.Pointer<ffi.Char>)>>(
-          'setHomeDir');
-  late final _setHomeDir =
-      _setHomeDirPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
+          'SetHomeDir');
+  late final _SetHomeDir =
+      _SetHomeDirPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
 
-  int setConfig(
+  int SetConfig(
     ffi.Pointer<ffi.Char> configStr,
   ) {
-    return _setConfig(
+    return _SetConfig(
       configStr,
     );
   }
 
-  late final _setConfigPtr =
+  late final _SetConfigPtr =
       _lookup<ffi.NativeFunction<GoUint8 Function(ffi.Pointer<ffi.Char>)>>(
-          'setConfig');
-  late final _setConfig =
-      _setConfigPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
+          'SetConfig');
+  late final _SetConfig =
+      _SetConfigPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
 
-  void withExternalController(
-    ffi.Pointer<ffi.Char> externalController,
-  ) {
-    return _withExternalController(
-      externalController,
-    );
-  }
-
-  late final _withExternalControllerPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
-          'withExternalController');
-  late final _withExternalController = _withExternalControllerPtr
-      .asFunction<void Function(ffi.Pointer<ffi.Char>)>();
-
-  void withSecret(
-    ffi.Pointer<ffi.Char> secret,
-  ) {
-    return _withSecret(
-      secret,
-    );
-  }
-
-  late final _withSecretPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
-          'withSecret');
-  late final _withSecret =
-      _withSecretPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
-
-  int mmdbVerify(
+  int VerifyMMDB(
     ffi.Pointer<ffi.Char> path,
   ) {
-    return _mmdbVerify(
+    return _VerifyMMDB(
       path,
     );
   }
 
-  late final _mmdbVerifyPtr =
+  late final _VerifyMMDBPtr =
       _lookup<ffi.NativeFunction<GoUint8 Function(ffi.Pointer<ffi.Char>)>>(
-          'mmdbVerify');
-  late final _mmdbVerify =
-      _mmdbVerifyPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
+          'VerifyMMDB');
+  late final _VerifyMMDB =
+      _VerifyMMDBPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
 
-  int startService() {
-    return _startService();
+  void StartController(
+    ffi.Pointer<ffi.Char> controller,
+  ) {
+    return _StartController(
+      controller,
+    );
   }
 
-  late final _startServicePtr =
-      _lookup<ffi.NativeFunction<GoUint8 Function()>>('startService');
-  late final _startService = _startServicePtr.asFunction<int Function()>();
+  late final _StartControllerPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+          'StartController');
+  late final _StartController =
+      _StartControllerPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+
+  int StartService() {
+    return _StartService();
+  }
+
+  late final _StartServicePtr =
+      _lookup<ffi.NativeFunction<GoUint8 Function()>>('StartService');
+  late final _StartService = _StartServicePtr.asFunction<int Function()>();
 }
 
 typedef va_list = ffi.Pointer<ffi.Char>;

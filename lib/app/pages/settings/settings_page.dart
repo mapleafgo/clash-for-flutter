@@ -174,8 +174,6 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: const SysAppBar(title: Text("设置")),
       body: Observer(builder: (_) {
-        var port = _config.clashConfig.port ?? 0;
-        var socksPort = _config.clashConfig.socksPort ?? 0;
         var redirPort = _config.clashConfig.redirPort ?? 0;
         var tproxyPort = _config.clashConfig.tproxyPort ?? 0;
         var mixedPort = _config.clashConfig.mixedPort ?? 0;
@@ -195,24 +193,13 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('Clash 代理端口'),
               tiles: <SettingsTile>[
                 SettingsTile.navigation(
-                  title: const Text('Http & Https'),
-                  value: Text(port.toString()),
+                  title: const Text('Mixed（混合代理）'),
+                  value: Text(mixedPort.toString()),
                   onPressed: (_) {
                     setValue(
-                      title: "Http & Https",
-                      initialValue: port.toString(),
-                      onOk: (v) => _config.setState(port: int.parse(v)),
-                    );
-                  },
-                ),
-                SettingsTile.navigation(
-                  title: const Text('Socks'),
-                  value: Text(socksPort.toString()),
-                  onPressed: (_) {
-                    setValue(
-                      title: "Socks",
-                      initialValue: socksPort.toString(),
-                      onOk: (v) => _config.setState(socksPort: int.parse(v)),
+                      title: "Mixed",
+                      initialValue: mixedPort.toString(),
+                      onOk: (v) => _config.setState(mixedPort: int.parse(v)),
                     );
                   },
                 ),
@@ -235,17 +222,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       title: "Tproxy",
                       initialValue: tproxyPort.toString(),
                       onOk: (v) => _config.setState(tproxyPort: int.parse(v)),
-                    );
-                  },
-                ),
-                SettingsTile.navigation(
-                  title: const Text('Mixed'),
-                  value: Text(mixedPort.toString()),
-                  onPressed: (_) {
-                    setValue(
-                      title: "Mixed",
-                      initialValue: mixedPort.toString(),
-                      onOk: (v) => _config.setState(mixedPort: int.parse(v)),
                     );
                   },
                 ),

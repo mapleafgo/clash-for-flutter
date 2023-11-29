@@ -1,4 +1,4 @@
-# Clash For Flutter
+# Clash for Flutter
 
 这是一个 **Clash** 的桌面客户端，支持 windows、linux、macos。
 

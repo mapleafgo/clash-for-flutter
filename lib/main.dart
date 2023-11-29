@@ -11,6 +11,7 @@ import 'package:protocol_handler/protocol_handler.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
+import 'app/utils/constants.dart';
 import 'main.mapper.g.dart' show initializeJsonMapper;
 
 void main() async {
@@ -21,25 +22,27 @@ void main() async {
     },
   }));
 
-  WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
-  if (!Platform.isLinux) {
-    await protocolHandler.register('clash');
+  if (Constants.isDesktop) {
+    WidgetsFlutterBinding.ensureInitialized();
+    await windowManager.ensureInitialized();
+    if (!Platform.isLinux) {
+      await protocolHandler.register('clash');
+    }
+
+    WindowOptions windowOptions = const WindowOptions(
+      minimumSize: Size(460, 600),
+      size: Size(900, 650),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
   }
-
-  WindowOptions windowOptions = const WindowOptions(
-    minimumSize: Size(460, 600),
-    size: Size(900, 650),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
-
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
 
   timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
 

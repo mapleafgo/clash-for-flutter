@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
+import 'package:clash_for_flutter/app/bean/tun_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
-import 'package:clash_for_flutter/clash_generated_bindings.dart';
-import 'package:ffi/ffi.dart';
+import 'package:clash_for_flutter/core_control.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,7 +25,6 @@ abstract class ConfigFileBase with Store {
   static bool isStartClash = false;
 
   late Directory configDir;
-  late final Clash clash;
   late final String clashConfigPath;
   late final String clashForMePath;
   late final String profilesPath;
@@ -45,7 +43,7 @@ abstract class ConfigFileBase with Store {
     clashForMePath = "${configDir.path}${Constants.clashForMe}";
     clashConfigPath = "${configDir.path}${Constants.clashConfig}";
 
-    await _initClash();
+    await CoreControl.init();
     _initConfig();
     _initAction();
   }
@@ -59,20 +57,6 @@ abstract class ConfigFileBase with Store {
     }
 
     clashConfig = Config.formYamlFile(clashConfigPath);
-  }
-
-  // 初始化clash
-  Future<void> _initClash() async {
-    String fullPath = "";
-    if (Platform.isWindows) {
-      fullPath = "libclash.dll";
-    } else if (Platform.isMacOS) {
-      fullPath = "libclash.dylib";
-    } else {
-      fullPath = "libclash.so";
-    }
-    final lib = DynamicLibrary.open(fullPath);
-    clash = Clash(lib);
   }
 
   _initAction() {
@@ -140,7 +124,7 @@ abstract class ConfigFileBase with Store {
   List<ProfileBase> get profiles => clashForMe.profiles;
 
   /// 由于切换 profile 后，部分如 mode 会随 profile 更改，这里相当于同步配置
-  _changeProfile(String file) async {
+  Future<void> _changeProfile(String file) async {
     await _request.changeConfig(file);
     await _request.patchConfigs(clashConfig);
   }
@@ -181,69 +165,92 @@ abstract class ConfigFileBase with Store {
   }
 
   /// 启动clash
-  bool start() {
-    clash.setHomeDir(configDir.path.toNativeUtf8().cast());
-    clash.setConfig(File(clashConfigPath).absolute.path.toNativeUtf8().cast());
-    clash.withExternalController(
-      "${Constants.localhost}:${Constants.port}".toNativeUtf8().cast(),
-    );
-    if (clash.startService() == 1) {
+  Future<bool> start() async {
+    await CoreControl.setHomeDir(configDir);
+    await CoreControl.setConfig(File(clashConfigPath));
+    await CoreControl.startController("${Constants.localhost}:${Constants.port}");
+    if (await CoreControl.startService() ?? false) {
       if (active != null) {
-        _changeProfile("$profilesPath/${active?.file}");
+        await _changeProfile("$profilesPath/${active?.file}");
       }
-      isStartClash = true;
+
+      // 等待clash启动
+      while (true) {
+        var v = await _request.getClashVersion();
+        if (v != null) {
+          isStartClash = true;
+          break;
+        }
+      }
       return true;
     }
     return false;
   }
 
+  Future<bool?> verifyMMDB(String path) {
+    return CoreControl.verifyMMDB(path);
+  }
+
   /// 打开代理
   @action
   Future<void> openProxy() async {
-    int? port = clashConfig.port ?? 0;
-    if (port == 0) {
-      port = null;
-    }
-    int? socksPort = clashConfig.socksPort ?? 0;
-    if (socksPort == 0) {
-      socksPort = null;
-    }
-    int? mixedPort = clashConfig.mixedPort ?? 0;
-    if (mixedPort == 0) {
-      mixedPort = null;
-    }
-
-    port = port ?? mixedPort ?? 0;
-    if (port != 0) {
-      await proxyManager.setAsSystemProxy(
-        ProxyTypes.http,
-        Constants.localhost,
-        port,
-      );
-      await proxyManager.setAsSystemProxy(
-        ProxyTypes.https,
-        Constants.localhost,
-        port,
-      );
-      systemProxy = true;
-    }
-    socksPort = socksPort ?? mixedPort ?? 0;
-    if (socksPort != 0) {
-      if (!Platform.isWindows) {
-        await proxyManager.setAsSystemProxy(
-          ProxyTypes.socks,
-          Constants.localhost,
-          socksPort,
-        );
+    if (Constants.isDesktop) {
+      if (await _request.patchConfigs(Config(tun: Tun(enable: true)))) {
+        systemProxy = true;
       }
+    } else if (Platform.isAndroid) {
+      await CoreControl.startVpn();
       systemProxy = true;
     }
+/*
+    int port = clashConfig.mixedPort ?? 7890;
+    if (Constants.isDesktop) {
+      if (port != 0) {
+        if (!Platform.isWindows) {
+          await proxyManager.setAsSystemProxy(
+            ProxyTypes.socks,
+            Constants.localhost,
+            port,
+          );
+        } else {
+          await proxyManager.setAsSystemProxy(
+            ProxyTypes.http,
+            Constants.localhost,
+            port,
+          );
+          await proxyManager.setAsSystemProxy(
+            ProxyTypes.https,
+            Constants.localhost,
+            port,
+          );
+        }
+        systemProxy = true;
+      }
+    } else if (Platform.isAndroid) {
+      SocksVpnPlugin.startVpn(port);
+      systemProxy = true;
+    }
+*/
   }
 
   /// 关闭代理
   @action
   Future<void> closeProxy() async {
-    proxyManager.cleanSystemProxy();
+    if (Constants.isDesktop) {
+      if (await _request.patchConfigs(Config(tun: Tun(enable: false)))) {
+        systemProxy = false;
+      }
+    } else if (Platform.isAndroid) {
+      await CoreControl.stopVpn();
+      systemProxy = false;
+    }
+/*
+    if (Constants.isDesktop) {
+      proxyManager.cleanSystemProxy();
+    } else {
+      SocksVpnPlugin.stopVpn();
+    }
     systemProxy = false;
+*/
   }
 }

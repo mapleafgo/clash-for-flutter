@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const SysAppBar(title: Text("Clash For Flutter")),
+      appBar: const SysAppBar(title: Text("Clash for Flutter")),
       body: Center(
         child: _loading
             ? const LoadingButton()

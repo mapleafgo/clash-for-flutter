@@ -33,20 +33,23 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  dio: ^5.3.3
+
   window_manager: ^0.3.7
   launch_at_startup: ^0.2.2
   system_tray: ^2.0.3
+  desktop_lifecycle: ^0.1.1
+  proxy_manager: ^0.0.3
+  local_notifier: ^0.1.5
+
+  dio: ^5.3.3
   flutter_modular: ^6.3.2
   path_provider: ^2.1.0
   ffi: ^2.1.0
   protocol_handler: ^0.1.5
-  proxy_manager: ^0.0.3
   file_picker: ^6.1.1
-  package_info_plus: ^4.2.0
+  package_info_plus: ^5.0.1
   url_launcher: ^6.2.1
   web_socket_channel: ^2.4.0
-  desktop_lifecycle: ^0.1.1
 
   dart_json_mapper: ^2.2.9
   dart_json_mapper_mobx: ^2.0.5
@@ -63,7 +66,6 @@ dependencies:
   timeago: ^3.6.0
   flutter_staggered_grid_view: ^0.7.0
   extended_text: ^12.0.0
-  local_notifier: ^0.1.5
 
 dev_dependencies:
   flutter_test:
@@ -122,6 +124,6 @@ ffigen:
   output: 'lib/clash_generated_bindings.dart'
   headers:
     entry-points:
-      - 'core/dist/libclash.h'
+      - 'dist/libclash.h'
   llvm-path:
     - 'D:\Scoop\apps\llvm\current'

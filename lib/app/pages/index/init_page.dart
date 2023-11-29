@@ -6,7 +6,6 @@ import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/logs_subscription.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
-import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -40,7 +39,7 @@ class _InitPageState extends State<InitPage> {
         mmdbNew.renameSync(mmdb.path);
       }
 
-      if (_config.clash.mmdbVerify(mmdb.path.toNativeUtf8().cast()) == 0) {
+      if (!(await _config.verifyMMDB(mmdb.path) ?? false)) {
         setState(() => _isLoading = true);
         await _request
             .downFile(
@@ -52,7 +51,9 @@ class _InitPageState extends State<InitPage> {
             )
             .then((value) => setState(() => _isLoading = false));
       }
-      if (_config.start()) { // 启动服务
+
+      // 启动服务
+      if (await _config.start()) {
         _logs.startSubLogs(); // 启动日志订阅
         Modular.to.navigate("/tab");
       } else {
@@ -78,7 +79,7 @@ class LoadingWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const SysAppBar(title: Text("Clash For Flutter")),
+      appBar: const SysAppBar(title: Text("Clash for Flutter")),
       body: Center(
         child: SizedBox(
           height: 200,

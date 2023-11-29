@@ -14,7 +14,7 @@ class _AppWidgetState extends State<AppWidget> {
   @override
   Widget build(BuildContext context) {
     var app = MaterialApp.router(
-      title: "Clash For Flutter",
+      title: "Clash for Flutter",
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN")],
       locale: const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN"),
