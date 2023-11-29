@@ -44,8 +44,8 @@ abstract class ConfigFileBase with Store {
     clashConfigPath = "${configDir.path}${Constants.clashConfig}";
 
     await CoreControl.init();
-    _initConfig();
-    _initAction();
+    await _initConfig();
+    await _initAction();
   }
 
   @action
@@ -57,6 +57,10 @@ abstract class ConfigFileBase with Store {
     }
 
     clashConfig = Config.formYamlFile(clashConfigPath);
+
+    await CoreControl.setHomeDir(configDir);
+    await CoreControl.setConfig(File(clashConfigPath));
+    await CoreControl.startController("${Constants.localhost}:${Constants.port}");
   }
 
   _initAction() {
@@ -166,22 +170,11 @@ abstract class ConfigFileBase with Store {
 
   /// 启动clash
   Future<bool> start() async {
-    await CoreControl.setHomeDir(configDir);
-    await CoreControl.setConfig(File(clashConfigPath));
-    await CoreControl.startController("${Constants.localhost}:${Constants.port}");
     if (await CoreControl.startService() ?? false) {
       if (active != null) {
         await _changeProfile("$profilesPath/${active?.file}");
       }
-
-      // 等待clash启动
-      while (true) {
-        var v = await _request.getClashVersion();
-        if (v != null) {
-          isStartClash = true;
-          break;
-        }
-      }
+      isStartClash = true;
       return true;
     }
     return false;
