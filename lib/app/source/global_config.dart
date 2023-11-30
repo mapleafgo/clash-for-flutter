@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
@@ -50,17 +51,26 @@ abstract class ConfigFileBase with Store {
 
   @action
   _initConfig() async {
-    ClashForMeConfig? tempCfm = ClashForMeConfig.formYamlFile(clashForMePath);
+    ClashForMeConfig? tempCfm = ClashForMeConfig.formFile(clashForMePath);
     tempCfm = await _profilesInitCheck(tempCfm);
     if (tempCfm != null) {
       clashForMe = tempCfm;
     }
 
-    clashConfig = Config.formYamlFile(clashConfigPath);
+    // 读取 clash 基础配置
+    if (File(clashConfigPath).existsSync()) {
+      clashConfig = Config.formYamlFile(clashConfigPath);
+    } else {
+      clashConfig.saveFile(clashConfigPath);
+    }
 
+    // 设置目录与配置文件
     await CoreControl.setHomeDir(configDir);
     await CoreControl.setConfig(File(clashConfigPath));
-    await CoreControl.startController("${Constants.localhost}:${Constants.port}");
+
+    // 启动 rust 控制服务，端口随机
+    var addr = await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(1000) + 10000}");
+    Constants.rustAddr = addr ?? "";
   }
 
   _initAction() {
@@ -127,10 +137,8 @@ abstract class ConfigFileBase with Store {
   @computed
   List<ProfileBase> get profiles => clashForMe.profiles;
 
-  /// 由于切换 profile 后，部分如 mode 会随 profile 更改，这里相当于同步配置
-  Future<void> _changeProfile(String file) async {
-    await _request.changeConfig(file);
-    await _request.patchConfigs(clashConfig);
+  Future<void> _changeProfile(String file) {
+    return _request.changeConfig(file);
   }
 
   @action
@@ -174,6 +182,8 @@ abstract class ConfigFileBase with Store {
       if (active != null) {
         await _changeProfile("$profilesPath/${active?.file}");
       }
+      var c = await _request.getConfigs();
+      clashConfig = c ?? clashConfig;
       isStartClash = true;
       return true;
     }

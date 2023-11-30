@@ -18,13 +18,8 @@ import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Request {
-  final _clashDio = Dio(
-    BaseOptions(
-      baseUrl: "http://${Constants.localhost}:${Constants.port}",
-      connectTimeout: const Duration(seconds: 3),
-      receiveTimeout: const Duration(seconds: 5),
-    ),
-  );
+  late final String _addr;
+  late final Dio _clashDio;
 
   final _dio = Dio(
     BaseOptions(
@@ -32,6 +27,17 @@ class Request {
       connectTimeout: const Duration(seconds: 3),
     ),
   );
+
+  init(String addrStr) {
+    _addr = addrStr;
+    _clashDio = Dio(
+      BaseOptions(
+        baseUrl: "http://$_addr",
+        connectTimeout: const Duration(seconds: 3),
+        receiveTimeout: const Duration(seconds: 5),
+      ),
+    );
+  }
 
   Future<Response> downFile({
     required String urlPath,
@@ -163,18 +169,18 @@ class Request {
   }
 
   Stream<NetSpeed?> traffic() {
-    var channel = WebSocketChannel.connect(Uri.parse("ws://${Constants.localhost}:${Constants.port}/traffic"));
+    var channel = WebSocketChannel.connect(Uri.parse("ws://$_addr/traffic"));
     return channel.stream.map((event) => JsonMapper.deserialize<NetSpeed>(event));
   }
 
   Stream<LogData?> logs(LogLevel? level) {
-    var uri = Uri.parse("ws://${Constants.localhost}:${Constants.port}/logs?level=${level?.value ?? ""}");
+    var uri = Uri.parse("ws://$_addr/logs?level=${level?.value ?? ""}");
     var channel = WebSocketChannel.connect(uri);
     return channel.stream.map((event) => JsonMapper.deserialize<LogData>(event)?..time = DateTime.now());
   }
 
   Stream<Snapshot?> connections() {
-    var channel = WebSocketChannel.connect(Uri.parse("ws://${Constants.localhost}:${Constants.port}/connections"));
+    var channel = WebSocketChannel.connect(Uri.parse("ws://$_addr/connections"));
     return channel.stream.map((event) => JsonMapper.deserialize<Snapshot>(event));
   }
 

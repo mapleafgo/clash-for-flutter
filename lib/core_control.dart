@@ -57,11 +57,11 @@ class CoreControl {
     return _channel.invokeMethod<bool>('setHomeDir', {"dir": dir.path});
   }
 
-  static Future<void> startController(String controller) {
+  static Future<String?> startRust(String addr) {
     if (Constants.isDesktop) {
-      return Future<void>.sync(() => _clash.StartController(controller.toNativeUtf8().cast()));
+      return Future<String>.sync(() => _clash.StartRust(addr.toNativeUtf8().cast()).cast<Utf8>().toDartString());
     }
-    return _channel.invokeMethod('startController', {"controller": controller});
+    return _channel.invokeMethod<String>('startRust', {"addr": addr});
   }
 
   static Future<bool?> verifyMMDB(String path) {

@@ -27,7 +27,8 @@ class MainActivity : FlutterActivity() {
         }
 
         "startService" -> {
-          result.success(Mobile.startService())
+          startClash()
+          result.success(true)
         }
 
         "setConfig" -> {
@@ -40,10 +41,9 @@ class MainActivity : FlutterActivity() {
           result.success(Mobile.setHomeDir(dir))
         }
 
-        "startController" -> {
-          val controller = call.argument<String>("controller")
-          Mobile.startController(controller)
-          result.success(null)
+        "startRust" -> {
+          val addr = call.argument<String>("addr")
+          result.success(Mobile.startRust(addr))
         }
 
         "verifyMMDB" -> {
@@ -74,6 +74,12 @@ class MainActivity : FlutterActivity() {
   private fun stopVpn() {
     val vpnIntent = Intent(this, Socks5Service::class.java)
     vpnIntent.action = BaseService.ACTION_DISCONNECT
+    startService(vpnIntent)
+  }
+
+  private fun startClash() {
+    val vpnIntent = Intent(this, Socks5Service::class.java)
+    vpnIntent.action = BaseService.ACTION_CLASH
     startService(vpnIntent)
   }
 }

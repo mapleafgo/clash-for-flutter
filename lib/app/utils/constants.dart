@@ -31,8 +31,8 @@ class Constants {
 
   static const localhost = "127.0.0.1";
 
-  /// 采用随机端口
-  static final port = Random().nextInt(1000) + 10000;
+  /// rust 控制服务地址
+  static late final String rustAddr;
 
   /// 日志最大容量
   static const logsCapacity = 1000;

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 open class BaseService : VpnService() {
   companion object {
     val ACTION_CONNECT = "cn.mapleafgo.clash_for_flutter.START"
+    val ACTION_CLASH = "cn.mapleafgo.clash_for_flutter.CLASH"
     val ACTION_DISCONNECT = "cn.mapleafgo.clash_for_flutter.STOP"
   }
 
@@ -25,6 +26,9 @@ open class BaseService : VpnService() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     if (intent?.action == ACTION_DISCONNECT) {
       closeService()
+      return START_NOT_STICKY
+    } else if (intent?.action == ACTION_CLASH) {
+      setupClashServe()
       return START_NOT_STICKY
     }
     setupVpnServe()
@@ -48,6 +52,10 @@ open class BaseService : VpnService() {
   }
 
   open fun setupVpnServe() {
+    throw RuntimeException("Stub!")
+  }
+
+  open fun setupClashServe() {
     throw RuntimeException("Stub!")
   }
 

@@ -193,7 +193,7 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('Clash 代理端口'),
               tiles: <SettingsTile>[
                 SettingsTile.navigation(
-                  title: const Text('Mixed（混合代理）'),
+                  title: const Text('Http & Socks'),
                   value: Text(mixedPort.toString()),
                   onPressed: (_) {
                     setValue(
@@ -291,12 +291,12 @@ class _SettingsPageState extends State<SettingsPage> {
               tiles: [
                 SettingsTile.navigation(
                   title: const Text("官网"),
-                  value: const Text(Constants.homeUrl),
+                  value: const Text(Constants.homeUrl, overflow: TextOverflow.ellipsis),
                   onPressed: (_) => launchUrl(Uri.parse(Constants.homeUrl)),
                 ),
                 SettingsTile.navigation(
                   title: const Text("开源地址"),
-                  value: const Text(Constants.sourceUrl),
+                  value: const Text(Constants.sourceUrl, overflow: TextOverflow.ellipsis),
                   onPressed: (_) => launchUrl(Uri.parse(Constants.sourceUrl)),
                 ),
                 SettingsTile.navigation(

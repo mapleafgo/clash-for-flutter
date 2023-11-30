@@ -64,7 +64,7 @@ class ClashForMeConfig {
         delayTestUrl: DefaultConfigValue.delayTestUrl,
       );
 
-  factory ClashForMeConfig.formYamlFile(String path) {
+  factory ClashForMeConfig.formFile(String path) {
     var clashForMeFile = File(path);
     if (clashForMeFile.existsSync()) {
       Map<String, dynamic> cfm = json.decode(clashForMeFile.readAsStringSync());

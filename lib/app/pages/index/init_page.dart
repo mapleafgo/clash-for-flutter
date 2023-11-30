@@ -32,6 +32,7 @@ class _InitPageState extends State<InitPage> {
   void _init() async {
     try {
       await _config.init();
+      _request.init(Constants.rustAddr);
       var mmdb = File("${_config.configDir.path}${Constants.mmdb}");
       // 对新mmdb操作
       var mmdbNew = File("${_config.configDir.path}${Constants.mmdb_new}");
@@ -78,6 +79,7 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var size = MediaQuery.of(context).size;
     return Scaffold(
       appBar: const SysAppBar(title: Text("Clash for Flutter")),
       body: Center(
@@ -88,7 +90,7 @@ class LoadingWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               SizedBox(
-                width: 450,
+                width: size.width * 0.6,
                 child: LinearProgressIndicator(
                   value: value,
                   backgroundColor: Colors.black12,

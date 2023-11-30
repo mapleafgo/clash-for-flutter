@@ -124,6 +124,6 @@ ffigen:
   output: 'lib/clash_generated_bindings.dart'
   headers:
     entry-points:
-      - 'dist/libclash.h'
+      - 'core/dist/libclash.h'
   llvm-path:
     - 'D:\Scoop\apps\llvm\current'

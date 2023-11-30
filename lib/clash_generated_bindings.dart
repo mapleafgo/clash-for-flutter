@@ -897,19 +897,19 @@ class Clash {
   late final _VerifyMMDB =
       _VerifyMMDBPtr.asFunction<int Function(ffi.Pointer<ffi.Char>)>();
 
-  void StartController(
-    ffi.Pointer<ffi.Char> controller,
+  ffi.Pointer<ffi.Char> StartRust(
+    ffi.Pointer<ffi.Char> addr,
   ) {
-    return _StartController(
-      controller,
+    return _StartRust(
+      addr,
     );
   }
 
-  late final _StartControllerPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
-          'StartController');
-  late final _StartController =
-      _StartControllerPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+  late final _StartRustPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>>('StartRust');
+  late final _StartRust = _StartRustPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
 
   int StartService() {
     return _StartService();

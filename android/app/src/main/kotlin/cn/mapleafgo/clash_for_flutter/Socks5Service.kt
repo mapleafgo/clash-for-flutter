@@ -29,4 +29,8 @@ class Socks5Service : BaseService() {
     Mobile.operateTun(false, 0, 0)
     super.closeService()
   }
+
+  override fun setupClashServe() {
+    Mobile.startService()
+  }
 }
