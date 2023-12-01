@@ -1,34 +1,58 @@
 package cn.mapleafgo.clash_for_flutter
 
-import android.app.Activity
+import android.content.ComponentName
 import android.content.Intent
-import android.net.VpnService
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import cn.mapleafgo.mobile.Mobile
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
   private val CHANNEL = "cn.mapleafgo/socks_vpn_plugin"
-  private val REQUEST_CODE = 0
+
+  private lateinit var cService: BaseService
+  private var cBound: Boolean = false
+
+  private val connection = object : ServiceConnection {
+    override fun onServiceConnected(className: ComponentName, service: IBinder) {
+      val binder = service as BaseService.BaseBinder
+      cService = binder.getService()
+      cBound = true
+    }
+
+    override fun onServiceDisconnected(arg0: ComponentName) {
+      cBound = false
+    }
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    Intent(this, ClashService::class.java).also { intent -> bindService(intent, connection, BIND_AUTO_CREATE) }
     MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
       when (call.method) {
         "startVpn" -> {
-          startVpn()
-          result.success(null)
+          if (cBound) {
+            cService.setupVpnServe()
+          }
+          result.success(cBound)
         }
 
         "stopVpn" -> {
-          stopVpn()
-          result.success(null)
+          if (cBound) {
+            cService.closeVpnService()
+          }
+          result.success(cBound)
         }
 
         "startService" -> {
-          startClash()
-          result.success(true)
+          if (cBound) {
+            val b = cService.setupClashServe()
+            result.success(b)
+          } else {
+            result.success(cBound)
+          }
         }
 
         "setConfig" -> {
@@ -58,28 +82,9 @@ class MainActivity : FlutterActivity() {
     }
   }
 
-  private fun startVpn() {
-    val intent = VpnService.prepare(this)
-    if (intent != null) {
-      startActivityForResult(intent, REQUEST_CODE);
-    } else {
-      onActivityResult(REQUEST_CODE, Activity.RESULT_OK, null);
-    }
-
-    val vpnIntent = Intent(this, Socks5Service::class.java)
-    vpnIntent.action = BaseService.ACTION_CONNECT
-    startService(vpnIntent)
-  }
-
-  private fun stopVpn() {
-    val vpnIntent = Intent(this, Socks5Service::class.java)
-    vpnIntent.action = BaseService.ACTION_DISCONNECT
-    startService(vpnIntent)
-  }
-
-  private fun startClash() {
-    val vpnIntent = Intent(this, Socks5Service::class.java)
-    vpnIntent.action = BaseService.ACTION_CLASH
-    startService(vpnIntent)
+  override fun onDestroy() {
+    super.onDestroy()
+    unbindService(connection)
+    cBound = false
   }
 }

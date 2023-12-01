@@ -57,16 +57,8 @@ abstract class ConfigFileBase with Store {
       clashForMe = tempCfm;
     }
 
-    // 读取 clash 基础配置
-    if (File(clashConfigPath).existsSync()) {
-      clashConfig = Config.formYamlFile(clashConfigPath);
-    } else {
-      clashConfig.saveFile(clashConfigPath);
-    }
-
-    // 设置目录与配置文件
+    // 设置主目录
     await CoreControl.setHomeDir(configDir);
-    await CoreControl.setConfig(File(clashConfigPath));
 
     // 启动 rust 控制服务，端口随机
     var addr = await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(1000) + 10000}");
@@ -176,14 +168,15 @@ abstract class ConfigFileBase with Store {
     );
   }
 
-  /// 启动clash
+  /// 启动 clash
+  @action
   Future<bool> start() async {
     if (await CoreControl.startService() ?? false) {
+      var c = await _request.getConfigs();
+      clashConfig = clashConfig.copy(c);
       if (active != null) {
         await _changeProfile("$profilesPath/${active?.file}");
       }
-      var c = await _request.getConfigs();
-      clashConfig = c ?? clashConfig;
       isStartClash = true;
       return true;
     }

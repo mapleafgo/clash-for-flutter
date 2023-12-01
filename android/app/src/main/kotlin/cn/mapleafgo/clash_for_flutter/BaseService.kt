@@ -5,6 +5,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.net.VpnService
+import android.os.Binder
+import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 
@@ -15,32 +17,44 @@ open class BaseService : VpnService() {
     val ACTION_DISCONNECT = "cn.mapleafgo.clash_for_flutter.STOP"
   }
 
-  protected var tun: ParcelFileDescriptor? = null
-  protected var mtu = 1500
+  private val binder = BaseBinder()
 
   private val notifyID = 1
   private val notifyChannelID = "vpn"
   private val notifyChannelName = "VPN服务状态"
-  private lateinit var notificationManager: NotificationManager
+  private var notificationManager: NotificationManager? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    if (intent?.action == ACTION_DISCONNECT) {
-      closeService()
-      return START_NOT_STICKY
-    } else if (intent?.action == ACTION_CLASH) {
-      setupClashServe()
-      return START_NOT_STICKY
+    when (intent?.action) {
+      ACTION_DISCONNECT -> {
+        closeVpnService()
+      }
+
+      ACTION_CONNECT -> {
+        setupVpnServe()
+        startForeground()
+      }
+
+      else -> {
+        setupClashServe()
+      }
     }
-    setupVpnServe()
-    startForeground()
-    return START_STICKY
+    return START_NOT_STICKY
   }
 
-  private fun startForeground() {
+  inner class BaseBinder : Binder() {
+    fun getService(): BaseService = this@BaseService
+  }
+
+  override fun onBind(intent: Intent?): IBinder? {
+    return binder
+  }
+
+  protected fun startForeground() {
     notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
     val channel = NotificationChannel(notifyChannelID, notifyChannelName, NotificationManager.IMPORTANCE_DEFAULT)
-    notificationManager.createNotificationChannel(channel)
+    notificationManager?.createNotificationChannel(channel)
 
     val notification = NotificationCompat.Builder(this, notifyChannelID)
       .setSmallIcon(R.mipmap.ic_launcher)
@@ -55,22 +69,20 @@ open class BaseService : VpnService() {
     throw RuntimeException("Stub!")
   }
 
-  open fun setupClashServe() {
+  open fun setupClashServe(): Boolean {
     throw RuntimeException("Stub!")
   }
 
-  open fun closeService() {
-    notificationManager.cancel(notifyID)
-    tun?.close()
-    stopForeground(Service.STOP_FOREGROUND_REMOVE)
+  open fun closeVpnService() {
+    notificationManager?.cancel(notifyID)
   }
 
   override fun onDestroy() {
-    closeService()
+    closeVpnService()
   }
 
   override fun onRevoke() {
-    closeService()
+    closeVpnService()
   }
 }
 

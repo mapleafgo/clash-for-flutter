@@ -22,6 +22,8 @@ class Config {
   @JsonProperty(name: "tun")
   Tun? tun;
 
+  get tunEnable => tun?.enable;
+
   Config({
     this.mixedPort,
     this.redirPort,
@@ -67,24 +69,19 @@ class Config {
     );
   }
 
-  factory Config.defaultConfig() => Config(mixedPort: 7890);
-
-  factory Config.formYamlFile(String path) {
-    var yaml = SettingsYaml.load(pathToSettings: path);
+  Config copy(Config? that) {
+    that ??= this;
     return Config(
-      redirPort: yaml["redir-port"],
-      tproxyPort: yaml["tproxy-port"],
-      mixedPort: yaml["mixed-port"] ?? 7890,
-      allowLan: yaml["allow-lan"],
-      mode: Mode.values.singleWhere(
-        (m) => m.value == yaml["mode"],
-        orElse: () => Mode.Rule,
-      ),
-      logLevel: LogLevel.values.singleWhere(
-        (m) => m.value == yaml["log-level"],
-        orElse: () => LogLevel.info,
-      ),
-      ipv6: yaml["ipv6"],
+      redirPort: that.redirPort,
+      tproxyPort: that.tproxyPort,
+      mixedPort: that.mixedPort,
+      allowLan: that.allowLan,
+      mode: that.mode,
+      logLevel: that.logLevel,
+      ipv6: that.ipv6,
+      tun: that.tun,
     );
   }
+
+  factory Config.defaultConfig() => Config(mixedPort: 7890);
 }

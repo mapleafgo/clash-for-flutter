@@ -87,6 +87,14 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
     return _$_initConfigAsyncAction.run(() => super._initConfig());
   }
 
+  late final _$startAsyncAction =
+      AsyncAction('ConfigFileBase.start', context: context);
+
+  @override
+  Future<bool> start() {
+    return _$startAsyncAction.run(() => super.start());
+  }
+
   late final _$openProxyAsyncAction =
       AsyncAction('ConfigFileBase.openProxy', context: context);
 

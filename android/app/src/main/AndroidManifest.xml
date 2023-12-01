@@ -36,7 +36,7 @@
       </intent-filter>
     </activity>
     <service
-      android:name=".Socks5Service"
+      android:name=".ClashService"
       android:foregroundServiceType="connectedDevice"
       android:permission="android.permission.BIND_VPN_SERVICE"
       android:exported="false">
