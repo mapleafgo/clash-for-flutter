@@ -1,18 +1,15 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/tun_bean.dart';
-import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:clash_for_flutter/core_control.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:proxy_manager/proxy_manager.dart';
 
 part 'global_config.g.dart';
@@ -25,28 +22,17 @@ abstract class ConfigFileBase with Store {
   final _request = Modular.get<Request>();
   static bool isStartClash = false;
 
-  late Directory configDir;
-  late final String clashConfigPath;
-  late final String clashForMePath;
-  late final String profilesPath;
+  final String clashForMePath = "${Constants.homeDir.path}${Constants.clashForMe}";
+  final String profilesPath = "${Constants.homeDir.path}${Constants.profilesPath}";
 
   @observable
   bool systemProxy = false;
   @observable
-  Config clashConfig = Config.defaultConfig();
-  @observable
   ClashForMeConfig clashForMe = ClashForMeConfig.defaultConfig();
 
   Future<void> init() async {
-    await getApplicationSupportDirectory().then((dir) => configDir = dir);
-
-    profilesPath = "${configDir.path}${Constants.profilesPath}";
-    clashForMePath = "${configDir.path}${Constants.clashForMe}";
-    clashConfigPath = "${configDir.path}${Constants.clashConfig}";
-
-    await CoreControl.init();
     await _initConfig();
-    await _initAction();
+    await _initReaction();
   }
 
   @action
@@ -56,44 +42,27 @@ abstract class ConfigFileBase with Store {
     if (tempCfm != null) {
       clashForMe = tempCfm;
     }
-
-    // 设置主目录
-    await CoreControl.setHomeDir(configDir);
-
-    // 启动 rust 控制服务，端口随机
-    var addr = await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(1000) + 10000}");
-    Constants.rustAddr = addr ?? "";
   }
 
-  _initAction() {
-    reaction(
-      (_) => clashConfig,
-      (Config config) {
-        config.saveFile(clashConfigPath);
-        if (isStartClash) {
-          _request.patchConfigs(config);
-        }
-        if (systemProxy) {
-          openProxy();
-        }
-      },
-      delay: 1000,
-    );
+  _initReaction() {
     reaction(
       (_) => clashForMe,
       (ClashForMeConfig config) => config.saveFile(clashForMePath),
       delay: 1000,
     );
     reaction(
-      (_) => selectedFile ?? clashConfigPath,
-      (String file) {
+      (_) => selectedFile,
+      (String? file) {
+        if (file == null) {
+          return;
+        }
+
         if (!File(file).isAbsolute) {
           file = "$profilesPath/$file";
         }
-        if (isStartClash) {
-          _changeProfile(file);
-        }
+        _request.changeConfig(file);
       },
+      fireImmediately: true,
     );
   }
 
@@ -129,25 +98,12 @@ abstract class ConfigFileBase with Store {
   @computed
   List<ProfileBase> get profiles => clashForMe.profiles;
 
-  Future<void> _changeProfile(String file) {
-    return _request.changeConfig(file);
-  }
-
   @action
   setState({
     String? selectedFile,
     List<ProfileBase>? profiles,
     String? mmdbUrl,
     String? delayTestUrl,
-    int? port,
-    int? socksPort,
-    int? redirPort,
-    int? tproxyPort,
-    int? mixedPort,
-    bool? allowLan,
-    Mode? mode,
-    LogLevel? logLevel,
-    bool? ipv6,
   }) {
     clashForMe = clashForMe.copyWith(
       selectedFile: selectedFile,
@@ -155,36 +111,6 @@ abstract class ConfigFileBase with Store {
       mmdbUrl: mmdbUrl,
       delayTestUrl: delayTestUrl,
     );
-    clashConfig = clashConfig.copyWith(
-      port: port,
-      socksPort: socksPort,
-      redirPort: redirPort,
-      tproxyPort: tproxyPort,
-      mixedPort: mixedPort,
-      allowLan: allowLan,
-      mode: mode,
-      logLevel: logLevel,
-      ipv6: ipv6,
-    );
-  }
-
-  /// 启动 clash
-  @action
-  Future<bool> start() async {
-    if (await CoreControl.startService() ?? false) {
-      var c = await _request.getConfigs();
-      clashConfig = clashConfig.copy(c);
-      if (active != null) {
-        await _changeProfile("$profilesPath/${active?.file}");
-      }
-      isStartClash = true;
-      return true;
-    }
-    return false;
-  }
-
-  Future<bool?> verifyMMDB(String path) {
-    return CoreControl.verifyMMDB(path);
   }
 
   /// 打开代理

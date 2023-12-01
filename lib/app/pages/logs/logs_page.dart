@@ -1,6 +1,7 @@
 import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/logs_subscription.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class LogsPage extends StatefulWidget {
 class _LogsPageState extends State<LogsPage> {
   final _controller = ScrollController();
   final _config = Modular.get<GlobalConfig>();
+  final _core = Modular.get<CoreConfig>();
   final _logs = Modular.get<LogsSubscription>();
   bool _showFab = true;
 
@@ -65,7 +67,7 @@ class _LogsPageState extends State<LogsPage> {
 
   levelAction() {
     change(LogLevel? level, BuildContext context) {
-      _config.setState(logLevel: level);
+      _core.setState(logLevel: level);
       Navigator.of(context).pop();
     }
 
@@ -88,7 +90,7 @@ class _LogsPageState extends State<LogsPage> {
                 title: Text(LogLevel.values[i].value.toUpperCase()),
                 trailing: Radio<LogLevel>(
                   value: LogLevel.values[i],
-                  groupValue: _config.clashConfig.logLevel ?? LogLevel.info,
+                  groupValue: _core.clash.logLevel ?? LogLevel.info,
                   onChanged: (v) => change(v, cxt),
                 ),
               );

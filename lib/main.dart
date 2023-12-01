@@ -1,12 +1,15 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:clash_for_flutter/app/app_module.dart';
 import 'package:clash_for_flutter/app/app_widget.dart';
 import 'package:clash_for_flutter/app/utils/clash_custom_messages.dart';
+import 'package:clash_for_flutter/core_control.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:dart_json_mapper_mobx/dart_json_mapper_mobx.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
@@ -45,6 +48,15 @@ void main() async {
   }
 
   timeago.setLocaleMessages('zh_cn', ClashCustomMessages());
+
+  // 初始化 Clash
+  CoreControl.init();
+  await getApplicationSupportDirectory().then((dir) => Constants.homeDir = dir);
+  // 设置主目录
+  await CoreControl.setHomeDir(Constants.homeDir);
+  // 启动 rust 控制服务，端口随机
+  await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(999) + 10000}")
+      .then((addr) => Constants.rustAddr = addr ?? "");
 
   runApp(ModularApp(
     module: AppModule(),

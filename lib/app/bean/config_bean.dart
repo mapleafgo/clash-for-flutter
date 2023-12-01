@@ -48,8 +48,6 @@ class Config {
   }
 
   Config copyWith({
-    int? port,
-    int? socksPort,
     int? redirPort,
     int? tproxyPort,
     int? mixedPort,

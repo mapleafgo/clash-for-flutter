@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:clash_for_flutter/app/bean/log_bean.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
@@ -11,8 +12,8 @@ import 'package:mobx/mobx.dart';
 
 /// 日志订阅
 class LogsSubscription extends ChangeNotifier implements Disposable {
+  final _core = Modular.get<CoreConfig>();
   final _request = Modular.get<Request>();
-  final _config = Modular.get<GlobalConfig>();
   final Queue<LogData> _logQueue = Queue<LogData>();
   StreamSubscription? _subscription;
 
@@ -25,7 +26,7 @@ class LogsSubscription extends ChangeNotifier implements Disposable {
   }
 
   void startSubLogs() {
-    reaction((_) => _config.clashConfig.logLevel, (level) {
+    reaction((_) => _core.clash.logLevel ?? LogLevel.info, (level) {
       _subscription?.cancel();
       _subscription = _request.logs(level).listen((event) {
         if (event == null) {

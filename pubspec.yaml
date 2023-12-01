@@ -55,7 +55,6 @@ dependencies:
   dart_json_mapper_mobx: ^2.0.5
   mobx: ^2.2.1
   flutter_mobx: ^2.0.6+5
-  mobx_triple: ^2.0.0
 
   easy_sidemenu: ^0.5.0
   asuka: ^2.2.0

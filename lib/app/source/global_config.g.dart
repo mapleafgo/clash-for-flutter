@@ -47,22 +47,6 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
     });
   }
 
-  late final _$clashConfigAtom =
-      Atom(name: 'ConfigFileBase.clashConfig', context: context);
-
-  @override
-  Config get clashConfig {
-    _$clashConfigAtom.reportRead();
-    return super.clashConfig;
-  }
-
-  @override
-  set clashConfig(Config value) {
-    _$clashConfigAtom.reportWrite(value, super.clashConfig, () {
-      super.clashConfig = value;
-    });
-  }
-
   late final _$clashForMeAtom =
       Atom(name: 'ConfigFileBase.clashForMe', context: context);
 
@@ -85,14 +69,6 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   @override
   Future _initConfig() {
     return _$_initConfigAsyncAction.run(() => super._initConfig());
-  }
-
-  late final _$startAsyncAction =
-      AsyncAction('ConfigFileBase.start', context: context);
-
-  @override
-  Future<bool> start() {
-    return _$startAsyncAction.run(() => super.start());
   }
 
   late final _$openProxyAsyncAction =
@@ -119,16 +95,7 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
       {String? selectedFile,
       List<ProfileBase>? profiles,
       String? mmdbUrl,
-      String? delayTestUrl,
-      int? port,
-      int? socksPort,
-      int? redirPort,
-      int? tproxyPort,
-      int? mixedPort,
-      bool? allowLan,
-      Mode? mode,
-      LogLevel? logLevel,
-      bool? ipv6}) {
+      String? delayTestUrl}) {
     final _$actionInfo = _$ConfigFileBaseActionController.startAction(
         name: 'ConfigFileBase.setState');
     try {
@@ -136,16 +103,7 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
           selectedFile: selectedFile,
           profiles: profiles,
           mmdbUrl: mmdbUrl,
-          delayTestUrl: delayTestUrl,
-          port: port,
-          socksPort: socksPort,
-          redirPort: redirPort,
-          tproxyPort: tproxyPort,
-          mixedPort: mixedPort,
-          allowLan: allowLan,
-          mode: mode,
-          logLevel: logLevel,
-          ipv6: ipv6);
+          delayTestUrl: delayTestUrl);
     } finally {
       _$ConfigFileBaseActionController.endAction(_$actionInfo);
     }
@@ -155,7 +113,6 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   String toString() {
     return '''
 systemProxy: ${systemProxy},
-clashConfig: ${clashConfig},
 clashForMe: ${clashForMe},
 active: ${active},
 selectedFile: ${selectedFile},

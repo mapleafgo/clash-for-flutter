@@ -392,14 +392,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_triple:
-    dependency: transitive
-    description:
-      name: flutter_triple
-      sha256: aef6471c9cee0007780234c27a969a057d6edb895d7aa923152e9eccbe1893a7
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.2.0"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -565,14 +557,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.4.0"
-  mobx_triple:
-    dependency: "direct main"
-    description:
-      name: mobx_triple
-      sha256: "59f54884bbfbbe2d727df7e1fd2eb61dd2bf5f2eee6541eb35a1c4c00acaad5a"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.0.0"
   modular_core:
     dependency: transitive
     description:
@@ -757,22 +741,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.1.0"
-  rx_notifier:
-    dependency: transitive
-    description:
-      name: rx_notifier
-      sha256: "08201324c0a2c6987c13798277f9bab592fcc2dfde362d21789f60eed8bd9ea2"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.3.0"
-  rx_notifier_annotation:
-    dependency: transitive
-    description:
-      name: rx_notifier_annotation
-      sha256: "362496563d617aa6fa21ab9c131f66348f3266b6580d69ecc23d2c23a52070a2"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.0.0"
   scope:
     dependency: transitive
     description:
@@ -914,14 +882,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.1"
-  triple:
-    dependency: transitive
-    description:
-      name: triple
-      sha256: "0d049c7d44fbe093432c72ec059a958b1b22e0748b3b90e806383ef2376f34cb"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.1.0"
   typed_data:
     dependency: transitive
     description:

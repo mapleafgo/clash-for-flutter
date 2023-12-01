@@ -87,7 +87,7 @@ class ProfileController {
     } else {
       _config.setState(profiles: tempList);
     }
-    File("${_config.configDir.path}${Constants.profilesPath}/$file").delete();
+    File("${Constants.homeDir.path}${Constants.profilesPath}/$file").delete();
   }
 
   /// 更新源(仅限URL)
@@ -115,6 +115,6 @@ class ProfileController {
     } else {
       _config.setState(profiles: tempList);
     }
-    File("${_config.configDir.path}${Constants.profilesPath}/$file").delete();
+    File("${Constants.homeDir.path}${Constants.profilesPath}/$file").delete();
   }
 }

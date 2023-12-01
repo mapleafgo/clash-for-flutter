@@ -11,7 +11,7 @@ class CoreControl {
   static late final Clash _clash;
 
   // 初始化clash
-  static Future<void> init() async {
+  static void init() {
     if (!Constants.isDesktop) {
       return;
     }
