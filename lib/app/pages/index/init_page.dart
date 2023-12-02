@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
-import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/app_config.dart';
+import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/logs_subscription.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
@@ -26,7 +26,6 @@ class _InitPageState extends State<InitPage> {
   final _logs = Modular.get<LogsSubscription>();
   double _loadingProgress = 0;
   bool _isLoading = false;
-  bool _isSuccess = false;
 
   @override
   void initState() {
@@ -34,10 +33,10 @@ class _InitPageState extends State<InitPage> {
     super.initState();
   }
 
-  void _init() async {
-    try {
+  _init() {
+    return Future(() async {
       if (!await _request.hello().then((res) => res.statusCode == HttpStatus.ok)) {
-        throw MessageException("无法连接到内核，请重启尝试");
+        throw MessageException("无法连接到内核，请尝试重启应用");
       }
 
       _core.init();
@@ -58,29 +57,24 @@ class _InitPageState extends State<InitPage> {
       }
 
       await _core.asyncConfig();
+
       // 已经开启tun直接跳转
       if (_config.tunIf && _core.tunEnable) {
-        _isSuccess = true;
         return;
       }
 
-      // 启动服务
-      if (await _config.start()) {
-        _isSuccess = true;
+      // 同步当前 profile
+      if (await _config.asyncProfile()) {
         return;
       }
-
-      throw Exception("启动服务失败");
-    } catch (e) {
+    }).then((value) async {
+      await _core.asyncConfig();
+      _logs.startSubLogs(); // 启动日志订阅
+      Modular.to.navigate("/tab");
+    }).onError((error, stackTrace) {
       Modular.to.navigate("/error");
-      Asuka.showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (_isSuccess) {
-        await _core.asyncConfig();
-        _logs.startSubLogs(); // 启动日志订阅
-        Modular.to.navigate("/tab");
-      }
-    }
+      Asuka.showSnackBar(SnackBar(content: Text(error.toString())));
+    });
   }
 
   @override

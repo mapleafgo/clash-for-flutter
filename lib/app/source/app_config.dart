@@ -7,8 +7,8 @@ import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
-import 'package:clash_for_flutter/core_control.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:path/path.dart' hide context;
 import 'package:mobx/mobx.dart';
 import 'package:proxy_manager/proxy_manager.dart';
 
@@ -50,7 +50,7 @@ abstract class AppConfigBase with Store {
 
   Future<void> init() async {
     await _initConfig();
-    await _initReaction();
+    _initReaction();
   }
 
   @action
@@ -89,11 +89,8 @@ abstract class AppConfigBase with Store {
 
     var profilesDir = Directory(profilesPath);
     var fileList = <String>[];
-    if (await profilesDir.exists()) {
-      fileList = await profilesDir.list().where((e) => e is File).map((file) {
-        var lastIndex = file.path.replaceAll("/", "\\").lastIndexOf("\\");
-        return file.path.substring(lastIndex + 1);
-      }).toList();
+    if (profilesDir.existsSync()) {
+      fileList = profilesDir.listSync().map((file) => basename(file.path)).toList();
     }
 
     List<ProfileBase> profiles = config.profiles.where((e) => fileList.contains(e.file)).toList();
@@ -117,13 +114,8 @@ abstract class AppConfigBase with Store {
     );
   }
 
-  Future<bool> start() {
-    return CoreControl.startService().then((r) {
-      if (active != null) {
-        return _request.changeConfig("$profilesPath/$selectedFile");
-      }
-      return false;
-    });
+  Future<bool> asyncProfile() {
+    return _request.changeConfig("$profilesPath/$selectedFile");
   }
 
   /// 打开代理

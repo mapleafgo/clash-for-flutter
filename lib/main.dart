@@ -58,6 +58,8 @@ void main() async {
   // 启动 rust 控制服务，端口随机
   await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(9999) + 10000}")
       .then((addr) => Constants.rustAddr = addr ?? "");
+  // 启动内核
+  await CoreControl.startService();
 
   runApp(ModularApp(
     module: AppModule(),
