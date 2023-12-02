@@ -9,18 +9,32 @@ part of 'core_config.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$CoreConfig on CoreConfigBase, Store {
-  late final _$clashConfigAtom =
-      Atom(name: 'CoreConfigBase.clashConfig', context: context);
+  Computed<bool>? _$tunEnableComputed;
+
+  @override
+  bool get tunEnable =>
+      (_$tunEnableComputed ??= Computed<bool>(() => super.tunEnable,
+              name: 'CoreConfigBase.tunEnable'))
+          .value;
+  Computed<int>? _$mixedPortComputed;
+
+  @override
+  int get mixedPort =>
+      (_$mixedPortComputed ??= Computed<int>(() => super.mixedPort,
+              name: 'CoreConfigBase.mixedPort'))
+          .value;
+
+  late final _$clashAtom = Atom(name: 'CoreConfigBase.clash', context: context);
 
   @override
   Config get clash {
-    _$clashConfigAtom.reportRead();
+    _$clashAtom.reportRead();
     return super.clash;
   }
 
   @override
   set clash(Config value) {
-    _$clashConfigAtom.reportWrite(value, super.clash, () {
+    _$clashAtom.reportWrite(value, super.clash, () {
       super.clash = value;
     });
   }
@@ -64,7 +78,9 @@ mixin _$CoreConfig on CoreConfigBase, Store {
   @override
   String toString() {
     return '''
-clashConfig: ${clash}
+clash: ${clash},
+tunEnable: ${tunEnable},
+mixedPort: ${mixedPort}
     ''';
   }
 }

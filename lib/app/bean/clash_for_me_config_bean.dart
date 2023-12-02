@@ -23,11 +23,16 @@ class ClashForMeConfig {
   @JsonProperty(name: "delay-test-url")
   String delayTestUrl;
 
+  /// 是否以 Tun 模式运行
+  @JsonProperty(name: "tun-if")
+  bool? tunIf;
+
   ClashForMeConfig({
     this.selectedFile,
     required this.profiles,
     required this.mmdbUrl,
     required this.delayTestUrl,
+    this.tunIf,
   });
 
   ClashForMeConfig copyWith({
@@ -35,12 +40,14 @@ class ClashForMeConfig {
     List<ProfileBase>? profiles,
     String? mmdbUrl,
     String? delayTestUrl,
+    bool? tunIf,
   }) {
     var config = ClashForMeConfig(
       selectedFile: selectedFile ?? this.selectedFile,
       profiles: profiles ?? this.profiles,
       mmdbUrl: mmdbUrl ?? this.mmdbUrl,
       delayTestUrl: delayTestUrl ?? this.delayTestUrl,
+      tunIf: tunIf ?? this.tunIf,
     );
     // 对当前选择的订阅进行优化
     var selectElements = config.profiles.where((e) => e.file == config.selectedFile);

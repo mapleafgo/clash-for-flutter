@@ -93,6 +93,10 @@ class Request {
     });
   }
 
+  Future<Response> hello() async {
+    return _clashDio.get("/");
+  }
+
   /// 获取所有代理
   Future<Proxies?> getProxies() async {
     var res = await _clashDio.get<Map<String, dynamic>>("/proxies");

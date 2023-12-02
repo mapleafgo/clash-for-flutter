@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:asuka/asuka.dart' hide showDialog;
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/core_config.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +21,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final _core = Modular.get<CoreConfig>();
   final _request = Modular.get<Request>();
   String _version = "1.2.0";
@@ -324,7 +322,7 @@ class MmdbRefreshButton extends StatefulWidget {
 }
 
 class _MmdbRefreshButtonState extends State<MmdbRefreshButton> {
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final _request = Modular.get<Request>();
 
   double _value = 0;
@@ -338,11 +336,10 @@ class _MmdbRefreshButtonState extends State<MmdbRefreshButton> {
       }
       return;
     }
-    var mmdb = File("${Constants.homeDir.path}${Constants.mmdb_new}");
     _request
         .downFile(
       urlPath: _config.clashForMe.mmdbUrl,
-      savePath: mmdb.path,
+      savePath: "${Constants.homeDir.path}${Constants.mmdb}",
       onReceiveProgress: (received, total) {
         setState(() => _value = received / total);
       },

@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:clash_for_flutter/app/bean/config_bean.dart';
+import 'package:clash_for_flutter/app/bean/tun_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
+import 'package:clash_for_flutter/core_control.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
 
@@ -15,6 +19,12 @@ abstract class CoreConfigBase with Store {
 
   @observable
   Config clash = Config.defaultConfig();
+
+  @computed
+  bool get tunEnable => clash.tun?.enable ?? false;
+
+  @computed
+  int get mixedPort => clash.mixedPort ?? 0;
 
   void init() {
     reaction(
@@ -51,5 +61,23 @@ abstract class CoreConfigBase with Store {
   @action
   Future<void> asyncConfig() async {
     clash = await _request.getConfigs() ?? clash;
+  }
+
+  Future<void> openTun() async {
+    if (Constants.isDesktop) {
+      await _request.patchConfigs(Config(tun: Tun(enable: true)));
+    } else if (Platform.isAndroid) {
+      await CoreControl.startVpn();
+    }
+    await asyncConfig();
+  }
+
+  Future<void> closeTun() async {
+    if (Constants.isDesktop) {
+      await _request.patchConfigs(Config(tun: Tun(enable: false)));
+    } else if (Platform.isAndroid) {
+      await CoreControl.stopVpn();
+    }
+    await asyncConfig();
   }
 }

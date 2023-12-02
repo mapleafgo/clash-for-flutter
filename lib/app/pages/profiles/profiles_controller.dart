@@ -5,7 +5,7 @@ import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_file_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
@@ -32,7 +32,7 @@ class ProfileShow {
 
 class ProfileController {
   final _request = Modular.get<Request>();
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
 
   Future<void> addProfile(ProfileBase profile) {
     Future<ProfileBase> handle;

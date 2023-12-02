@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:asuka/asuka.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
+import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
 import 'package:clash_for_flutter/app/source/core_config.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/logs_subscription.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
@@ -19,12 +20,13 @@ class InitPage extends StatefulWidget {
 }
 
 class _InitPageState extends State<InitPage> {
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final _core = Modular.get<CoreConfig>();
   final _request = Modular.get<Request>();
   final _logs = Modular.get<LogsSubscription>();
   double _loadingProgress = 0;
   bool _isLoading = false;
+  bool _isSuccess = false;
 
   @override
   void initState() {
@@ -34,21 +36,20 @@ class _InitPageState extends State<InitPage> {
 
   void _init() async {
     try {
-      _core.init();
-      await _config.init();
-      var mmdb = File("${Constants.homeDir.path}${Constants.mmdb}");
-      // 对新mmdb操作
-      var mmdbNew = File("${Constants.homeDir.path}${Constants.mmdb_new}");
-      if (mmdbNew.existsSync()) {
-        mmdbNew.renameSync(mmdb.path);
+      if (!await _request.hello().then((res) => res.statusCode == HttpStatus.ok)) {
+        throw MessageException("无法连接到内核，请重启尝试");
       }
 
-      if (!(await CoreControl.verifyMMDB(mmdb.path) ?? false)) {
+      _core.init();
+      await _config.init();
+
+      var m = File("${Constants.homeDir.path}${Constants.mmdb}");
+      if (!(await CoreControl.verifyMMDB(m.path) ?? false)) {
         setState(() => _isLoading = true);
         await _request
             .downFile(
               urlPath: _config.clashForMe.mmdbUrl,
-              savePath: mmdb.path,
+              savePath: m.path,
               onReceiveProgress: (received, total) {
                 setState(() => _loadingProgress = received / total);
               },
@@ -56,17 +57,29 @@ class _InitPageState extends State<InitPage> {
             .then((value) => setState(() => _isLoading = false));
       }
 
-      // 启动服务
-      if (await CoreControl.startService() ?? false) {
-        await _core.asyncConfig();
-        _logs.startSubLogs(); // 启动日志订阅
-        Modular.to.navigate("/tab");
-      } else {
-        Asuka.showSnackBar(const SnackBar(content: Text("启动服务失败")));
+      await _core.asyncConfig();
+      // 已经开启tun直接跳转
+      if (_config.tunIf && _core.tunEnable) {
+        _isSuccess = true;
+        return;
       }
+
+      // 启动服务
+      if (await _config.start()) {
+        _isSuccess = true;
+        return;
+      }
+
+      throw Exception("启动服务失败");
     } catch (e) {
       Modular.to.navigate("/error");
       Asuka.showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (_isSuccess) {
+        await _core.asyncConfig();
+        _logs.startSubLogs(); // 启动日志订阅
+        Modular.to.navigate("/tab");
+      }
     }
   }
 

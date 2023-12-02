@@ -3,7 +3,7 @@ import 'package:clash_for_flutter/app/bean/profile_url_bean.dart';
 import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/pages/router.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -17,7 +17,7 @@ class IndexMobilePage extends StatefulWidget {
 }
 
 class _IndexPageState extends State<IndexMobilePage> with ProtocolListener, WidgetsBindingObserver {
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final _request = Modular.get<Request>();
 
   final PageController _page = PageController();

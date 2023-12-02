@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'global_config.dart';
+part of 'app_config.dart';
 
 // **************************************************************************
 // StoreGenerator
@@ -8,31 +8,37 @@ part of 'global_config.dart';
 
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
-mixin _$GlobalConfig on ConfigFileBase, Store {
+mixin _$AppConfig on AppConfigBase, Store {
   Computed<ProfileBase?>? _$activeComputed;
 
   @override
   ProfileBase? get active =>
       (_$activeComputed ??= Computed<ProfileBase?>(() => super.active,
-              name: 'ConfigFileBase.active'))
+              name: 'AppConfigBase.active'))
           .value;
   Computed<String?>? _$selectedFileComputed;
 
   @override
   String? get selectedFile =>
       (_$selectedFileComputed ??= Computed<String?>(() => super.selectedFile,
-              name: 'ConfigFileBase.selectedFile'))
+              name: 'AppConfigBase.selectedFile'))
           .value;
+  Computed<bool>? _$tunIfComputed;
+
+  @override
+  bool get tunIf => (_$tunIfComputed ??=
+          Computed<bool>(() => super.tunIf, name: 'AppConfigBase.tunIf'))
+      .value;
   Computed<List<ProfileBase>>? _$profilesComputed;
 
   @override
   List<ProfileBase> get profiles =>
       (_$profilesComputed ??= Computed<List<ProfileBase>>(() => super.profiles,
-              name: 'ConfigFileBase.profiles'))
+              name: 'AppConfigBase.profiles'))
           .value;
 
   late final _$systemProxyAtom =
-      Atom(name: 'ConfigFileBase.systemProxy', context: context);
+      Atom(name: 'AppConfigBase.systemProxy', context: context);
 
   @override
   bool get systemProxy {
@@ -48,7 +54,7 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   }
 
   late final _$clashForMeAtom =
-      Atom(name: 'ConfigFileBase.clashForMe', context: context);
+      Atom(name: 'AppConfigBase.clashForMe', context: context);
 
   @override
   ClashForMeConfig get clashForMe {
@@ -64,7 +70,7 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   }
 
   late final _$_initConfigAsyncAction =
-      AsyncAction('ConfigFileBase._initConfig', context: context);
+      AsyncAction('AppConfigBase._initConfig', context: context);
 
   @override
   Future _initConfig() {
@@ -72,7 +78,7 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   }
 
   late final _$openProxyAsyncAction =
-      AsyncAction('ConfigFileBase.openProxy', context: context);
+      AsyncAction('AppConfigBase.openProxy', context: context);
 
   @override
   Future<void> openProxy() {
@@ -80,32 +86,34 @@ mixin _$GlobalConfig on ConfigFileBase, Store {
   }
 
   late final _$closeProxyAsyncAction =
-      AsyncAction('ConfigFileBase.closeProxy', context: context);
+      AsyncAction('AppConfigBase.closeProxy', context: context);
 
   @override
   Future<void> closeProxy() {
     return _$closeProxyAsyncAction.run(() => super.closeProxy());
   }
 
-  late final _$ConfigFileBaseActionController =
-      ActionController(name: 'ConfigFileBase', context: context);
+  late final _$AppConfigBaseActionController =
+      ActionController(name: 'AppConfigBase', context: context);
 
   @override
   dynamic setState(
       {String? selectedFile,
       List<ProfileBase>? profiles,
       String? mmdbUrl,
-      String? delayTestUrl}) {
-    final _$actionInfo = _$ConfigFileBaseActionController.startAction(
-        name: 'ConfigFileBase.setState');
+      String? delayTestUrl,
+      bool? tunIf}) {
+    final _$actionInfo = _$AppConfigBaseActionController.startAction(
+        name: 'AppConfigBase.setState');
     try {
       return super.setState(
           selectedFile: selectedFile,
           profiles: profiles,
           mmdbUrl: mmdbUrl,
-          delayTestUrl: delayTestUrl);
+          delayTestUrl: delayTestUrl,
+          tunIf: tunIf);
     } finally {
-      _$ConfigFileBaseActionController.endAction(_$actionInfo);
+      _$AppConfigBaseActionController.endAction(_$actionInfo);
     }
   }
 
@@ -116,6 +124,7 @@ systemProxy: ${systemProxy},
 clashForMe: ${clashForMe},
 active: ${active},
 selectedFile: ${selectedFile},
+tunIf: ${tunIf},
 profiles: ${profiles}
     ''';
   }

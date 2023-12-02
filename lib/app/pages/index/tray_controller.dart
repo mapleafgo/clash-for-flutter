@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/core_config.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
 import 'package:system_tray/system_tray.dart';
@@ -11,19 +11,19 @@ import 'package:window_manager/window_manager.dart';
 /// 托盘菜单控制类
 class TrayController {
   final SystemTray _tray = SystemTray();
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final _core = Modular.get<CoreConfig>();
 
-  init() {
+  void init() {
     // 监听系统代理
     reaction(
       (_) => _config.systemProxy,
-      (status) => _menuReset(isChecked: status, mode: _core.clash.mode!),
+      (status) => _menuReset(isChecked: status, mode: _core.clash.mode ?? Mode.Rule),
     );
     // 监听代理模式
     reaction(
       (_) => _core.clash.mode,
-      (mode) => _menuReset(isChecked: _config.systemProxy, mode: mode!),
+      (mode) => _menuReset(isChecked: _config.systemProxy, mode: mode ?? Mode.Rule),
     );
     _tray.initSystemTray(
       iconPath: Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',

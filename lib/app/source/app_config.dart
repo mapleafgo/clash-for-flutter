@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clash_for_flutter/app/bean/clash_for_me_config_bean.dart';
-import 'package:clash_for_flutter/app/bean/config_bean.dart';
 import 'package:clash_for_flutter/app/bean/profile_base_bean.dart';
-import 'package:clash_for_flutter/app/bean/tun_bean.dart';
+import 'package:clash_for_flutter/app/exceptions/message_exception.dart';
+import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:clash_for_flutter/core_control.dart';
@@ -12,15 +12,15 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
 import 'package:proxy_manager/proxy_manager.dart';
 
-part 'global_config.g.dart';
+part 'app_config.g.dart';
 
-class GlobalConfig = ConfigFileBase with _$GlobalConfig;
+class AppConfig = AppConfigBase with _$AppConfig;
 
 final proxyManager = ProxyManager();
 
-abstract class ConfigFileBase with Store {
+abstract class AppConfigBase with Store {
   final _request = Modular.get<Request>();
-  static bool isStartClash = false;
+  final _core = Modular.get<CoreConfig>();
 
   final String clashForMePath = "${Constants.homeDir.path}${Constants.clashForMe}";
   final String profilesPath = "${Constants.homeDir.path}${Constants.profilesPath}";
@@ -29,6 +29,24 @@ abstract class ConfigFileBase with Store {
   bool systemProxy = false;
   @observable
   ClashForMeConfig clashForMe = ClashForMeConfig.defaultConfig();
+
+  /// 当前应用中的配置文件
+  @computed
+  ProfileBase? get active {
+    if (selectedFile == null) {
+      return null;
+    }
+    return clashForMe.profiles.firstWhere((e) => e.file == selectedFile);
+  }
+
+  @computed
+  String? get selectedFile => clashForMe.selectedFile;
+
+  @computed
+  bool get tunIf => clashForMe.tunIf ?? !Constants.isDesktop;
+
+  @computed
+  List<ProfileBase> get profiles => clashForMe.profiles;
 
   Future<void> init() async {
     await _initConfig();
@@ -62,7 +80,6 @@ abstract class ConfigFileBase with Store {
         }
         _request.changeConfig(file);
       },
-      fireImmediately: true,
     );
   }
 
@@ -83,50 +100,37 @@ abstract class ConfigFileBase with Store {
     return config.copyWith(profiles: profiles);
   }
 
-  /// 当前应用中的配置文件
-  @computed
-  ProfileBase? get active {
-    if (selectedFile == null) {
-      return null;
-    }
-    return clashForMe.profiles.firstWhere((e) => e.file == selectedFile);
-  }
-
-  @computed
-  String? get selectedFile => clashForMe.selectedFile;
-
-  @computed
-  List<ProfileBase> get profiles => clashForMe.profiles;
-
   @action
   setState({
     String? selectedFile,
     List<ProfileBase>? profiles,
     String? mmdbUrl,
     String? delayTestUrl,
+    bool? tunIf,
   }) {
     clashForMe = clashForMe.copyWith(
       selectedFile: selectedFile,
       profiles: profiles,
       mmdbUrl: mmdbUrl,
       delayTestUrl: delayTestUrl,
+      tunIf: tunIf,
     );
+  }
+
+  Future<bool> start() {
+    return CoreControl.startService().then((r) {
+      if (active != null) {
+        return _request.changeConfig("$profilesPath/$selectedFile");
+      }
+      return false;
+    });
   }
 
   /// 打开代理
   @action
   Future<void> openProxy() async {
     if (Constants.isDesktop) {
-      if (await _request.patchConfigs(Config(tun: Tun(enable: true)))) {
-        systemProxy = true;
-      }
-    } else if (Platform.isAndroid) {
-      await CoreControl.startVpn();
-      systemProxy = true;
-    }
-/*
-    int port = clashConfig.mixedPort ?? 7890;
-    if (Constants.isDesktop) {
+      int port = _core.mixedPort;
       if (port != 0) {
         if (!Platform.isWindows) {
           await proxyManager.setAsSystemProxy(
@@ -147,32 +151,18 @@ abstract class ConfigFileBase with Store {
           );
         }
         systemProxy = true;
+      } else {
+        throw MessageException("未设置代理端口");
       }
-    } else if (Platform.isAndroid) {
-      SocksVpnPlugin.startVpn(port);
-      systemProxy = true;
     }
-*/
   }
 
   /// 关闭代理
   @action
   Future<void> closeProxy() async {
     if (Constants.isDesktop) {
-      if (await _request.patchConfigs(Config(tun: Tun(enable: false)))) {
-        systemProxy = false;
-      }
-    } else if (Platform.isAndroid) {
-      await CoreControl.stopVpn();
+      proxyManager.cleanSystemProxy();
       systemProxy = false;
     }
-/*
-    if (Constants.isDesktop) {
-      proxyManager.cleanSystemProxy();
-    } else {
-      SocksVpnPlugin.stopVpn();
-    }
-    systemProxy = false;
-*/
   }
 }

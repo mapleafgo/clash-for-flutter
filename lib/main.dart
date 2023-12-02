@@ -18,6 +18,8 @@ import 'app/utils/constants.dart';
 import 'main.mapper.g.dart' show initializeJsonMapper;
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   initializeJsonMapper(adapters: [mobXAdapter]);
   JsonMapper().useAdapter(JsonMapperAdapter(valueDecorators: {
     typeOf<Map<String, String>>(): (value) {
@@ -26,7 +28,6 @@ void main() async {
   }));
 
   if (Constants.isDesktop) {
-    WidgetsFlutterBinding.ensureInitialized();
     await windowManager.ensureInitialized();
     if (!Platform.isLinux) {
       await protocolHandler.register('clash');
@@ -55,7 +56,7 @@ void main() async {
   // 设置主目录
   await CoreControl.setHomeDir(Constants.homeDir);
   // 启动 rust 控制服务，端口随机
-  await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(999) + 10000}")
+  await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(9999) + 10000}")
       .then((addr) => Constants.rustAddr = addr ?? "");
 
   runApp(ModularApp(

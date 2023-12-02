@@ -6,7 +6,7 @@ import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/component/sys_app_bar.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profile_item.dart';
 import 'package:clash_for_flutter/app/pages/profiles/profiles_controller.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -24,7 +24,7 @@ class ProfilesPage extends StatefulWidget {
 }
 
 class _ProfilesPageState extends State<ProfilesPage> {
-  final _config = Modular.get<GlobalConfig>();
+  final _config = Modular.get<AppConfig>();
   final ProfileController _controller = Modular.get<ProfileController>();
   final ScrollController _scrollController = ScrollController();
   final List<String> _loadingList = [];

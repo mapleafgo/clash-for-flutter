@@ -4,7 +4,7 @@ import 'package:clash_for_flutter/app/component/drawer_component.dart';
 import 'package:clash_for_flutter/app/component/loading_component.dart';
 import 'package:clash_for_flutter/app/pages/index/tray_controller.dart';
 import 'package:clash_for_flutter/app/pages/router.dart';
-import 'package:clash_for_flutter/app/source/global_config.dart';
+import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:desktop_lifecycle/desktop_lifecycle.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +19,9 @@ class IndexDesktopPage extends StatefulWidget {
   State<IndexDesktopPage> createState() => _IndexDesktopPageState();
 }
 
-class _IndexDesktopPageState extends State<IndexDesktopPage> with WindowListener, ProtocolListener, WidgetsBindingObserver {
-  final _config = Modular.get<GlobalConfig>();
+class _IndexDesktopPageState extends State<IndexDesktopPage>
+    with WindowListener, ProtocolListener, WidgetsBindingObserver {
+  final _config = Modular.get<AppConfig>();
   final _request = Modular.get<Request>();
   final _tray = Modular.get<TrayController>();
   final _lifeEvent = DesktopLifecycle.instance.isActive;
