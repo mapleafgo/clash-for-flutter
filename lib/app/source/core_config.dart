@@ -15,7 +15,6 @@ class CoreConfig = CoreConfigBase with _$CoreConfig;
 
 abstract class CoreConfigBase with Store {
   final _request = Modular.get<Request>();
-  final String clashConfigPath = "${Constants.homeDir.path}${Constants.clashConfig}";
 
   @observable
   Config clash = Config.defaultConfig();
@@ -30,7 +29,7 @@ abstract class CoreConfigBase with Store {
     reaction(
       (_) => clash,
       (Config config) {
-        config.saveFile(clashConfigPath);
+        config.saveFile();
         _request.patchConfigs(config);
       },
       delay: 1000,

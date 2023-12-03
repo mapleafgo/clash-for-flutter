@@ -8,8 +8,8 @@ import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:clash_for_flutter/app/source/request.dart';
 import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:path/path.dart' hide context;
 import 'package:mobx/mobx.dart';
+import 'package:path/path.dart' hide context;
 import 'package:proxy_manager/proxy_manager.dart';
 
 part 'app_config.g.dart';
@@ -22,7 +22,6 @@ abstract class AppConfigBase with Store {
   final _request = Modular.get<Request>();
   final _core = Modular.get<CoreConfig>();
 
-  final String clashForMePath = "${Constants.homeDir.path}${Constants.clashForMe}";
   final String profilesPath = "${Constants.homeDir.path}${Constants.profilesPath}";
 
   @observable
@@ -55,7 +54,7 @@ abstract class AppConfigBase with Store {
 
   @action
   _initConfig() async {
-    ClashForMeConfig? tempCfm = ClashForMeConfig.formFile(clashForMePath);
+    ClashForMeConfig? tempCfm = ClashForMeConfig.formFile();
     tempCfm = await _profilesInitCheck(tempCfm);
     if (tempCfm != null) {
       clashForMe = tempCfm;
@@ -65,7 +64,7 @@ abstract class AppConfigBase with Store {
   _initReaction() {
     reaction(
       (_) => clashForMe,
-      (ClashForMeConfig config) => config.saveFile(clashForMePath),
+      (ClashForMeConfig config) => config.saveFile(),
       delay: 1000,
     );
     reaction(
@@ -115,6 +114,9 @@ abstract class AppConfigBase with Store {
   }
 
   Future<bool> asyncProfile() {
+    if (selectedFile == null) {
+      return Future.value(true);
+    }
     return _request.changeConfig("$profilesPath/$selectedFile");
   }
 

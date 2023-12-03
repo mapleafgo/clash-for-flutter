@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:clash_for_flutter/app/bean/tun_bean.dart';
 import 'package:clash_for_flutter/app/enum/type_enum.dart';
+import 'package:clash_for_flutter/app/utils/constants.dart';
 import 'package:dart_json_mapper/dart_json_mapper.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 
 @JsonSerializable()
 class Config {
+  static final String _path = "${Constants.homeDir.path}${Constants.clashConfig}";
+
   @JsonProperty(name: "mixed-port")
   int? mixedPort;
   @JsonProperty(name: "redir-port")
@@ -35,8 +40,8 @@ class Config {
     this.tun,
   });
 
-  Future<void> saveFile(String path) {
-    var yaml = SettingsYaml.load(pathToSettings: path);
+  Future<void> saveFile() {
+    var yaml = SettingsYaml.load(pathToSettings: _path);
     if (redirPort != null) (yaml["redir-port"] = redirPort);
     if (tproxyPort != null) (yaml["tproxy-port"] = tproxyPort);
     if (mixedPort != null) (yaml["mixed-port"] = mixedPort);
@@ -80,6 +85,8 @@ class Config {
       tun: that.tun,
     );
   }
+
+  static bool? fileExist() => File(_path).existsSync();
 
   factory Config.defaultConfig() => Config(mixedPort: 7890);
 }

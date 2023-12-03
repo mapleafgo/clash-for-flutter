@@ -8,6 +8,8 @@ import 'package:dart_json_mapper/dart_json_mapper.dart';
 /// 软件配置
 @JsonSerializable()
 class ClashForMeConfig {
+  static final File _file = File("${Constants.homeDir.path}${Constants.clashForMe}");
+
   /// 选择的配置文件
   @JsonProperty(name: "selected-file")
   String? selectedFile;
@@ -61,8 +63,8 @@ class ClashForMeConfig {
     return config;
   }
 
-  Future<void> saveFile(String path) {
-    return File(path).create(recursive: true).then((file) => file.writeAsString(JsonMapper.serialize(this)));
+  Future<void> saveFile() {
+    return _file.create(recursive: true).then((file) => file.writeAsString(JsonMapper.serialize(this)));
   }
 
   factory ClashForMeConfig.defaultConfig() => ClashForMeConfig(
@@ -71,8 +73,8 @@ class ClashForMeConfig {
         delayTestUrl: DefaultConfigValue.delayTestUrl,
       );
 
-  factory ClashForMeConfig.formFile(String path) {
-    var clashForMeFile = File(path);
+  factory ClashForMeConfig.formFile() {
+    var clashForMeFile = _file;
     if (clashForMeFile.existsSync()) {
       Map<String, dynamic> cfm = json.decode(clashForMeFile.readAsStringSync());
 

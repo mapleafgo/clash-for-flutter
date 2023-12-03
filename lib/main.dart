@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
+import 'package:clash_for_flutter/app/bean/config_bean.dart';
 
 import 'app/utils/constants.dart';
 import 'main.mapper.g.dart' show initializeJsonMapper;
@@ -55,6 +56,10 @@ void main() async {
   await getApplicationSupportDirectory().then((dir) => Constants.homeDir = dir);
   // 设置主目录
   await CoreControl.setHomeDir(Constants.homeDir);
+  // 创建默认配置文件
+  if (!(Config.fileExist() ?? false)) {
+    await Config.defaultConfig().saveFile();
+  }
   // 启动 rust 控制服务，端口随机
   await CoreControl.startRust("${Constants.localhost}:${Random().nextInt(9999) + 10000}")
       .then((addr) => Constants.rustAddr = addr ?? "");
