@@ -34,8 +34,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           pushd core
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
-          echo "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz"
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/libclash-$env:CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
           tar -zxf libclash.tar.gz
           mv build/*.dll libclash.dll
           popd
@@ -188,7 +187,7 @@ jobs:
           mv build/*.so libclash.so
           popd
 
-          dart pub global activate flutter_distributor@0.3.4
+          dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
 
           mv dist/*/*.appimage dist/clash_for_flutter-$VERSION-linux-arm64.AppImage
@@ -226,8 +225,6 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-amd64.tar.gz -o libclash-amd64.tar.gz
           tar -zxf libclash-amd64.tar.gz
-          echo $pwd
-          ls
           mv build/*.dylib libclash-amd64.dylib
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-arm64.tar.gz -o libclash-arm64.tar.gz
           tar -zxf libclash-arm64.tar.gz
@@ -235,8 +232,8 @@ jobs:
           popd
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
-          cp build/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
-          cp build/libclash-arm64.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
+          cp core/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
+          cp core/libclash-arm64.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
 
           cd $PROJECT_DIR/macos/Frameworks
           lipo -create -output libclash.dylib amd64-lib arm64-lib
