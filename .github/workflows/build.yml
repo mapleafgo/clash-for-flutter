@@ -27,6 +27,8 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+      - name: Mkdir core
+        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -130,6 +132,8 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y locate ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev \
           binutils coreutils desktop-file-utils fakeroot fuse libgdk-pixbuf2.0-dev patchelf python3-pip python3-setuptools squashfs-tools strace util-linux zsync
+      - name: Mkdir core
+        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -166,6 +170,8 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y locate ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev \
           binutils coreutils desktop-file-utils fakeroot fuse libgdk-pixbuf2.0-dev patchelf python3-pip python3-setuptools squashfs-tools strace util-linux zsync
+      - name: Mkdir core
+        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -206,6 +212,8 @@ jobs:
         run: |
           python3 -m pip install setuptools
           npm install -g appdmg
+      - name: Mkdir core
+        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -262,6 +270,8 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+      - name: Mkdir core
+        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
