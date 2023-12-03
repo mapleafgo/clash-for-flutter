@@ -34,7 +34,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           pushd core
-          Invoke-WebRequest -Uri "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -OutFile "libclash.tar.gz"
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
           tar -zxf libclash.tar.gz
           mv build/*.dll libclash.dll
           popd
@@ -146,6 +146,8 @@ jobs:
           tar -zxf libclash.tar.gz
           mv build/*.so libclash.so
           popd
+          
+          echo $pwd
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
@@ -220,14 +222,14 @@ jobs:
         run: |
           PROJECT_DIR=$(pwd)
 
-          pushd core
+          cd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-amd64.tar.gz -o libclash-amd64.tar.gz
           tar -zxf libclash-amd64.tar.gz
           mv build/*.dylib libclash-amd64.dylib
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-arm64.tar.gz -o libclash-arm64.tar.gz
           tar -zxf libclash-arm64.tar.gz
           mv build/*.dylib libclash-arm64.dylib
-          popd
+          cd ..
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
           cp build/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
