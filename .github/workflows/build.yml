@@ -150,14 +150,11 @@ jobs:
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
-
-          mv dist/*/*.appimage dist/clash_for_flutter-$VERSION-linux-amd64.AppImage
-          mv dist/*/*.zip dist/clash_for_flutter-$VERSION-linux-amd64.zip
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: dist/*amd64*
+          asset_path: dist/*/*
           overwrite: true
   build-linux-arm64:
     runs-on: ubuntu-20.04
@@ -189,14 +186,11 @@ jobs:
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
-
-          mv dist/*/*.appimage dist/clash_for_flutter-$VERSION-linux-arm64.AppImage
-          mv dist/*/*.zip dist/clash_for_flutter-$VERSION-linux-arm64.zip
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: dist/*arm64*
+          asset_path: dist/*/*
           overwrite: true
   build-macos:
     runs-on: macos-latest
@@ -232,8 +226,8 @@ jobs:
           popd
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
-          cp core/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
-          cp core/libclash-arm64.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
+          mv core/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
+          mv core/libclash-arm64.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
 
           cd $PROJECT_DIR/macos/Frameworks
           lipo -create -output libclash.dylib amd64-lib arm64-lib
