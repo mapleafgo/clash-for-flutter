@@ -27,9 +27,9 @@ class _HomePageState extends State<HomePage> {
     Future(() {
       if (_config.tunIf) {
         if (_core.tunEnable) {
-          _core.closeTun();
+          return _core.closeTun();
         } else {
-          _core.openTun();
+          return _core.openTun();
         }
       } else {
         if (_config.systemProxy) {
