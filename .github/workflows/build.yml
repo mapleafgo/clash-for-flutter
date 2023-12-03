@@ -36,7 +36,7 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build\*.dll libclash.dll
+          mv build/*.dll libclash.dll
           popd
 
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
@@ -45,13 +45,13 @@ jobs:
           flutter build windows
           $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
-          $release = "build\windows\x64\runner\Release\"
+          $release = "build/windows\x64\runner\Release\"
           cp $system\msvcp140.dll $release
           cp $system\vcruntime140.dll $release
           cp $system\vcruntime140_1.dll $release
 
-          New-Item -Path build\windows\x64\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath "build\windows\x64\Output\clash_for_flutter-$env:VERSION-windows-amd64-portable.zip"
+          New-Item -Path build/windows\x64\Output -ItemType Directory
+          Compress-Archive -Path "$release*" -DestinationPath "build/windows\x64\Output\clash_for_flutter-$env:VERSION-windows-amd64-portable.zip"
 
           cd build/windows/x64
           echo @"
@@ -144,7 +144,7 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-linux-amd64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build\*.so libclash.so
+          mv build/*.so libclash.so
           popd
 
           dart pub global activate flutter_distributor
@@ -182,7 +182,7 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-linux-arm64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build\*.so libclash.so
+          mv build/*.so libclash.so
           popd
 
           dart pub global activate flutter_distributor
@@ -223,10 +223,10 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-amd64.tar.gz -o libclash-amd64.tar.gz
           tar -zxf libclash-amd64.tar.gz
-          mv build\*.dylib libclash-amd64.dylib
+          mv build/*.dylib libclash-amd64.dylib
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-arm64.tar.gz -o libclash-arm64.tar.gz
           tar -zxf libclash-arm64.tar.gz
-          mv build\*.dylib libclash-arm64.dylib
+          mv build/*.dylib libclash-arm64.dylib
           popd
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
@@ -279,7 +279,7 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-android-arm64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build\*.aar libclash.aar
+          mv build/*.aar libclash.aar
           popd
 
           mkdir -p android/app/libs
