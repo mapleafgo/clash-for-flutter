@@ -34,7 +34,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           pushd core
-          curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz -o libclash.tar.gz
+          Invoke-WebRequest -Uri "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -OutFile "libclash.tar.gz"
           tar -zxf libclash.tar.gz
           mv build/*.dll libclash.dll
           popd
