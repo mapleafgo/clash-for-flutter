@@ -25,20 +25,6 @@ open class BaseService : VpnService() {
   private var notificationManager: NotificationManager? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    when (intent?.action) {
-      ACTION_DISCONNECT -> {
-        closeVpnService()
-      }
-
-      ACTION_CONNECT -> {
-        setupVpnServe()
-        startForeground()
-      }
-
-      else -> {
-        setupClashServe()
-      }
-    }
     return START_NOT_STICKY
   }
 
