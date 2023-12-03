@@ -35,6 +35,7 @@ jobs:
         run: |
           pushd core
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
+          ls
           tar -zxf libclash.tar.gz
           mv build/*.dll libclash.dll
           popd
@@ -124,6 +125,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ get-release ]
     steps:
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -146,8 +148,6 @@ jobs:
           tar -zxf libclash.tar.gz
           mv build/*.so libclash.so
           popd
-          
-          echo $pwd
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
@@ -164,6 +164,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ get-release ]
     steps:
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
