@@ -188,7 +188,7 @@ jobs:
           mv build/*.so libclash.so
           popd
 
-          dart pub global activate flutter_distributor
+          dart pub global activate flutter_distributor@0.3.4
           flutter_distributor package --platform=linux --targets=appimage,zip
 
           mv dist/*/*.appimage dist/clash_for_flutter-$VERSION-linux-arm64.AppImage
