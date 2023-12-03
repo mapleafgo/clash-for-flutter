@@ -35,7 +35,7 @@ jobs:
         run: |
           pushd core
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
-          ls
+          echo "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-windows-amd64.tar.gz"
           tar -zxf libclash.tar.gz
           mv build/*.dll libclash.dll
           popd
@@ -223,14 +223,16 @@ jobs:
         run: |
           PROJECT_DIR=$(pwd)
 
-          cd core
+          pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-amd64.tar.gz -o libclash-amd64.tar.gz
           tar -zxf libclash-amd64.tar.gz
+          echo $pwd
+          ls
           mv build/*.dylib libclash-amd64.dylib
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-darwin-arm64.tar.gz -o libclash-arm64.tar.gz
           tar -zxf libclash-arm64.tar.gz
           mv build/*.dylib libclash-arm64.dylib
-          cd ..
+          popd
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
           cp build/libclash-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
