@@ -29,43 +29,45 @@
   > `Linux`环境下 [system_tray](https://github.com/antler119/system_tray) 需要 `libayatana-appindicator3-dev`
   or `libappindicator3-dev`
 
-- 源码启动项目
-  - 1. 下载内核
+- 下载内核
 
-    从 https://github.com/mapleafgo/cff-core/releases/latest 下载对应平台需要的内核，
-    然后将解压出来的内核文件移动到对应的路径，各平台路径如下:
-    ```shell
-    # windows
-    windows/core/libclash.dll
-    # linux
-    linux/core/libclash.so
-    # android
-    android/app/libs/libclash.aar
-    # macos
-    macos/Frameworks/libclash.dylib
-    # ios
-    ios/Frameworks/libclash.xcframework
-    ```
-    > 注意：解压出来的文件，仅保留所需的后缀名文件即可，且将其改名为路径的文件名
+  从 https://github.com/mapleafgo/cff-core/releases/latest 下载对应平台需要的内核，
+  然后将解压出来的内核文件移动到对应的路径，各平台路径如下:
 
-    > 内核是在 Clash v1.18.0 (非premium) 的基础上进行二次开发的，仅加入了 tun 模式（参照 Meta 进行）
+  ```shell
+  # windows
+  windows/core/libclash.dll
+  # linux
+  linux/core/libclash.so
+  # android
+  android/app/libs/libclash.aar
+  # macos
+  macos/Frameworks/libclash.dylib
+  # ios
+  ios/Frameworks/libclash.xcframework
+  ```
 
-  - 2. 编译项目
-    ```shell
-    # 1. 获取项目依赖
-    $ flutter pub get
-    # 2. 生成 .g.dart 文件
-    $ dart run build_runner build --delete-conflicting-outputs
+  > 注意：解压出来的文件，仅保留所需的后缀名文件即可，且将其改名为路径的文件名
 
-    # 3. 运行项目 (linux)
-    $ flutter run -d linux
-    # 3. 运行项目 (windows)
-    $ flutter run -d windows
-    # 3. 运行项目 (android)
-    $ flutter run -d android
-    # 3. 运行项目 (macos)
-    $ flutter run -d macos
-    ```
+  > 内核是在 Clash v1.18.0 (非premium) 的基础上进行二次开发的，仅加入了 tun 模式（参照 Meta 进行）
+
+- 编译项目
+
+  ```shell
+  # 1. 获取项目依赖
+  $ flutter pub get
+  # 2. 生成 .g.dart 文件
+  $ dart run build_runner build --delete-conflicting-outputs
+
+  # 3. 运行项目 (linux)
+  $ flutter run -d linux
+  # 3. 运行项目 (windows)
+  $ flutter run -d windows
+  # 3. 运行项目 (android)
+  $ flutter run -d android
+  # 3. 运行项目 (macos)
+  $ flutter run -d macos
+  ```
 
 - 打包项目
 
