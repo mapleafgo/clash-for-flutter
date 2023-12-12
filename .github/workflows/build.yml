@@ -27,17 +27,13 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-      - name: Mkdir core
-        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          pushd core
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/libclash-$env:CORE_VERSION-windows-amd64.tar.gz" -o "libclash.tar.gz"
           tar -zxf libclash.tar.gz
-          mv build/*.dll libclash.dll
-          popd
+          mv build/*.dll windows/core/libclash.dll
 
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
@@ -133,8 +129,6 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y locate ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev \
           binutils coreutils desktop-file-utils fakeroot fuse libgdk-pixbuf2.0-dev patchelf python3-pip python3-setuptools squashfs-tools strace util-linux zsync
-      - name: Mkdir core
-        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -142,11 +136,9 @@ jobs:
           curl -L https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -o /usr/local/bin/appimagetool
           chmod +x /usr/local/bin/appimagetool
 
-          pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-linux-amd64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build/*.so libclash.so
-          popd
+          mv build/*.so linux/core/libclash.so
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
@@ -230,20 +222,13 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-      - name: Mkdir core
-        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-android-arm64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build/*.aar libclash.aar
-          popd
-
-          mkdir -p android/app/libs
-          mv core/libclash.aar android/app/libs/libclash.aar
+          mv build/*.aar android/app/libs/libclash.aar
 
           flutter build apk --release --target-platform android-arm64
           cd build/app/outputs/flutter-apk
@@ -267,20 +252,13 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-      - name: Mkdir core
-        run: mkdir core
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libclash-$CORE_VERSION-android-amd64.tar.gz -o libclash.tar.gz
           tar -zxf libclash.tar.gz
-          mv build/*.aar libclash.aar
-          popd
-
-          mkdir -p android/app/libs
-          mv core/libclash.aar android/app/libs/libclash.aar
+          mv build/*.aar android/app/libs/libclash.aar
 
           flutter build apk --release --target-platform android-x64
           cd build/app/outputs/flutter-apk

@@ -46,3 +46,5 @@ app.*.map.json
 
 /appimage-build/
 /AppDir/
+
+libclash.*

@@ -1,23 +1,23 @@
 # Clash for Flutter
 
-> 该软件是 Clash 的桌面端实现，使用[Flutter](https://flutter.dev/)开发。支持 Windows、~~Linux、MacOS~~
+> 该软件是 Clash 的多平台端实现，使用[Flutter](https://flutter.dev/)开发。支持 Windows、Linux、MacOS、Android、~~IOS~~
 
 ### 下载
 
-当前下载页面都只提供了 64 位的安装包[releases](https://github.com/mapleafgo/clash-for-flutter/releases)
+当前下载页面都只提供了 64 位的安装包[releases](https://github.com/mapleafgo/clash-for-flutter/releases/latest)
 ，由于当前是我自己手动在各个平台打包，所以做不到每个版本都提供的了安装包
 
-~~- Linux:~~
+- Linux:
 
-~~linux 安装包目前打包的为`appimage`的，这种包各个发行版都能直接使用~~
+  linux 安装包目前打包的为`appimage`的，这种包各个发行版都能直接使用
 
 - Windows:
 
   windows 提供的是`msi`包
 
-~~- MacOS:~~
+- MacOS:
 
-~~macos 提供的是`dmg`包~~
+  macos 提供的是`dmg`包
 
 ### 开始使用
 
@@ -60,7 +60,7 @@
 
   - 代理端口
   
-    对于代理端口，其它都默认为 0 就可以(设置为 0 表示不开启)，只需要注意 Mixed。Mixed 是一个复合代理端口，它一个就可以转发 http/https/socks 的所有业务
+    对于代理端口，默认为 7890 (设置为 0 表示不开启)
   
     至于 Redir 和 Tproxy 的代理，目前我没用到过，都是默认为 0 的状态，这里就引入 Clash 官方的话来解释这两个吧
     ```yaml
