@@ -48,6 +48,7 @@ class _IndexDesktopPageState extends State<IndexDesktopPage>
 
   @override
   void dispose() {
+    _tray.dispose();
     windowManager.removeListener(this);
     protocolHandler.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);

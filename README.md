@@ -26,8 +26,7 @@
 
   > 对目标平台时，需要参照 Flutter 官方文档进行对应平台的环境搭建。如 Android 开发时，需要 Android-SDK
 
-  > `Linux`环境下 [system_tray](https://github.com/antler119/system_tray) 需要 `libayatana-appindicator3-dev`
-  or `libappindicator3-dev`
+  > `Linux`环境下 [tray_manager](https://github.com/leanflutter/tray_manager) 需要 `libayatana-appindicator3-dev`
 
 - 下载内核
 
@@ -78,7 +77,7 @@
 - [Go](https://go.dev/)
 - [Clash](https://github.com/Dreamacro/clash)
 - [Flutter](https://flutter.dev)
-- [system_tray](https://github.com/antler119/system_tray)
+- [tray_manager](https://github.com/leanflutter/tray_manager)
 - [window_manager](https://github.com/leanflutter/window_manager)
 - [proxy_manager](https://github.com/Kingtous/proxy_manager)
 - [flutter_modular](https://github.com/Flutterando/modular)

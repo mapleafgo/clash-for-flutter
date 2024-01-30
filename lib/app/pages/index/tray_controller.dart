@@ -5,82 +5,104 @@ import 'package:clash_for_flutter/app/source/app_config.dart';
 import 'package:clash_for_flutter/app/source/core_config.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:mobx/mobx.dart';
-import 'package:system_tray/system_tray.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// 托盘菜单控制类
-class TrayController {
-  final SystemTray _tray = SystemTray();
+class TrayController extends Disposable with TrayListener {
   final _config = Modular.get<AppConfig>();
   final _core = Modular.get<CoreConfig>();
 
-  void init() {
+  Future<void> init() async {
+    trayManager.addListener(this);
     // 监听系统代理
     reaction(
       (_) => _config.systemProxy,
-      (status) => _menuReset(isChecked: status, mode: _core.clash.mode ?? Mode.Rule),
+      (status) {
+        _menuReset(isChecked: status, mode: _core.clash.mode ?? Mode.Rule);
+      },
     );
     // 监听代理模式
     reaction(
       (_) => _core.clash.mode,
-      (mode) => _menuReset(isChecked: _config.systemProxy, mode: mode ?? Mode.Rule),
+      (mode) {
+        _menuReset(isChecked: _config.systemProxy, mode: mode ?? Mode.Rule);
+      },
     );
-    _tray.initSystemTray(
-      iconPath: Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
-      toolTip: "Clash for Flutter",
+    await trayManager.setIcon(
+      Platform.isWindows ? 'assets/icon.ico' : 'assets/logo_64.png',
     );
-    _tray.registerSystemTrayEventHandler((e) {
-      if (e == kSystemTrayEventClick) {
-        windowManager.show();
-      } else if (e == kSystemTrayEventRightClick) {
-        _tray.popUpContextMenu();
-      }
-    });
     // 初始化托盘菜单
-    _menuReset(isChecked: _config.systemProxy, mode: _core.clash.mode ?? Mode.Rule);
+    await _menuReset(
+      isChecked: _config.systemProxy,
+      mode: _core.clash.mode ?? Mode.Rule,
+    );
   }
 
-  void _menuReset({required bool isChecked, required Mode mode}) async {
-    final menu = Menu();
-    await menu.buildFrom([
-      MenuItemLabel(label: "显示窗口", onClicked: (_) => windowManager.show()),
-      MenuSeparator(),
-      MenuItemCheckbox(
-        label: "代理",
-        checked: isChecked,
-        onClicked: (b) async {
-          if (b.checked) {
-            await _config.closeProxy();
-          } else {
-            await _config.openProxy();
-          }
-        },
-      ),
-      SubMenu(label: "模式", children: [
-        MenuItemCheckbox(
-          checked: mode == Mode.Rule,
-          label: Mode.Rule.value,
-          onClicked: (_) => _core.setState(mode: Mode.Rule),
+  @override
+  void dispose() {
+    trayManager.removeListener(this);
+  }
+
+  Future<void> _menuReset({required bool isChecked, required Mode mode}) async {
+    final Menu menu = Menu(
+      items: [
+        MenuItem(
+          key: 'show_window',
+          label: '显示窗口',
         ),
-        MenuItemCheckbox(
-          checked: mode == Mode.Global,
-          label: Mode.Global.value,
-          onClicked: (_) => _core.setState(mode: Mode.Global),
+        MenuItem.separator(),
+        MenuItem.checkbox(key: 'proxy', label: '代理', checked: isChecked),
+        MenuItem.submenu(
+          label: '模式',
+          submenu: Menu(
+            items: [
+              MenuItem.checkbox(
+                key: Mode.Rule.value,
+                label: Mode.Rule.value,
+                checked: mode == Mode.Rule,
+              ),
+              MenuItem.checkbox(
+                key: Mode.Global.value,
+                label: Mode.Global.value,
+                checked: mode == Mode.Global,
+              ),
+              MenuItem.checkbox(
+                key: Mode.Direct.value,
+                label: Mode.Direct.value,
+                checked: mode == Mode.Direct,
+              ),
+            ],
+          ),
         ),
-        MenuItemCheckbox(
-          checked: mode == Mode.Direct,
-          label: Mode.Direct.value,
-          onClicked: (_) => _core.setState(mode: Mode.Direct),
-        ),
-      ]),
-      MenuItemLabel(
-        label: "退出",
-        onClicked: (_) async {
-          await _config.closeProxy();
-          windowManager.close().then((_) => windowManager.destroy());
-        },
-      ),
-    ]);
-    await _tray.setContextMenu(menu);
+        MenuItem(
+          label: '退出',
+          key: 'exit_app',
+        )
+      ],
+    );
+    await trayManager.setContextMenu(menu);
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) async {
+    if (menuItem.key == 'show_window') {
+      windowManager.show();
+    } else if (menuItem.key == 'proxy') {
+      if (menuItem.checked ?? false) {
+        await _config.closeProxy();
+      } else {
+        await _config.openProxy();
+      }
+    } else if (menuItem.key == 'exit_app') {
+      await _config.closeProxy();
+      windowManager.close().then((_) => windowManager.destroy());
+    } else if (menuItem.key == Mode.Rule.value) {
+      _core.setState(mode: Mode.Rule);
+    } else if (menuItem.key == Mode.Global.value) {
+      _core.setState(mode: Mode.Global);
+    } else if (menuItem.key == Mode.Direct.value) {
+      _core.setState(mode: Mode.Direct);
+    }
   }
 }
