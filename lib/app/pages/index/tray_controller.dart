@@ -85,6 +85,16 @@ class TrayController extends Disposable with TrayListener {
   }
 
   @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
+  }
+
+  @override
   void onTrayMenuItemClick(MenuItem menuItem) async {
     if (menuItem.key == 'show_window') {
       windowManager.show();

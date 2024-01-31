@@ -8,7 +8,7 @@
 
 #include <desktop_lifecycle/desktop_lifecycle_plugin.h>
 #include <local_notifier/local_notifier_plugin.h>
-#include <protocol_handler_windows/protocol_handler_windows_plugin_c_api.h>
+#include <protocol_handler/protocol_handler_plugin.h>
 #include <proxy_manager/proxy_manager_plugin.h>
 #include <screen_retriever/screen_retriever_plugin.h>
 #include <tray_manager/tray_manager_plugin.h>
@@ -20,8 +20,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("DesktopLifecyclePlugin"));
   LocalNotifierPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("LocalNotifierPlugin"));
-  ProtocolHandlerWindowsPluginCApiRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("ProtocolHandlerWindowsPluginCApi"));
+  ProtocolHandlerPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("ProtocolHandlerPlugin"));
   ProxyManagerPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ProxyManagerPlugin"));
   ScreenRetrieverPluginRegisterWithRegistrar(
