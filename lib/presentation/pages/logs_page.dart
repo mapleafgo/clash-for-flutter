@@ -5,7 +5,6 @@ import 'package:clash_for_flutter/data/api/ws_streams.dart' as ws;
 import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/domain/log.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
-import 'package:clash_for_flutter/services/core_config.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -52,8 +51,8 @@ class _LogsPageState extends State<LogsPage> {
           FloatingActionButton(
             heroTag: 'filter',
             mini: true,
-            child: const Icon(Icons.filter_list),
             onPressed: _showFilter,
+            child: const Icon(Icons.filter_list),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(

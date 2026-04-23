@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'enums.dart';
 
 part 'proxy_group.g.dart';
 

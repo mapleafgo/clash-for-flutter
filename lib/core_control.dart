@@ -1,7 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:clash_for_flutter/app/utils/constants.dart';
+import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:clash_for_flutter/clash_generated_bindings.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';

@@ -1,6 +1,6 @@
+import 'package:clash_for_flutter/domain/enums.dart';
+import 'package:clash_for_flutter/domain/subscription_info.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'enums.dart';
-import 'subscription_info.dart';
 
 part 'profile.g.dart';
 

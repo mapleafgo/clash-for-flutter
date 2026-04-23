@@ -1,9 +1,8 @@
-import 'package:clash_for_flutter/data/api/clash_api.dart';
 import 'package:clash_for_flutter/domain/enums.dart';
-import 'package:clash_for_flutter/domain/proxy.dart';
 import 'package:clash_for_flutter/domain/proxy_group.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
+import 'package:clash_for_flutter/services/clash_api.dart';
 import 'package:clash_for_flutter/services/core_config.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -42,7 +41,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
     });
 
     if (clashConfig.value.mode == Mode.global) {
-      final? global = allProxies['GLOBAL'];
+      final global = allProxies['GLOBAL'];
       if (global is Map<String, dynamic>) {
         groupList.insert(0, ProxyGroup.fromJson(global));
       }
@@ -59,8 +58,8 @@ class _ProxiesPageState extends State<ProxiesPage> {
       floatingActionButton: Watch((context) {
         if (_loading.value) return const CircularProgressIndicator();
         return FloatingActionButton(
-          child: const Icon(Icons.speed),
           onPressed: _loading.value ? null : _testAllDelay,
+          child: const Icon(Icons.speed),
         );
       }),
       body: Watch((context) {

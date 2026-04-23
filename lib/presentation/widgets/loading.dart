@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class Loading extends StatelessWidget {
+class Loading {
   final OverlayEntry _entry;
   Loading._() : _entry = OverlayEntry(
-    builder: (_) => const ColoredBox(
-      color: Color(0x66000000),
+    builder: (_) => ColoredBox(
+      color: const Color(0x66000000),
       child: Center(child: CircularProgressIndicator()),
     ),
   );

@@ -1,13 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:clash_for_flutter/domain/config.dart';
-import 'package:clash_for_flutter/domain/connection.dart';
-import 'package:clash_for_flutter/domain/log.dart';
-import 'package:clash_for_flutter/domain/net_speed.dart';
+import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/domain/profile.dart';
-import 'package:clash_for_flutter/domain/proxy.dart';
-import 'package:clash_for_flutter/domain/proxy_group.dart';
 import 'package:clash_for_flutter/domain/subscription_info.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:dio/dio.dart';
@@ -93,9 +88,15 @@ class ClashApi {
         final disposition = HeaderValue.parse(headerDis);
         for (final entry in disposition.parameters.entries) {
           if (entry.key.startsWith('filename')) {
-            fileName = entry.key == 'filename*'
-                ? Uri.decodeComponent(entry.value.split("'").last)
-                : entry.value;
+            final value = entry.value;
+            if (entry.key == 'filename*') {
+              final parts = value?.split("'");
+              if (parts != null && parts.isNotEmpty) {
+                fileName = Uri.decodeComponent(parts.last);
+              }
+            } else {
+              fileName = value ?? '';
+            }
           }
         }
       }

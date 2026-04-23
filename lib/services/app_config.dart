@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clash_for_flutter/data/local/app_config_storage.dart';
-import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/domain/profile.dart';
 import 'package:clash_for_flutter/services/clash_api.dart';
+import 'package:clash_for_flutter/services/core_config.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:proxy_manager/proxy_manager.dart';

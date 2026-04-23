@@ -1,9 +1,11 @@
+import 'dart:async';
+
+import 'package:clash_for_flutter/core_control.dart' as core;
 import 'package:clash_for_flutter/data/local/core_config_storage.dart';
 import 'package:clash_for_flutter/domain/config.dart';
 import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/services/clash_api.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
-import 'package:clash_for_flutter/core_control.dart' as core;
 import 'package:signals_flutter/signals_flutter.dart';
 
 final clashConfig = signal(ClashConfig.defaults());

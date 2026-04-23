@@ -12,6 +12,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 final _connections = signal<List<Connection>>([]);
 final _prevConnections = signal<Map<String, Connection>>({});
+// ignore: unused_element
 StreamSubscription? _connSub;
 
 void startConnectionsSubscription() {
@@ -80,7 +81,6 @@ class _ConnSource extends DataTableSource {
   DataRow getRow(int index) {
     final c = conns[index];
     final old = prev[c.id];
-    final speedUp = old != null ? c.upload - old.upload : 0;
     final speedDown = old != null ? c.download - old.download : 0;
     final host = c.metadata.host.isNotEmpty
         ? c.metadata.host

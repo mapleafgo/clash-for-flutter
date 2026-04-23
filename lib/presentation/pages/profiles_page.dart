@@ -6,7 +6,6 @@ import 'package:clash_for_flutter/domain/subscription_info.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
 import 'package:clash_for_flutter/services/clash_api.dart';
-import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:clash_for_flutter/utils/format.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
