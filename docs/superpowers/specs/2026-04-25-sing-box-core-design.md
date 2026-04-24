@@ -263,8 +263,8 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 代理组翻译：
 - `type: Select` → `{type:"selector", tag:"...", outbounds:[...], interrupt_exist_connections:true}`
 - `type: URLTest` → `{type:"urltest", tag:"...", outbounds:[...], url:"...", interval:"3m", tolerance:150}`
-- `type: Fallback` → `{type:"urltest", tag:"...", outbounds:[...], tolerance:999999}` (用大 tolerance 模拟)
-- `type: LoadBalance` → `{type:"selector", tag:"..."}` (降级，记录警告)
+- `type: Fallback` → `{type:"urltest", tag:"...", outbounds:[...], url:"...", interval:"5m", tolerance:999999}` (用大 tolerance 模拟，url 取 mihomo 配置或默认值)
+- `type: LoadBalance` → `{type:"selector", tag:"...", outbounds:[...]}` (降级，记录警告)
 
 #### route
 
@@ -333,6 +333,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 
 > - `local-dns` 的 server 是 IP 地址（223.5.5.5），不需要 domain_resolver。`remote-dns` 的 server 是域名（dns.google），必须通过 `remote-dns-resolver`（UDP 8.8.8.8:53）解析域名，避免 DNS 解析死循环。
 > - FakeIP 规则使用 logical AND：排除常见本地域名 + Windows 网络检测域名后，对 A/AAAA 查询走 FakeIP。
+> - DNS rules 中引用的 rule_set（如 `geosite-cn`、`geolocation-!cn`）依赖路由翻译步骤生成的 rule_set 定义。若用户配置中没有对应的 GEOSITE 规则，翻译器应跳过该条 DNS 规则。
 
 ### 翻译器完整流程
 
@@ -349,7 +350,8 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
   │     ├─ DOMAIN-SUFFIX → domain_suffix 规则
   │     ├─ GEOIP,x,y → rule_set 引用 + 自动生成 rule_set 定义
   │     ├─ GEOSITE,x,y → rule_set 引用 + 自动生成 rule_set 定义
-  │     └─ 其他 → 对应 sing-box 规则类型
+  │     ├─ 其他 → 对应 sing-box 规则类型
+  │     └─ 跳过引用已删除组的规则，记录警告
   ├─ 7. 注入默认路由规则（sniff, hijack-dns, icmp）
   ├─ 8. 翻译 dns → dns servers + rules
   │     ├─ nameserver → local-dns 服务器（HTTPS/TLS 类型需生成对应的 resolver）
