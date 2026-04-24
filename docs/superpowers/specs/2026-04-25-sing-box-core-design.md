@@ -303,9 +303,9 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
     { "tag": "local-dns", "type": "https", "server": "223.5.5.5", "server_port": 443,
       "path": "/dns-query" },
     { "tag": "remote-dns", "type": "tls", "server": "dns.google", "server_port": 853,
-      "detour": "PROXY", "domain_resolver": "remote-dns-resolver" },
+      "detour": "<第一个代理组>", "domain_resolver": "remote-dns-resolver" },
     { "tag": "remote-dns-resolver", "type": "udp", "server": "8.8.8.8", "server_port": 53,
-      "detour": "PROXY" },
+      "detour": "<第一个代理组>" },
     { "tag": "fakeip-dns", "type": "fakeip", "inet4_range": "198.18.0.0/15" }
   ],
   "rules": [
@@ -344,7 +344,10 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
   ├─ 2. 翻译全局配置 → log + experimental + inbounds
   ├─ 3. 翻译 proxies[] → outbounds[]（跳过不支持的协议，记录已翻译的 tag 集合）
   ├─ 4. 翻译 proxy-groups[] → outbounds[]（追加到 outbounds）
-  │     └─ 过滤 outbounds 列表：移除未翻译的代理 tag，若组内所有代理均被跳过则跳过该组并记录警告
+  │     ├─ 展开 use 字段：下载/读取 proxy-provider 内容，提取代理列表
+  │     ├─ 展开 include-all / include-all-proxies：收集所有已翻译代理
+  │     ├─ 应用 filter / exclude-filter / exclude-type：按正则和类型过滤
+  │     └─ 过滤最终 outbounds：移除未翻译的代理 tag，若组内所有代理均被跳过则跳过该组并记录警告
   ├─ 5. 注入内置 outbound（DIRECT, REJECT, dns-out）
   ├─ 6. 翻译 rules[] → route.rules + route.rule_set
   │     ├─ DOMAIN-SUFFIX → domain_suffix 规则
