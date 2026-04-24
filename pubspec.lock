@@ -185,6 +185,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.1.1"
+  desktop_tray:
+    dependency: "direct main"
+    description:
+      name: desktop_tray
+      sha256: "2cd7810762f26aa406db16fa5498019fadbb93fe79cd95e93416cf8b12f63dfb"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2026.4.19"
   dio:
     dependency: "direct main"
     description:
@@ -432,14 +440,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.13.0"
-  menu_base:
-    dependency: transitive
-    description:
-      name: menu_base
-      sha256: "820368014a171bd1241030278e6c2617354f492f5c703d7b7d4570a6b8b84405"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.1.1"
   meta:
     dependency: transitive
     description:
@@ -712,14 +712,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.0"
-  shortid:
-    dependency: transitive
-    description:
-      name: shortid
-      sha256: d0b40e3dbb50497dad107e19c54ca7de0d1a274eb9b4404991e443dadb9ebedb
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.1.2"
   signals_core:
     dependency: transitive
     description:
@@ -821,14 +813,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.7.1"
-  tray_manager:
-    dependency: "direct main"
-    description:
-      name: tray_manager
-      sha256: c5fd83b0ae4d80be6eaedfad87aaefab8787b333b8ebd064b0e442a81006035b
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.5.2"
   typed_data:
     dependency: transitive
     description:

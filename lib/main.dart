@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -50,7 +49,6 @@ void main() async {
 
   if (Constants.isDesktop) {
     await initTray();
-    trayManager.addListener(TrayListenerImpl());
     windowManager.addListener(_WindowListener());
   }
 
