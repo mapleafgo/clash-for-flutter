@@ -70,9 +70,10 @@ export fn CoreQueryLogs() -> *const c_char                     // 最近日志�
 
 // 操作
 export fn CoreSelectProxy(group: *const c_char, tag: *const c_char) -> c_int
+export fn CoreSetMode(mode: *const c_char) -> c_int               // Rule/Global/Direct
 export fn CoreCloseConnection(id: *const c_char) -> c_int
 export fn CoreCloseAllConnections() -> c_int
-export fn CoreTestDelay(name: *const c_char, url: *const c_char) -> c_int  // 毫秒，-1 表示错误
+export fn CoreTestDelay(name: *const c_char, url: *const c_char) -> c_int  // 触发测试，立即返回 0=成功/-1=错误；结果通过 CoreSetCallback 异步回调
 export fn CoreGetVersion() -> *const c_char
 ```
 
@@ -108,7 +109,7 @@ export fn CoreSetCallback(cb: extern fn(eventType: c_int, data: *const c_char))
 
 ```dart
 typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
-// eventType: 0=流量, 1=日志, 2=连接, 3=代理组变更
+// eventType: 0=流量, 1=日志, 2=连接, 3=代理组变更, 4=延迟测试结果
 ```
 
 ### libbox 集成参考
@@ -328,7 +329,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 }
 ```
 
-> - `domain_resolver` 链：`local-dns`（HTTPS）→ 通过 `local-dns-resolver`（UDP 223.5.5.5:53）解析域名；`remote-dns`（TLS）→ 通过 `remote-dns-resolver`（UDP 8.8.8.8:53）解析域名。避免 DNS 解析死循环。
+> - `local-dns` 的 server 是 IP 地址（223.5.5.5），不需要 domain_resolver。`remote-dns` 的 server 是域名（dns.google），必须通过 `remote-dns-resolver`（UDP 8.8.8.8:53）解析域名，避免 DNS 解析死循环。
 > - FakeIP 规则使用 logical AND：排除常见本地域名 + Windows 网络检测域名后，对 A/AAAA 查询走 FakeIP。
 
 ### 翻译器完整流程

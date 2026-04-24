@@ -249,8 +249,8 @@ mihomo relay 已弃用（建议用 dialer-proxy）。sing-box 无对应。跳过
 
 | mihomo | sing-box | 说明 |
 |---|---|---|
-| `DIRECT` | `{type: "direct", tag: "direct"}` | 必须显式定义 |
-| `REJECT` | route rule `action: "reject"` | 不再是 outbound |
+| `DIRECT` | `{type: "direct", tag: "DIRECT"}` | 必须显式定义 |
+| `REJECT` | `{type: "block", tag: "REJECT"}` | 也可用 route rule `action:"reject"`，但定义为 outbound 更便于翻译 |
 
 ---
 
