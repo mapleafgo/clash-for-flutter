@@ -7,17 +7,17 @@ part of 'config.dart';
 // **************************************************************************
 
 ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) => ClashConfig(
-      mixedPort: (json['mixed-port'] as num?)?.toInt(),
-      redirPort: (json['redir-port'] as num?)?.toInt(),
-      tproxyPort: (json['tproxy-port'] as num?)?.toInt(),
-      allowLan: json['allow-lan'] as bool?,
-      mode: $enumDecodeNullable(_$ModeEnumMap, json['mode']),
-      logLevel: $enumDecodeNullable(_$LogLevelEnumMap, json['log-level']),
-      ipv6: json['ipv6'] as bool?,
-      tun: json['tun'] == null
-          ? null
-          : TunConfig.fromJson(json['tun'] as Map<String, dynamic>),
-    );
+  mixedPort: (json['mixed-port'] as num?)?.toInt(),
+  redirPort: (json['redir-port'] as num?)?.toInt(),
+  tproxyPort: (json['tproxy-port'] as num?)?.toInt(),
+  allowLan: json['allow-lan'] as bool?,
+  mode: $enumDecodeNullable(_$ModeEnumMap, json['mode']),
+  logLevel: $enumDecodeNullable(_$LogLevelEnumMap, json['log-level']),
+  ipv6: json['ipv6'] as bool?,
+  tun: json['tun'] == null
+      ? null
+      : TunConfig.fromJson(json['tun'] as Map<String, dynamic>),
+);
 
 Map<String, dynamic> _$ClashConfigToJson(ClashConfig instance) =>
     <String, dynamic>{
@@ -45,10 +45,9 @@ const _$LogLevelEnumMap = {
   LogLevel.silent: 'silent',
 };
 
-TunConfig _$TunConfigFromJson(Map<String, dynamic> json) => TunConfig(
-      enable: json['enable'] as bool?,
-    );
+TunConfig _$TunConfigFromJson(Map<String, dynamic> json) =>
+    TunConfig(enable: json['enable'] as bool?);
 
 Map<String, dynamic> _$TunConfigToJson(TunConfig instance) => <String, dynamic>{
-      'enable': instance.enable,
-    };
+  'enable': instance.enable,
+};

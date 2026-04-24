@@ -1,5 +1,6 @@
 import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/domain/proxy_group.dart';
+import 'package:clash_for_flutter/presentation/widgets/loading.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
 import 'package:clash_for_flutter/services/clash_api.dart';
@@ -11,6 +12,7 @@ final _groups = signal<List<ProxyGroup>>([]);
 final _proxies = signal<Map<String, dynamic>>({});
 final _sortType = signal(SortType.defaults);
 final _loading = signal(false);
+final _currentTab = signal(0);
 
 class ProxiesPage extends StatefulWidget {
   const ProxiesPage({super.key});
@@ -55,13 +57,24 @@ class _ProxiesPageState extends State<ProxiesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: SysAppBar(title: '代理'),
-      floatingActionButton: Watch((context) {
-        if (_loading.value) return const CircularProgressIndicator();
-        return FloatingActionButton(
-          onPressed: _loading.value ? null : _testAllDelay,
-          child: const Icon(Icons.speed),
-        );
-      }),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'sort',
+            mini: true,
+            onPressed: _showSort,
+            child: const Icon(Icons.sort),
+          ),
+          const SizedBox(width: 8),
+          Watch((context) => FloatingActionButton(
+                onPressed: _loading.value ? null : _testAllDelay,
+                child: _loading.value
+                    ? const Icon(Icons.hourglass_empty)
+                    : const Icon(Icons.speed),
+              )),
+        ],
+      ),
       body: Watch((context) {
         final groups = _groups.value;
         if (groups.isEmpty) return const Center(child: Text('暂无代理'));
@@ -71,6 +84,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
             TabBar(
               isScrollable: true,
               tabs: groups.map((g) => Tab(text: g.name)).toList(),
+              onTap: (i) => _currentTab.value = i,
             ),
             Expanded(
               child: TabBarView(
@@ -88,9 +102,12 @@ class _ProxiesPageState extends State<ProxiesPage> {
 
   Future<void> _testAllDelay() async {
     _loading.value = true;
+    final overlay = Loading.show(context);
     try {
-      final group = _groups.value.isNotEmpty ? _groups.value[0] : null;
-      if (group == null) return;
+      final index = _currentTab.value;
+      final groups = _groups.value;
+      if (index >= groups.length) return;
+      final group = groups[index];
       await Future.wait(group.all.map((name) async {
         try {
           await api.getProxyDelay(name, delayTestUrl.value);
@@ -98,8 +115,31 @@ class _ProxiesPageState extends State<ProxiesPage> {
       }));
       await _load();
     } finally {
+      overlay.remove();
       _loading.value = false;
     }
+  }
+
+  void _showSort() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: SortType.values.map((type) => ListTile(
+              title: Text(switch (type) {
+                SortType.defaults => '默认',
+                SortType.name => '按名称',
+                SortType.delay => '按延迟',
+              }),
+              trailing:
+                  _sortType.value == type ? const Icon(Icons.check) : null,
+              onTap: () {
+                _sortType.value = type;
+                Navigator.pop(context);
+              },
+            )).toList(),
+      ),
+    );
   }
 }
 

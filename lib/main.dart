@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:clash_for_flutter/presentation/app.dart';
+import 'package:clash_for_flutter/services/tray_service.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:clash_for_flutter/core_control.dart' as core;
 import 'package:clash_for_flutter/data/local/core_config_storage.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -46,7 +48,25 @@ void main() async {
       await core.CoreControl.startRust(addr) ?? '';
   await core.CoreControl.startService();
 
+  if (Constants.isDesktop) {
+    await initTray();
+    trayManager.addListener(TrayListenerImpl());
+    windowManager.addListener(_WindowListener());
+  }
+
   runApp(const App());
+}
+
+class _WindowListener with WindowListener {
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
+  }
+
+  @override
+  void onWindowFocus() {
+    WidgetsBinding.instance.focusManager.primaryFocus?.unfocus();
+  }
 }
 
 class TimeagoZhCnMessages extends timeago.LookupMessages {

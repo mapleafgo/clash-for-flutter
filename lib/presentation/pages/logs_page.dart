@@ -10,7 +10,13 @@ import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:intl/intl.dart';
 
-final _logs = signal<Queue<LogEntry>>(Queue());
+class _TimedLog {
+  final DateTime time;
+  final LogEntry entry;
+  _TimedLog(this.time, this.entry);
+}
+
+final _logs = signal<Queue<_TimedLog>>(Queue());
 final _logLevel = signal(LogLevel.info);
 StreamSubscription? _logSub;
 
@@ -18,9 +24,9 @@ void startLogSubscription() {
   effect(() {
     _logSub?.cancel();
     _logSub = ws.logsStream(_logLevel.value).listen((entry) {
-      final queue = Queue<LogEntry>.from(_logs.value);
+      final queue = Queue<_TimedLog>.from(_logs.value);
       if (queue.length >= Constants.logsCapacity) queue.removeFirst();
-      queue.add(entry);
+      queue.add(_TimedLog(DateTime.now(), entry));
       _logs.value = queue;
     });
   });
@@ -76,10 +82,9 @@ class _LogsPageState extends State<LogsPage> {
           itemCount: logs.length,
           itemBuilder: (_, i) {
             final log = logs[i];
-            final time = DateFormat('yyyy/MM/dd HH:mm:ss')
-                .format(DateTime.now());
+            final time = DateFormat('yyyy/MM/dd HH:mm:ss').format(log.time);
             return SelectableText(
-              '[$time] [${log.type.name.toUpperCase()}] ${log.payload}',
+              '[$time] [${log.entry.type.name.toUpperCase()}] ${log.entry.payload}',
               style: const TextStyle(fontSize: 12),
             );
           },

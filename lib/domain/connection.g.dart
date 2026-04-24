@@ -7,17 +7,17 @@ part of 'connection.dart';
 // **************************************************************************
 
 Connection _$ConnectionFromJson(Map<String, dynamic> json) => Connection(
-      id: json['id'] as String,
-      upload: (json['upload'] as num).toInt(),
-      download: (json['download'] as num).toInt(),
-      start: json['start'] as String,
-      chains:
-          (json['chains'] as List<dynamic>).map((e) => e as String).toList(),
-      rule: json['rule'] as String,
-      rulePayload: json['rulePayload'] as String,
-      metadata:
-          ConnectionMetadata.fromJson(json['metadata'] as Map<String, dynamic>),
-    );
+  id: json['id'] as String,
+  upload: (json['upload'] as num).toInt(),
+  download: (json['download'] as num).toInt(),
+  start: json['start'] as String,
+  chains: (json['chains'] as List<dynamic>).map((e) => e as String).toList(),
+  rule: json['rule'] as String,
+  rulePayload: json['rulePayload'] as String,
+  metadata: ConnectionMetadata.fromJson(
+    json['metadata'] as Map<String, dynamic>,
+  ),
+);
 
 Map<String, dynamic> _$ConnectionToJson(Connection instance) =>
     <String, dynamic>{
@@ -69,9 +69,9 @@ ConnectionsSnapshot _$ConnectionsSnapshotFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$ConnectionsSnapshotToJson(
-        ConnectionsSnapshot instance) =>
-    <String, dynamic>{
-      'uploadTotal': instance.uploadTotal,
-      'downloadTotal': instance.downloadTotal,
-      'connections': instance.connections,
-    };
+  ConnectionsSnapshot instance,
+) => <String, dynamic>{
+  'uploadTotal': instance.uploadTotal,
+  'downloadTotal': instance.downloadTotal,
+  'connections': instance.connections,
+};

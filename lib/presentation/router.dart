@@ -11,37 +11,36 @@ import 'package:clash_for_flutter/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-final _shellBuilder = Constants.isDesktop
-    ? (_, __, shell) => DesktopShell(shell: shell)
-    : (_, __, shell) => MobileShell(shell: shell);
+Widget _shellBuilder(BuildContext context, GoRouterState state, StatefulNavigationShell shell) =>
+    Constants.isDesktop ? DesktopShell(shell: shell) : MobileShell(shell: shell);
 
 final router = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(
       path: '/',
-      builder: (_, __) => const InitPage(),
+      builder: (context, state) => const InitPage(),
     ),
     StatefulShellRoute.indexedStack(
       builder: _shellBuilder,
       branches: [
         StatefulShellBranch(routes: [
-          GoRoute(path: '/home', builder: (_, __) => const HomePage()),
+          GoRoute(path: '/home', builder: (context, state) => const HomePage()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/proxies', builder: (_, __) => const ProxiesPage()),
+          GoRoute(path: '/proxies', builder: (context, state) => const ProxiesPage()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/logs', builder: (_, __) => const LogsPage()),
+          GoRoute(path: '/logs', builder: (context, state) => const LogsPage()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/connections', builder: (_, __) => const ConnectionsPage()),
+          GoRoute(path: '/connections', builder: (context, state) => const ConnectionsPage()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/profiles', builder: (_, __) => const ProfilesPage()),
+          GoRoute(path: '/profiles', builder: (context, state) => const ProfilesPage()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+          GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
         ]),
       ],
     ),

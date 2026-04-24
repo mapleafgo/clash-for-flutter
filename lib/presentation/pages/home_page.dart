@@ -1,11 +1,22 @@
+import 'dart:async';
+
+import 'package:clash_for_flutter/data/api/ws_streams.dart' as ws;
+import 'package:clash_for_flutter/domain/net_speed.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
 import 'package:clash_for_flutter/services/core_config.dart';
 import 'package:clash_for_flutter/utils/constants.dart';
+import 'package:clash_for_flutter/utils/format.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 const _btnSize = Size(200, 70);
+
+final _speed = signal(NetSpeed());
+
+void startTrafficSubscription() {
+  ws.trafficStream().listen((s) => _speed.value = s);
+}
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -21,6 +32,8 @@ class HomePage extends StatelessWidget {
               : systemProxy.value;
           return Column(mainAxisSize: MainAxisSize.min, children: [
             _ToggleBtn(enabled: enabled),
+            const SizedBox(height: 16),
+            _SpeedDisplay(),
             if (Constants.isDesktop) ...[
               const SizedBox(height: 24),
               _TunSwitch(),
@@ -29,6 +42,19 @@ class HomePage extends StatelessWidget {
         }),
       ),
     );
+  }
+}
+
+class _SpeedDisplay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final speed = _speed.value;
+      return Text(
+        '↑ ${formatBytes(speed.up)}/s  ↓ ${formatBytes(speed.down)}/s',
+        style: const TextStyle(fontSize: 14),
+      );
+    });
   }
 }
 

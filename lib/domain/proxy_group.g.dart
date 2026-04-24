@@ -7,11 +7,11 @@ part of 'proxy_group.dart';
 // **************************************************************************
 
 ProxyGroup _$ProxyGroupFromJson(Map<String, dynamic> json) => ProxyGroup(
-      name: json['name'] as String,
-      type: json['type'] as String,
-      all: (json['all'] as List<dynamic>).map((e) => e as String).toList(),
-      now: json['now'] as String,
-    );
+  name: json['name'] as String,
+  type: json['type'] as String,
+  all: (json['all'] as List<dynamic>).map((e) => e as String).toList(),
+  now: json['now'] as String,
+);
 
 Map<String, dynamic> _$ProxyGroupToJson(ProxyGroup instance) =>
     <String, dynamic>{

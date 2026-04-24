@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:clash_for_flutter/presentation/pages/connections_page.dart';
+import 'package:clash_for_flutter/presentation/pages/home_page.dart';
+import 'package:clash_for_flutter/presentation/pages/logs_page.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
 import 'package:clash_for_flutter/services/clash_api.dart';
 import 'package:clash_for_flutter/services/core_config.dart';
@@ -37,6 +40,9 @@ class _InitPageState extends State<InitPage> {
       if (clashConfig.value.tunEnabled) {
         await openTun();
       }
+      startTrafficSubscription();
+      startLogSubscription();
+      startConnectionsSubscription();
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {

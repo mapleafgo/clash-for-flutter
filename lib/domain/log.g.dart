@@ -7,14 +7,14 @@ part of 'log.dart';
 // **************************************************************************
 
 LogEntry _$LogEntryFromJson(Map<String, dynamic> json) => LogEntry(
-      type: $enumDecode(_$LogLevelEnumMap, json['type']),
-      payload: json['payload'] as String,
-    );
+  type: $enumDecode(_$LogLevelEnumMap, json['type']),
+  payload: json['payload'] as String,
+);
 
 Map<String, dynamic> _$LogEntryToJson(LogEntry instance) => <String, dynamic>{
-      'type': _$LogLevelEnumMap[instance.type]!,
-      'payload': instance.payload,
-    };
+  'type': _$LogLevelEnumMap[instance.type]!,
+  'payload': instance.payload,
+};
 
 const _$LogLevelEnumMap = {
   LogLevel.debug: 'debug',
