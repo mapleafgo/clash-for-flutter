@@ -60,7 +60,7 @@ export fn CoreClose()                                         // 释放 libbox �
 
 // 配置管理
 export fn CoreCheckConfig(jsonContent: *const c_char) -> c_int  // 验证 sing-box JSON 合法性
-export fn CoreReloadConfig() -> c_int                            // 重载当前配置（serviceReload）
+export fn CoreReloadConfig() -> c_int                            // 重新读取当前 YAML → 翻译 → StartOrReloadService
 
 // 查询（返回 JSON 字符串，调用方负责释放内存）
 export fn CoreQueryProxies() -> *const c_char                  // 所有代理组和节点
@@ -125,7 +125,7 @@ typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
 | `service.start()` | 启动服务 | （CoreStart 内部调用） |
 | `service.close()` | 关闭服务 | `CoreStop` |
 | `checkConfig(content)` | 验证 JSON 配置合法性 | `CoreCheckConfig` (FFI 导出) |
-| `serviceReload()` | 重载配置 | `CoreReloadConfig` |
+| `serviceReload()` → 实际用 `StartOrReloadService` | 重载配置（Go 层重新读取 YAML → 翻译 → 传入新 JSON） | `CoreReloadConfig` |
 | `selectOutbound(group, tag)` | 切换代理选择 | `CoreSelectProxy` |
 | `urlTest(group)` | 触发延迟测试 | `CoreTestDelay` |
 | `setClashMode(mode)` | 切换代理模式 | `CoreSetMode` |
@@ -341,8 +341,9 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
   │
   ├─ 1. 解析 YAML
   ├─ 2. 翻译全局配置 → log + experimental + inbounds
-  ├─ 3. 翻译 proxies[] → outbounds[]
+  ├─ 3. 翻译 proxies[] → outbounds[]（跳过不支持的协议，记录已翻译的 tag 集合）
   ├─ 4. 翻译 proxy-groups[] → outbounds[]（追加到 outbounds）
+  │     └─ 过滤 outbounds 列表：移除未翻译的代理 tag，若组内所有代理均被跳过则跳过该组并记录警告
   ├─ 5. 注入内置 outbound（DIRECT, REJECT, dns-out）
   ├─ 6. 翻译 rules[] → route.rules + route.rule_set
   │     ├─ DOMAIN-SUFFIX → domain_suffix 规则
