@@ -139,6 +139,21 @@ Go 桥接层自动检测配置格式并进行翻译：
 - 优雅跳过该字段
 - **不得**导致整个配置加载失败
 
+### 资源文件翻译策略
+
+mihomo 配置中的 `GEOIP`/`GEOSITE` 规则不引用外部文件，直接使用内置 GeoData。sing-box 没有内置 GeoData，必须通过 rule-set 引用。
+
+翻译器需要维护一个**内置映射表**，将常用的 GeoIP/GeoSite 名称映射到远程 rule-set URL：
+
+```
+GEOIP,CN      → rule_set: {tag:"geoip-cn", type:"remote", format:"binary",
+                           url:"https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"}
+GEOSITE,google → rule_set: {tag:"geosite-google", type:"remote", format:"binary",
+                            url:"https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs"}
+```
+
+对于映射表中不存在的名称，翻译器应生成一条警告并跳过该规则。
+
 ## Flutter 侧变更
 
 ### 需要改动的组件
@@ -159,7 +174,20 @@ Go 桥接层自动检测配置格式并进行翻译：
 | Signals 状态管理 | 仍用于响应式 UI |
 | 订阅管理 | 基于文件、格式无关 |
 | 订阅下载 | YAML 下载逻辑不变 |
-| 设置页面 | 大部分设置可映射到 sing-box 对应项 |
+| 系统代理管理 | 已有 `proxy_manager` 逻辑，sing-box 不管理此部分 |
+
+### 设置页面变更
+
+| 功能 | 处理方式 |
+|------|----------|
+| 端口配置（Mixed/Redir/TProxy） | 保留，映射到 sing-box inbound |
+| 允许局域网 | 保留，映射到 inbound `listen` 地址 |
+| IPv6 | 保留，映射到 DNS strategy |
+| 代理模式 | 保留，映射到 sing-box route default mode |
+| 日志等级 | 保留，直接映射 |
+| MMDB URL / 刷新 MMDB | **移除**，sing-box 不使用 MMDB |
+| 延迟测试 URL | 保留 |
+| 订阅 User-Agent | 保留，订阅下载不受内核影响 |
 
 ### ClashApi 重构
 
@@ -231,6 +259,129 @@ Flutter 资源 ──► 各平台指定路径
 - 边界情况与错误处理
 - 测试
 
+## 内核差异要点
+
+以下两个内核在运行时行为上存在**结构性差异**，不仅限于配置字段名不同。翻译器和 Flutter 端必须正确处理这些差异。
+
+### 资源文件体系
+
+| 维度 | mihomo | sing-box |
+|------|--------|----------|
+| GeoIP | `Country.mmdb`（MaxMind 格式），必须预置 | **不需要独立文件**，GeoIP 编译进 `.srs` rule-set |
+| GeoSite | `geosite.dat`（v2ray protobuf），必须预置 | **不需要独立文件**，GeoSite 编译进 `.srs` rule-set |
+| 规则二进制 | `.mrs` 格式（Mihomo Rule Set） | `.srs` 格式（Sing-box Rule Set），**完全不兼容** |
+| 缓存 | 各资源独立存储 | 统一缓存在 `cache.db` |
+
+**对 Flutter 端的影响**：
+- 设置页的"刷新 MMDB"功能**移除**，替换为"更新 rule-set"或直接移除（sing-box 通过远程 URL 自动下载和缓存 rule-set）
+- 翻译器需要将 mihomo 的 `GEOIP,CN,Proxy` / `GEOSITE,google,Proxy` 规则转换为 sing-box 的 rule-set 引用
+- 翻译器需要在生成的 sing-box JSON 配置中内置默认的 rule-set 远程 URL 列表（geoip-cn、geosite-cn 等常用集）
+
+### 配置热重载
+
+mihomo 通过 `PUT /configs?force=true&path=...` 实现热重载。sing-box 的 Clash API **不支持此端点**。
+
+**纯 FFI 方案下的解决方式**：
+- Go 桥接层调用 libbox 的 `StartOrReloadService(configContent, options)` 传入新配置字符串
+- 切换订阅文件时：Go 层读取新 YAML → 翻译为 sing-box JSON → 调用 `StartOrReloadService`
+- 不需要 HTTP 端点参与
+
+### 系统代理管理
+
+mihomo 内部自动设置系统代理（Windows 注册表、macOS networksetup 等）。sing-box **不自动管理**系统代理。
+
+**影响**：
+- Flutter 端继续使用 `proxy_manager` 包自行管理系统代理
+- 当前项目已有此逻辑（`app_config.dart` 中的 `openProxy`/`closeProxy`），**无需额外改动**
+- libbox 提供 `SetSystemProxyEnabled()` 接口，但实际系统代理设置由宿主应用负责
+
+### FakeIP 配置格式
+
+mihomo 在 DNS 全局配置中用 `fake-ip-range` + `fake-ip-filter` 列表。sing-box 把 FakeIP 作为独立的 DNS 服务器类型，通过 DNS 路由规则控制。
+
+**翻译逻辑**：
+```
+mihomo:
+  dns:
+    fake-ip-range: 198.18.0.0/15
+    fake-ip-filter: ["*.lan", "*.localhost"]
+
+→ sing-box:
+  dns.servers[] += {type:"fakeip", tag:"fakeip", inet4_range:"198.18.0.0/15"}
+  dns.rules[] += {query_type:["A","AAAA"], action:"route", server:"fakeip"}
+  dns.rules[] += 对 fake-ip-filter 中的排除域名设置 action:"route", server:"dns-direct"
+```
+
+### TUN 模式
+
+mihomo 的 TUN 是全局配置段（`tun:`）。sing-box 的 TUN 是 `inbounds[]` 中的一个 inbound 条目。
+
+**翻译逻辑**：
+```
+mihomo:
+  tun: {enable:true, stack:"mixed", dns-hijack:[any:53]}
+
+→ sing-box:
+  inbounds[] += {
+    type:"tun", tag:"tun-in",
+    address:["10.0.0.1/24"],
+    auto_route:true, stack:"mixed"
+  }
+```
+
+平台特定字段（如 `auto_redirect` 仅 Linux、UID/包名过滤仅 Android）由翻译器按目标平台条件化输出。
+
+### DNS 配置结构差异
+
+mihomo 把 DNS 作为全局配置段，包含 `nameserver`、`fallback`、`nameserver-policy` 等。sing-box 的 DNS 由 `servers[]` + `rules[]` 构成，逻辑更接近路由系统。
+
+**翻译逻辑**：
+```
+mihomo:
+  dns:
+    nameserver: [114.114.114.114, 8.8.8.8]
+    fallback: [tls://1.1.1.1, tls://8.8.8.8]
+    nameserver-policy: {"+.example.com": "https://dns.example.com"}
+
+→ sing-box:
+  dns.servers[] = [
+    {tag:"ns", address:"114.114.114.114"},
+    {tag:"fb", address:"tls://1.1.1.1"},
+    {tag:"ns-policy", address:"https://dns.example.com"}
+  ]
+  dns.rules[] = [
+    {domain_suffix:["example.com"], server:"ns-policy"},
+    {outbound:"any", server:"ns"}     // fallback 的条件路由
+  ]
+```
+
+### 代理组类型差异
+
+| mihomo 类型 | sing-box 类型 | 说明 |
+|-------------|--------------|------|
+| `Select` | `selector` | 手动选择 |
+| `URLTest` | `urltest` | 自动选择最低延迟 |
+| `Fallback` | 无直接对应 | 需用 `urltest` 模拟（tolerance 设大值） |
+| `LoadBalance` | 无直接对应 | 翻译时降级为 `selector`，记录警告 |
+
+### 规则格式差异
+
+mihomo 用单行字符串规则：`DOMAIN-SUFFIX,google.com,Proxy`。sing-box 用 JSON 对象数组。
+
+**翻译逻辑**：
+```
+mihomo: DOMAIN-SUFFIX,google.com,Proxy
+→ sing-box: {domain_suffix:["google.com"], outbound:"Proxy"}
+
+mihomo: GEOIP,CN,DIRECT
+→ sing-box: {rule_set:["geoip-cn"], outbound:"DIRECT"}
+
+mihomo: GEOSITE,google,Proxy
+→ sing-box: {rule_set:["geosite-google"], outbound:"Proxy"}
+```
+
+GEOIP/GEOSITE 规则翻译时需要翻译器自动生成对应的 rule-set 引用（远程 URL），并添加到 `route.rule_set[]` 中。
+
 ## 风险与缓解
 
 | 风险 | 缓解措施 |
@@ -240,3 +391,6 @@ Flutter 资源 ──► 各平台指定路径
 | 平台特定 TUN | 按平台条件化配置字段 |
 | gomobile ABI 稳定性 | 锁定 sing-box 版本，逐平台测试 |
 | 影响现有用户 | 翻译器兼容所有 mihomo YAML 配置 |
+| MMDB → rule-set 迁移 | 翻译器内置默认 rule-set URL 列表，设置页移除 MMDB 刷新功能 |
+| Fallback/LoadBalance 组类型 | 降级为 urltest/selector，记录警告 |
+| GEOIP/GEOSITE 规则翻译 | 翻译器维护内置的 rule-set 名称→URL 映射表 |
