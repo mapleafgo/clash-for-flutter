@@ -94,16 +94,38 @@ class CoreControl {
 
 流量、日志和连接数据使用 Go→Dart 回调模式。Go 桥接层自行实现事件循环——订阅 sing-box/libbox 的内部事件接口，通过注册的 C 函数指针将数据转发给 Flutter。
 
+参考 sing-box-for-android 的 libbox 实践，数据订阅通过 `CommandClient` 的 gRPC 风格接口实现：
+- `CommandStatus`：流量、内存、连接数
+- `CommandGroup`：代理组信息、延迟测试结果
+- `CommandLog`：日志流
+- `CommandClashMode`：Clash 模式变更通知
+
+Go 桥接层封装这些订阅接口，通过 C 回调转发给 Dart：
+
 ```go
 export fn CoreSetCallback(cb: extern fn(eventType: c_int, data: *const c_char))
 ```
 
 ```dart
 typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
-// eventType: 0=流量, 1=日志, 2=连接
+// eventType: 0=流量, 1=日志, 2=连接, 3=代理组变更
 ```
 
-> 注：libbox 的具体订阅机制（通过 `box.PlatformInterface` 还是直接 channel 订阅）将在 Phase 1 实现阶段检查 libbox API 后确定。
+### libbox 集成参考
+
+基于 sing-box-for-android 的实际集成方式，Go 桥接层需要实现以下 libbox 接口：
+
+| libbox 方法 | 用途 | 对应 FFI 导出 |
+|-------------|------|--------------|
+| `setup(options)` | 初始化运行环境（homeDir、cacheDir） | `CoreInit` |
+| `newService(config, platformInterface)` | 从 JSON 配置创建服务 | `CoreStart` |
+| `service.start()` | 启动服务 | （CoreStart 内部调用） |
+| `service.close()` | 关闭服务 | `CoreStop` |
+| `checkConfig(content)` | 验证 JSON 配置合法性 | `CoreCheckConfig` |
+| `serviceReload()` | 重载配置 | `CoreReloadConfig` |
+| `selectOutbound(group, tag)` | 切换代理选择 | `CoreSelectProxy` |
+| `urlTest(group)` | 触发延迟测试 | `CoreTestDelay` |
+| `setClashMode(mode)` | 切换代理模式 | `CoreSetMode` |
 
 ## 配置翻译器
 
@@ -143,16 +165,188 @@ Go 桥接层自动检测配置格式并进行翻译：
 
 mihomo 配置中的 `GEOIP`/`GEOSITE` 规则不引用外部文件，直接使用内置 GeoData。sing-box 没有内置 GeoData，必须通过 rule-set 引用。
 
-翻译器需要维护一个**内置映射表**，将常用的 GeoIP/GeoSite 名称映射到远程 rule-set URL：
+翻译器需要维护一个**内置映射表**，将常用的 GeoIP/GeoSite 名称映射到远程 rule-set URL。参考 GUI.for.SingBox 实践，使用 MetaCubeX CDN（比 SagerNet raw URL 更稳定）：
 
 ```
-GEOIP,CN      → rule_set: {tag:"geoip-cn", type:"remote", format:"binary",
-                           url:"https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"}
-GEOSITE,google → rule_set: {tag:"geosite-google", type:"remote", format:"binary",
-                            url:"https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs"}
+GEOIP,private  → geoip-private.srs
+GEOIP,CN       → geoip-cn.srs
+GEOSITE,private → geosite-private.srs
+GEOSITE,cn     → geosite-cn.srs
+GEOSITE,geolocation-!cn → geosite-geolocation-!cn.srs
+GEOSITE,category-ads-all → geosite-category-ads-all.srs
 ```
 
-对于映射表中不存在的名称，翻译器应生成一条警告并跳过该规则。
+基础 URL：`https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/`
+
+对于映射表中不存在的名称，翻译器按 `{type}-{name}.srs` 拼接 URL 并记录警告。格式均为 `binary`，默认更新间隔 `1d`。
+
+### 默认 sing-box 配置模板
+
+翻译器在生成 sing-box JSON 时，需要补充 mihomo 配置中不存在的**必要结构**。以下是基于 GUI.for.SingBox 和 sing-box-for-android 两个项目的完整默认模板：
+
+#### log
+
+```json
+{
+  "level": "info",
+  "timestamp": true
+}
+```
+
+#### experimental
+
+```json
+{
+  "clash_api": {
+    "external_controller": "127.0.0.1:9090",
+    "secret": "",
+    "default_mode": "Rule"
+  },
+  "cache_file": {
+    "enabled": true,
+    "path": "cache.db",
+    "store_fakeip": true,
+    "store_rdrc": true,
+    "rdrc_timeout": "7d"
+  }
+}
+```
+
+> 注：纯 FFI 模式下不依赖 `clash_api` 的 HTTP 端点，但保留它以兼容 libbox 内部可能需要的 Clash Mode 切换功能。
+
+#### inbounds
+
+从 mihomo 全局端口配置翻译生成：
+
+```json
+[
+  {
+    "type": "mixed",
+    "tag": "mixed-in",
+    "listen": "127.0.0.1",
+    "listen_port": 7890
+  }
+]
+```
+
+若 mihomo 配置了 `tun.enable: true`，追加 TUN inbound：
+
+```json
+{
+  "type": "tun",
+  "tag": "tun-in",
+  "address": ["172.18.0.1/30", "fdfe:dcba:9876::1/126"],
+  "mtu": 9000,
+  "auto_route": true,
+  "strict_route": true,
+  "stack": "mixed"
+}
+```
+
+若配置了 `redir-port` 或 `tproxy-port`，追加对应的 `redirect` / `tproxy` inbound。
+
+#### outbounds
+
+翻译 mihomo 的 `proxy-groups` 和 `proxies`。翻译器需要**额外生成**以下内置 outbound（mihomo 隐式提供，sing-box 必须显式声明）：
+
+```json
+[
+  { "type": "direct", "tag": "DIRECT" },
+  { "type": "block", "tag": "REJECT" },
+  { "type": "dns", "tag": "dns-out" }
+]
+```
+
+代理组翻译：
+- `type: Select` → `{type:"selector", tag:"...", outbounds:[...], interrupt_exist_connections:true}`
+- `type: URLTest` → `{type:"urltest", tag:"...", outbounds:[...], url:"...", interval:"3m", tolerance:150}`
+- `type: Fallback` → `{type:"urltest", tag:"...", outbounds:[...], tolerance:999999}` (用大 tolerance 模拟)
+- `type: LoadBalance` → `{type:"selector", tag:"..."}` (降级，记录警告)
+
+#### route
+
+翻译 mihomo 的 `rules`，并**自动注入**以下默认规则（GUI.for.SingBox 实践）：
+
+```json
+{
+  "rules": [
+    { "inbound": "tun-in", "action": "sniff" },
+    { "protocol": "dns", "action": "hijack-dns" },
+    { "ip_is_private": true, "outbound": "DIRECT" },
+    ...mihomo 规则翻译结果...,
+    { "network": "icmp", "outbound": "DIRECT" }
+  ],
+  "rule_set": [
+    ...从 GEOIP/GEOSITE 规则翻译生成的远程 rule-set 引用...
+  ],
+  "auto_detect_interface": true,
+  "final": "PROXY"
+}
+```
+
+> 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
+
+#### dns
+
+翻译 mihomo 的 `dns:` 配置。翻译器生成双服务器架构（本地 + 远程），并处理 FakeIP：
+
+```json
+{
+  "servers": [
+    { "tag": "local-dns", "type": "https", "server": "223.5.5.5", "server_port": 443 },
+    { "tag": "local-dns-resolver", "type": "udp", "server": "223.5.5.5", "server_port": 53 },
+    { "tag": "remote-dns", "type": "tls", "server": "8.8.8.8", "server_port": 853,
+      "detour": "PROXY" },
+    { "tag": "remote-dns-resolver", "type": "udp", "server": "8.8.8.8", "server_port": 53,
+      "detour": "PROXY" },
+    { "tag": "fakeip-dns", "type": "fakeip", "inet4_range": "198.18.0.0/15" }
+  ],
+  "rules": [
+    { "clash_mode": "Direct", "server": "local-dns" },
+    { "clash_mode": "Global", "server": "remote-dns" },
+    { "rule_set": ["geosite-cn"], "server": "local-dns" },
+    { "rule_set": ["geolocation-!cn"], "server": "remote-dns" },
+    {
+      "type": "logical", "mode": "and",
+      "rules": [
+        { "domain_suffix": [".lan",".localdomain",".localhost",".local",".home.arpa"], "invert": true },
+        { "query_type": ["A","AAAA"] }
+      ],
+      "server": "fakeip-dns"
+    }
+  ],
+  "final": "remote-dns",
+  "strategy": "prefer_ipv4"
+}
+```
+
+> FakeIP 规则使用 logical AND：排除常见本地域名后，对 A/AAAA 查询走 FakeIP。
+
+### 翻译器完整流程
+
+```
+输入：mihomo YAML 文件路径
+  │
+  ├─ 1. 解析 YAML
+  ├─ 2. 翻译全局配置 → log + experimental + inbounds
+  ├─ 3. 翻译 proxies[] → outbounds[]
+  ├─ 4. 翻译 proxy-groups[] → outbounds[]（追加到 outbounds）
+  ├─ 5. 注入内置 outbound（DIRECT, REJECT, dns-out）
+  ├─ 6. 翻译 rules[] → route.rules + route.rule_set
+  │     ├─ DOMAIN-SUFFIX → domain_suffix 规则
+  │     ├─ GEOIP,x,y → rule_set 引用 + 自动生成 rule_set 定义
+  │     ├─ GEOSITE,x,y → rule_set 引用 + 自动生成 rule_set 定义
+  │     └─ 其他 → 对应 sing-box 规则类型
+  ├─ 7. 注入默认路由规则（sniff, hijack-dns, icmp）
+  ├─ 8. 翻译 dns → dns servers + rules
+  │     ├─ nameserver → local-dns 服务器
+  │     ├─ fallback → remote-dns 服务器
+  │     ├─ fake-ip-range → fakeip 服务器 + logical 规则
+  │     └─ nameserver-policy → dns rules
+  ├─ 9. 翻译 tun → inbound (如启用)
+  ├─ 10. 组装完整 sing-box JSON
+  └─ 11. 返回 JSON 字符串（传给 libbox）
+```
 
 ## Flutter 侧变更
 
