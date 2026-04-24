@@ -211,14 +211,42 @@ sing-box 仅支持 TUIC v5（uuid + password 认证）。mihomo 的 TUIC v4（to
 
 > TUIC 必须启用 TLS，翻译器需自动设置 `tls.enabled: true`。
 
-### B.12 不支持/低优先级协议
+### B.12 HTTP Proxy
+
+| mihomo 字段 | sing-box 字段 | 翻译说明 |
+|---|---|---|
+| `type: http` | `"type": "http"` | 直接 |
+| `username` | `username` | 直接 |
+| `password` | `password` | 直接 |
+| `headers` | `headers` | 直接（键值对对象） |
+| `tls: true` | `tls.enabled: true` | 同 TLS 映射 |
+| `sni` | `tls.server_name` | 同 TLS 映射 |
+| `skip-cert-verify` | `tls.insecure` | 同 TLS 映射 |
+| `alpn` | `tls.alpn` | 同 TLS 映射 |
+| `client-fingerprint` | `tls.utls` | 同 TLS 映射 |
+| + 通用字段 + TLS | | |
+
+### B.13 SOCKS5
+
+| mihomo 字段 | sing-box 字段 | 翻译说明 |
+|---|---|---|
+| `type: socks5` | `"type": "socks"` | **类型名不同** |
+| `username` | `username` | 直接 |
+| `password` | `password` | 直接 |
+| `udp: true` | `network: ["tcp", "udp"]` | sing-box 通过 network 控制协议 |
+| `tls: true` | `tls.enabled: true` | 同 TLS 映射 |
+| `sni` | `tls.server_name` | 同 TLS 映射 |
+| `skip-cert-verify` | `tls.insecure` | 同 TLS 映射 |
+| + 通用字段 + TLS | | |
+
+> sing-box SOCKS outbound 支持 `version` 字段（4/4a/5），默认 5。mihomo 的 `socks5` 对应 `version: 5`。
+
+### B.14 不支持/低优先级协议
 
 | mihomo 类型 | sing-box 支持 | 处理策略 |
 |---|---|---|
 | SSR (shadowsocksR) | 不支持 | 跳过，输出警告 |
 | Snell | 不支持 | 跳过，输出警告 |
-| HTTP proxy | 支持 (`type:"http"`) | 后续迭代 |
-| SOCKS5 | 支持 (`type:"socks"`) | 后续迭代 |
 | SSH | 不支持 | 跳过 |
 | Hysteria v1 | 不支持 | 跳过 |
 | Masque | 不支持 | 跳过 |
