@@ -280,26 +280,26 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
     ...从 GEOIP/GEOSITE 规则翻译生成的远程 rule-set 引用...
   ],
   "auto_detect_interface": true,
-  "final": "PROXY"
+  "final": "<MATCH 规则的目标出站>"
 }
 ```
 
 > - 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
 > - sniff 规则不带 inbound 限制，对所有入站流量生效。若需要仅对 TUN 流量嗅探，可加 `{ "inbound": "tun-in", "action": "sniff" }` 替代。
+> - `route.final` 的值从 mihomo 配置中 `MATCH,<目标组>` 规则提取。如果用户没有 MATCH 规则，默认为 "PROXY"（即第一个代理组）。
 
 #### dns
 
 翻译 mihomo 的 `dns:` 配置。翻译器生成双服务器架构（本地 + 远程），并处理 FakeIP。
 
-**关键设计**：每个使用域名地址（如 HTTPS/TLS/Doh）的 DNS server 需要通过 `domain_resolver` 指定一个使用 IP 地址的 UDP resolver，避免 DNS 解析死循环。
+**关键设计**：当 DNS server 的 `server` 字段是**域名**（而非 IP 地址）时，必须通过 `domain_resolver` 指定一个使用 IP 地址的 UDP resolver，避免 DNS 解析死循环。如果 `server` 已经是 IP 地址则不需要 `domain_resolver`。
 
 ```json
 {
   "servers": [
     { "tag": "local-dns", "type": "https", "server": "223.5.5.5", "server_port": 443,
-      "path": "/dns-query", "domain_resolver": "local-dns-resolver" },
-    { "tag": "local-dns-resolver", "type": "udp", "server": "223.5.5.5", "server_port": 53 },
-    { "tag": "remote-dns", "type": "tls", "server": "8.8.8.8", "server_port": 853,
+      "path": "/dns-query" },
+    { "tag": "remote-dns", "type": "tls", "server": "dns.google", "server_port": 853,
       "detour": "PROXY", "domain_resolver": "remote-dns-resolver" },
     { "tag": "remote-dns-resolver", "type": "udp", "server": "8.8.8.8", "server_port": 53,
       "detour": "PROXY" },
