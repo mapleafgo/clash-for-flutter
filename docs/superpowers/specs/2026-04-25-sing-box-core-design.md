@@ -206,13 +206,13 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
     "enabled": true,
     "path": "cache.db",
     "store_fakeip": true,
-    "store_rdrc": true,
-    "rdrc_timeout": "7d"
+    "store_dns": true
   }
 }
 ```
 
-> 注：纯 FFI 模式下不依赖 `clash_api` 的 HTTP 端点，但保留它以兼容 libbox 内部可能需要的 Clash Mode 切换功能。
+> - 纯 FFI 模式下不依赖 `clash_api` 的 HTTP 端点，但保留它以兼容 libbox 内部的 Clash Mode 切换功能。
+> - `store_dns` 替代旧版 `store_rdrc`（1.14.0 起更名）。`rdrc_timeout` 非标准字段，已移除。
 
 #### inbounds
 
