@@ -53,14 +53,14 @@ clash-for-flutter 当前使用 cff-core，基于原版 Dreamacro/Clash (v1.18.0)
 
 ```go
 // 生命周期
-export fn CoreInit(homeDir: *const c_char) -> c_int
-export fn CoreStart(configPath: *const c_char) -> c_int
-export fn CoreStop() -> c_int
-export fn CoreClose()
+export fn CoreInit(homeDir: *const c_char) -> c_int          // 初始化 libbox 运行环境
+export fn CoreStart(configPath: *const c_char) -> c_int      // 翻译配置 + 启动服务
+export fn CoreStop() -> c_int                                 // 停止服务（不释放 libbox）
+export fn CoreClose()                                         // 释放 libbox 资源
 
 // 配置管理
-export fn CoreLoadConfig(yamlPath: *const c_char) -> c_int   // 自动检测并翻译
-export fn CoreReloadConfig() -> c_int
+export fn CoreCheckConfig(jsonContent: *const c_char) -> c_int  // 验证 sing-box JSON 合法性
+export fn CoreReloadConfig() -> c_int                            // 重载当前配置（serviceReload）
 
 // 查询（返回 JSON 字符串，调用方负责释放内存）
 export fn CoreQueryProxies() -> *const c_char                  // 所有代理组和节点
@@ -121,7 +121,7 @@ typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
 | `newService(config, platformInterface)` | 从 JSON 配置创建服务 | `CoreStart` |
 | `service.start()` | 启动服务 | （CoreStart 内部调用） |
 | `service.close()` | 关闭服务 | `CoreStop` |
-| `checkConfig(content)` | 验证 JSON 配置合法性 | `CoreCheckConfig` |
+| `checkConfig(content)` | 验证 JSON 配置合法性 | `CoreCheckConfig` (FFI 导出) |
 | `serviceReload()` | 重载配置 | `CoreReloadConfig` |
 | `selectOutbound(group, tag)` | 切换代理选择 | `CoreSelectProxy` |
 | `urlTest(group)` | 触发延迟测试 | `CoreTestDelay` |
@@ -288,15 +288,18 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 
 #### dns
 
-翻译 mihomo 的 `dns:` 配置。翻译器生成双服务器架构（本地 + 远程），并处理 FakeIP：
+翻译 mihomo 的 `dns:` 配置。翻译器生成双服务器架构（本地 + 远程），并处理 FakeIP。
+
+**关键设计**：每个使用域名地址（如 HTTPS/TLS/Doh）的 DNS server 需要通过 `domain_resolver` 指定一个使用 IP 地址的 UDP resolver，避免 DNS 解析死循环。
 
 ```json
 {
   "servers": [
-    { "tag": "local-dns", "type": "https", "server": "223.5.5.5", "server_port": 443 },
+    { "tag": "local-dns", "type": "https", "server": "223.5.5.5", "server_port": 443,
+      "path": "/dns-query", "domain_resolver": "local-dns-resolver" },
     { "tag": "local-dns-resolver", "type": "udp", "server": "223.5.5.5", "server_port": 53 },
     { "tag": "remote-dns", "type": "tls", "server": "8.8.8.8", "server_port": 853,
-      "detour": "PROXY" },
+      "detour": "PROXY", "domain_resolver": "remote-dns-resolver" },
     { "tag": "remote-dns-resolver", "type": "udp", "server": "8.8.8.8", "server_port": 53,
       "detour": "PROXY" },
     { "tag": "fakeip-dns", "type": "fakeip", "inet4_range": "198.18.0.0/15" }
@@ -309,8 +312,12 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
     {
       "type": "logical", "mode": "and",
       "rules": [
-        { "domain_suffix": [".lan",".localdomain",".localhost",".local",".home.arpa"], "invert": true },
-        { "query_type": ["A","AAAA"] }
+        { "domain_suffix": [
+          ".lan", ".localdomain", ".example", ".invalid",
+          ".localhost", ".test", ".local", ".home.arpa",
+          ".msftconnecttest.com", ".msftncsi.com"
+        ], "invert": true },
+        { "query_type": ["A", "AAAA"] }
       ],
       "server": "fakeip-dns"
     }
@@ -320,7 +327,8 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 }
 ```
 
-> FakeIP 规则使用 logical AND：排除常见本地域名后，对 A/AAAA 查询走 FakeIP。
+> - `domain_resolver` 链：`local-dns`（HTTPS）→ 通过 `local-dns-resolver`（UDP 223.5.5.5:53）解析域名；`remote-dns`（TLS）→ 通过 `remote-dns-resolver`（UDP 8.8.8.8:53）解析域名。避免 DNS 解析死循环。
+> - FakeIP 规则使用 logical AND：排除常见本地域名 + Windows 网络检测域名后，对 A/AAAA 查询走 FakeIP。
 
 ### 翻译器完整流程
 
@@ -339,9 +347,10 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
   │     └─ 其他 → 对应 sing-box 规则类型
   ├─ 7. 注入默认路由规则（sniff, hijack-dns, icmp）
   ├─ 8. 翻译 dns → dns servers + rules
-  │     ├─ nameserver → local-dns 服务器
-  │     ├─ fallback → remote-dns 服务器
-  │     ├─ fake-ip-range → fakeip 服务器 + logical 规则
+  │     ├─ nameserver → local-dns 服务器（HTTPS/TLS 类型需生成对应的 resolver）
+  │     ├─ fallback → remote-dns 服务器（同上）
+  │     ├─ domain_resolver 链：每个域名地址的 server 需指定一个 IP 地址的 UDP resolver
+  │     ├─ fake-ip-range → fakeip 服务器 + logical 规则（含排除域名列表）
   │     └─ nameserver-policy → dns rules
   ├─ 9. 翻译 tun → inbound (如启用)
   ├─ 10. 组装完整 sing-box JSON
@@ -377,7 +386,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 | 端口配置（Mixed/Redir/TProxy） | 保留，映射到 sing-box inbound |
 | 允许局域网 | 保留，映射到 inbound `listen` 地址 |
 | IPv6 | 保留，映射到 DNS strategy |
-| 代理模式 | 保留，映射到 sing-box route default mode |
+| 代理模式 | 保留，映射到 `experimental.clash_api.default_mode`（libbox `setClashMode`） |
 | 日志等级 | 保留，直接映射 |
 | MMDB URL / 刷新 MMDB | **移除**，sing-box 不使用 MMDB |
 | 延迟测试 URL | 保留 |
