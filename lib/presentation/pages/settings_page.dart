@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:clash_for_flutter/domain/enums.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
 import 'package:clash_for_flutter/services/app_config.dart';
@@ -52,7 +54,7 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           _Section('其他设置'),
-          _UrlTile('MMDB Url', mmdbUrl.value, (v) => mmdbUrl.value = v),
+          _MmdbTile(),
           _UrlTile('延迟测试 Url', delayTestUrl.value, (v) => delayTestUrl.value = v),
           _Section('关于'),
           ListTile(
@@ -178,6 +180,89 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
       await api.checkLatestVersion();
       if (mounted) setState(() => _state = 2);
     } catch (_) {
+      if (mounted) setState(() => _state = -1);
+    }
+  }
+}
+
+class _MmdbTile extends StatefulWidget {
+  @override
+  State<_MmdbTile> createState() => _MmdbTileState();
+}
+
+class _MmdbTileState extends State<_MmdbTile> {
+  int _state = 0; // 0=idle, 1=downloading, 2=success, -1=error
+  double _progress = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final url = mmdbUrl.value;
+      return ListTile(
+        title: const Text('MMDB Url'),
+        subtitle: Text(url, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onTap: _state == 1 ? null : () => _editUrl(context),
+        trailing: _trailing(),
+      );
+    });
+  }
+
+  Widget _trailing() {
+    return switch (_state) {
+      1 => SizedBox(
+          width: 20, height: 20,
+          child: Stack(fit: StackFit.expand, children: [
+            CircularProgressIndicator(
+              value: _progress > 0 ? _progress : null,
+              strokeWidth: 2,
+            ),
+            Center(child: Text('${(_progress * 100).round()}',
+                style: const TextStyle(fontSize: 6))),
+          ]),
+        ),
+      2 => const Icon(Icons.check, color: Colors.green),
+      -1 => const Icon(Icons.error, color: Colors.red),
+      _ => IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _download,
+          tooltip: '刷新 MMDB',
+        ),
+    };
+  }
+
+  Future<void> _editUrl(BuildContext context) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('MMDB Url'),
+        content: TextFormField(
+          initialValue: mmdbUrl.value,
+          onFieldSubmitted: (v) => Navigator.pop(context, v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, mmdbUrl.value), child: const Text('确定')),
+        ],
+      ),
+    );
+    if (result != null) mmdbUrl.value = result;
+  }
+
+  Future<void> _download() async {
+    setState(() { _state = 1; _progress = 0; });
+    try {
+      final newPath = '${Constants.homeDir.path}${Constants.mmdbNew}';
+      await api.downloadFile(mmdbUrl.value, newPath,
+          onProgress: (received, total) {
+        if (total > 0 && mounted) setState(() => _progress = received / total);
+      });
+      final oldPath = '${Constants.homeDir.path}${Constants.mmdb}';
+      if (File(oldPath).existsSync()) await File(oldPath).delete();
+      await File(newPath).rename(oldPath);
+      if (mounted) setState(() => _state = 2);
+    } catch (_) {
+      final newPath = '${Constants.homeDir.path}${Constants.mmdbNew}';
+      if (File(newPath).existsSync()) await File(newPath).delete();
       if (mounted) setState(() => _state = -1);
     }
   }

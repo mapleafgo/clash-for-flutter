@@ -4,10 +4,10 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_lifecycle
+  desktop_tray
   local_notifier
   proxy_manager
   screen_retriever_linux
-  tray_manager
   url_launcher_linux
   window_manager
 )

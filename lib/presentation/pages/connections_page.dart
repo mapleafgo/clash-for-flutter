@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:clash_for_flutter/data/api/ws_streams.dart' as ws;
 import 'package:clash_for_flutter/domain/connection.dart';
 import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
@@ -12,11 +10,9 @@ import 'package:timeago/timeago.dart' as timeago;
 
 final _connections = signal<List<Connection>>([]);
 final _prevConnections = signal<Map<String, Connection>>({});
-// ignore: unused_element
-StreamSubscription? _connSub;
 
 void startConnectionsSubscription() {
-  _connSub = ws.connectionsStream().listen((snapshot) {
+  ws.connectionsStream().listen((snapshot) {
     final prev = {for (final c in _connections.value) c.id: c};
     _prevConnections.value = prev;
     _connections.value = snapshot.connections
@@ -82,6 +78,7 @@ class _ConnSource extends DataTableSource {
     final c = conns[index];
     final old = prev[c.id];
     final speedDown = old != null ? c.download - old.download : 0;
+    final speedUp = old != null ? c.upload - old.upload : 0;
     final host = c.metadata.host.isNotEmpty
         ? c.metadata.host
         : c.metadata.destinationIP;
@@ -93,7 +90,7 @@ class _ConnSource extends DataTableSource {
       DataCell(Text(c.chains.join(' → '))),
       DataCell(Text(c.rule)),
       DataCell(Text(c.metadata.process)),
-      DataCell(Text('${formatBytes(speedDown)}/s')),
+      DataCell(Text('↑${formatBytes(speedUp)} ↓${formatBytes(speedDown)}/s')),
       DataCell(Text(formatBytes(c.upload))),
       DataCell(Text(formatBytes(c.download))),
       DataCell(Text(c.metadata.sourceIP)),

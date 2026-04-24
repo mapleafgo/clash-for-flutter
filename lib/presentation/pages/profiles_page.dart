@@ -141,50 +141,61 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final info = profile.userinfo;
+    final expire = info?.expire;
     return Card(
       color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-              child: Text(profile.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            Text(profile.type.name.toUpperCase()),
-          ]),
-          Text(timeago.format(profile.time, locale: 'zh_cn')),
-          if (profile.userinfo != null) ...[
-            const SizedBox(height: 8),
-            _TrafficBar(info: profile.userinfo!),
-          ],
-          const Divider(),
-          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            IconButton(
-              icon: const Icon(Icons.edit_note, size: 20),
-              tooltip: '修改名称',
-              onPressed: () => _editName(context),
-            ),
-            IconButton(
-              icon: const Icon(Icons.code, size: 20),
-              tooltip: '修改源',
-              onPressed: () => _editSource(context),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              tooltip: '移除',
-              onPressed: () => _remove(context),
-            ),
-            if (profile.type == ProfileType.url)
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                tooltip: '更新',
-                onPressed: () => _update(context),
+      child: InkWell(
+        onTap: () => selectedFile.value = profile.file,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text(profile.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
+              Text(profile.type.name.toUpperCase()),
+            ]),
+            Text(timeago.format(profile.time, locale: 'zh_cn')),
+            if (info != null && (info.total ?? 0) > 0) ...[
+              const SizedBox(height: 8),
+              _TrafficBar(info: info),
+            ],
+            if (expire != null && expire > 0) ...[
+              const SizedBox(height: 4),
+              Text('过期: ${timeago.format(DateTime.fromMillisecondsSinceEpoch(expire * 1000), locale: 'zh_cn')}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+            const Divider(),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              IconButton(
+                icon: const Icon(Icons.edit_note, size: 20),
+                tooltip: '修改名称',
+                onPressed: () => _editName(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.code, size: 20),
+                tooltip: '修改源',
+                onPressed: () => _editSource(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                tooltip: '移除',
+                onPressed: () => _remove(context),
+              ),
+              if (profile.type == ProfileType.url)
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  tooltip: '更新',
+                  onPressed: () => _update(context),
+                ),
+            ]),
           ]),
-        ]),
+        ),
       ),
     );
   }
@@ -255,6 +266,8 @@ class _ProfileCard extends StatelessWidget {
         profilesDir: profilesPath,
         name: profile.name,
       );
+      final oldPath = p.join(profilesPath, profile.file);
+      if (File(oldPath).existsSync()) await File(oldPath).delete();
       final list = profiles.value.map((p) =>
           p.file == profile.file ? updated : p).toList();
       profiles.value = list;
