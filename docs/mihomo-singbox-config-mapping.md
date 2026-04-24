@@ -190,7 +190,28 @@ sing-box: plugin: "obfs-local", plugin_opts: "obfs=tls;host=bing.com"
 | `mtu` | `mtu` | 直接 |
 | `dns` | (通过 DNS 规则处理) | 单独映射 |
 
-### B.11 不支持/低优先级协议
+### B.11 TUIC
+
+sing-box 仅支持 TUIC v5（uuid + password 认证）。mihomo 的 TUIC v4（token 认证）不支持，翻译时跳过并输出警告。
+
+| mihomo 字段 | sing-box 字段 | 翻译说明 |
+|---|---|---|
+| `type: tuic` | `"type": "tuic"` | 直接 |
+| `uuid` | `uuid` | 直接（v5） |
+| `password` | `password` | 直接（v5） |
+| `token` | (不支持) | TUIC v4 认证，跳过并输出警告 |
+| `udp-relay-mode: native` | `udp_relay_mode: "native"` | 直接 |
+| `udp-relay-mode: quic` | `udp_relay_mode: "quic"` | 直接 |
+| `congestion-controller: bbr` | `congestion_control: "bbr"` | **字段名不同** |
+| `reduce-rtt: true` | `zero_rtt_handshake: true` | **字段名不同** |
+| `sni` | `tls.server_name` | 同 TLS 映射 |
+| `skip-cert-verify` | `tls.insecure` | 同 TLS 映射 |
+| `alpn` | `tls.alpn` | 同 TLS 映射 |
+| + 通用字段 + TLS | | |
+
+> TUIC 必须启用 TLS，翻译器需自动设置 `tls.enabled: true`。
+
+### B.12 不支持/低优先级协议
 
 | mihomo 类型 | sing-box 支持 | 处理策略 |
 |---|---|---|
@@ -199,7 +220,6 @@ sing-box: plugin: "obfs-local", plugin_opts: "obfs=tls;host=bing.com"
 | HTTP proxy | 支持 (`type:"http"`) | 后续迭代 |
 | SOCKS5 | 支持 (`type:"socks"`) | 后续迭代 |
 | SSH | 不支持 | 跳过 |
-| TUIC | 支持 (`type:"tuic"`) | 后续迭代 |
 | Hysteria v1 | 不支持 | 跳过 |
 | Masque | 不支持 | 跳过 |
 
