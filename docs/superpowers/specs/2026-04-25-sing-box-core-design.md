@@ -118,7 +118,7 @@ typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
 | libbox 方法 | 用途 | 对应 FFI 导出 |
 |-------------|------|--------------|
 | `setup(options)` | 初始化运行环境（homeDir、cacheDir） | `CoreInit` |
-| `newService(config, platformInterface)` | 从 JSON 配置创建服务 | `CoreStart` |
+| `newService(config, platformInterface)` | 从 JSON 配置字符串创建服务 | `CoreStart`（接收文件路径，Go 层内部读取→翻译→传入 JSON 字符串） |
 | `service.start()` | 启动服务 | （CoreStart 内部调用） |
 | `service.close()` | 关闭服务 | `CoreStop` |
 | `checkConfig(content)` | 验证 JSON 配置合法性 | `CoreCheckConfig` (FFI 导出) |
@@ -270,7 +270,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 ```json
 {
   "rules": [
-    { "inbound": "tun-in", "action": "sniff" },
+    { "action": "sniff" },
     { "protocol": "dns", "action": "hijack-dns" },
     { "ip_is_private": true, "outbound": "DIRECT" },
     ...mihomo 规则翻译结果...,
@@ -284,7 +284,8 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 }
 ```
 
-> 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
+> - 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
+> - sniff 规则不带 inbound 限制，对所有入站流量生效。若需要仅对 TUN 流量嗅探，可加 `{ "inbound": "tun-in", "action": "sniff" }` 替代。
 
 #### dns
 
@@ -548,15 +549,19 @@ mihomo:
 
 → sing-box:
   dns.servers[] = [
-    {tag:"ns", address:"114.114.114.114"},
-    {tag:"fb", address:"tls://1.1.1.1"},
-    {tag:"ns-policy", address:"https://dns.example.com"}
+    {tag:"ns", type:"udp", server:"114.114.114.114", server_port:53},
+    {tag:"fb", type:"tls", server:"1.1.1.1", server_port:853,
+     domain_resolver:"ns"},
+    {tag:"ns-policy", type:"https", server:"dns.example.com",
+     server_port:443, path:"/dns-query", domain_resolver:"ns"}
   ]
   dns.rules[] = [
     {domain_suffix:["example.com"], server:"ns-policy"},
     {outbound:"any", server:"ns"}     // fallback 的条件路由
   ]
 ```
+
+> 注意：最新 sing-box DNS server 使用 `{type, tag, server, server_port}` 分离式结构，不是旧版的 `address` 字符串。
 
 ### 代理组类型差异
 
