@@ -74,6 +74,7 @@ export fn CoreSetMode(mode: *const c_char) -> c_int               // Rule/Global
 export fn CoreCloseConnection(id: *const c_char) -> c_int
 export fn CoreCloseAllConnections() -> c_int
 export fn CoreTestDelay(name: *const c_char, url: *const c_char) -> c_int  // 触发测试，立即返回 0=成功/-1=错误；结果通过 CoreSetCallback 异步回调
+// name 可以是代理组名（测试该组所有节点）或单节点名（Go 层查找所属组后触发组级测试，仅回调该节点结果）
 export fn CoreGetVersion() -> *const c_char
 ```
 
@@ -99,6 +100,7 @@ class CoreControl {
 - `CommandStatus`：流量、内存、连接数
 - `CommandGroup`：代理组信息、延迟测试结果
 - `CommandLog`：日志流
+- `CommandConnection`：连接跟踪（新建、更新、关闭）
 - `CommandClashMode`：Clash 模式变更通知
 
 Go 桥接层封装这些订阅接口，通过 C 回调转发给 Dart：
@@ -287,7 +289,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 
 > - 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
 > - sniff 规则不带 inbound 限制，对所有入站流量生效。若需要仅对 TUN 流量嗅探，可加 `{ "inbound": "tun-in", "action": "sniff" }` 替代。
-> - `route.final` 的值从 mihomo 配置中 `MATCH,<目标组>` 规则提取。如果用户没有 MATCH 规则，默认为 "PROXY"（即第一个代理组）。
+> - `route.final` 的值从 mihomo 配置中 `MATCH,<目标组>` 规则提取。如果用户没有 MATCH 规则，默认为第一个代理组的 tag 值。
 
 #### dns
 

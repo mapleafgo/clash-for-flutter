@@ -199,7 +199,7 @@ sing-box: plugin: "obfs-local", plugin_opts: "obfs=tls;host=bing.com"
 | HTTP proxy | 支持 (`type:"http"`) | 后续迭代 |
 | SOCKS5 | 支持 (`type:"socks"`) | 后续迭代 |
 | SSH | 不支持 | 跳过 |
-| TUIC | 不支持 | 跳过 |
+| TUIC | 支持 (`type:"tuic"`) | 后续迭代 |
 | Hysteria v1 | 不支持 | 跳过 |
 | Masque | 不支持 | 跳过 |
 
