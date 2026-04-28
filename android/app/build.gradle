@@ -32,7 +32,7 @@ if (flutterVersionName == null) {
 
 android {
   namespace "cn.mapleafgo.singcast"
-  compileSdkVersion flutter.compileSdkVersion
+  compileSdkVersion 35
   ndkVersion flutter.ndkVersion
 
   compileOptions {
@@ -51,7 +51,7 @@ android {
   defaultConfig {
     applicationId "cn.mapleafgo.singcast"
     minSdkVersion 29
-    targetSdkVersion flutter.targetSdkVersion
+    targetSdkVersion 35
     versionCode flutterVersionCode.toInteger()
     versionName flutterVersionName
   }
