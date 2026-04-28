@@ -8,8 +8,6 @@ part of 'config.dart';
 
 ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) => ClashConfig(
   mixedPort: (json['mixed-port'] as num?)?.toInt(),
-  redirPort: (json['redir-port'] as num?)?.toInt(),
-  tproxyPort: (json['tproxy-port'] as num?)?.toInt(),
   allowLan: json['allow-lan'] as bool?,
   mode: $enumDecodeNullable(_$ModeEnumMap, json['mode']),
   logLevel: $enumDecodeNullable(_$LogLevelEnumMap, json['log-level']),
@@ -22,8 +20,6 @@ ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) => ClashConfig(
 Map<String, dynamic> _$ClashConfigToJson(ClashConfig instance) =>
     <String, dynamic>{
       'mixed-port': instance.mixedPort,
-      'redir-port': instance.redirPort,
-      'tproxy-port': instance.tproxyPort,
       'allow-lan': instance.allowLan,
       'mode': _$ModeEnumMap[instance.mode],
       'log-level': _$LogLevelEnumMap[instance.logLevel],
@@ -42,7 +38,6 @@ const _$LogLevelEnumMap = {
   LogLevel.info: 'info',
   LogLevel.warning: 'warning',
   LogLevel.error: 'error',
-  LogLevel.silent: 'silent',
 };
 
 TunConfig _$TunConfigFromJson(Map<String, dynamic> json) =>

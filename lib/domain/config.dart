@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+
 import 'enums.dart';
 
 part 'config.g.dart';
@@ -7,10 +8,6 @@ part 'config.g.dart';
 class ClashConfig {
   @JsonKey(name: 'mixed-port')
   final int? mixedPort;
-  @JsonKey(name: 'redir-port')
-  final int? redirPort;
-  @JsonKey(name: 'tproxy-port')
-  final int? tproxyPort;
   @JsonKey(name: 'allow-lan')
   final bool? allowLan;
   final Mode? mode;
@@ -21,8 +18,6 @@ class ClashConfig {
 
   ClashConfig({
     this.mixedPort,
-    this.redirPort,
-    this.tproxyPort,
     this.allowLan,
     this.mode,
     this.logLevel,

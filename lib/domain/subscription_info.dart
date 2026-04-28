@@ -19,7 +19,7 @@ class SubscriptionInfo {
     final map = <String, int?>{};
     for (final part in info.split(';')) {
       final kv = part.trim().split('=');
-      if (kv.length == 2) map[kv[0]] = int.tryParse(kv[1]);
+      if (kv.length == 2) map[kv[0].trim()] = int.tryParse(kv[1].trim());
     }
     return SubscriptionInfo(
       upload: map['upload'],

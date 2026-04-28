@@ -1,10 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
   <application
-    android:label="Clash for Flutter"
+    android:label="Singcast"
     android:name="${applicationName}"
     android:icon="@mipmap/ic_launcher">
     <activity
@@ -36,7 +37,7 @@
       </intent-filter>
     </activity>
     <service
-      android:name=".ClashService"
+      android:name=".SingcastVpnService"
       android:foregroundServiceType="connectedDevice"
       android:permission="android.permission.BIND_VPN_SERVICE"
       android:exported="false">

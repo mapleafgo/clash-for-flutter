@@ -9,7 +9,7 @@
 Claude Code 将默认使用中文与开发者进行交互，包括代码注释、文档说明和操作提示。
 
 ## 概述
-Clash for Flutter 是一个支持 Windows、Linux、macOS 和 Android 的多平台 Clash 客户端。它使用 Flutter 构建并结合了一个自定义的 Clash 内核。
+Singcast 是一个支持 Windows、Linux、macOS 和 Android 的多平台代理客户端。它使用 Flutter 构建并结合了一个自定义的 sing-box 内核。
 
 ## 常用命令
 
@@ -38,28 +38,28 @@ flutter run -d macos
 从 https://github.com/mapleafgo/cff-core/releases/latest 下载自定义内核，并将其放置在以下路径:
 ```
 # Windows
-windows/core/libclash.dll
+windows/core/libsingcast-windows.dll
 
 # Linux
-linux/core/libclash.so
+linux/core/libsingcast-linux.so
 
 # Android
-android/app/libs/libclash.aar
+android/app/libs/libsingcast.aar
 
 # macOS
-macos/Frameworks/libclash.dylib
+macos/Frameworks/libsingcast-darwin.dylib
 
 # iOS
-ios/Frameworks/libclash.xcframework
+ios/Frameworks/libsingcast-darwin.xcframework
 ```
 
 ## 架构
 
 ### 核心组件
-- **Clash 内核**: 自定义的 CFF 内核（基于 Clash v1.18.0 并加入了 TUN 模式）
+- **Singcast 内核**: 自定义的 sing-box 内核（支持 TUN 模式）
 - **Flutter UI**: 主应用界面
-- **FFI 绑定**: `clash_generated_bindings.dart` - 连接 Dart 和 Clash 内核的桥梁
-- **内核控制**: `core_control.dart` - 管理 Clash 内核的生命周期
+- **FFI 绑定**: 连接 Dart 和 Singcast 内核的桥梁
+- **内核控制**: 管理 Singcast 内核的生命周期
 
 ### 主要模块
 ```

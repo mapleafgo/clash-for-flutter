@@ -2,7 +2,7 @@ enum GroupType { selector, urlTest, fallback, loadBalance }
 
 enum Mode { rule, global, direct }
 
-enum LogLevel { debug, info, warning, error, silent }
+enum LogLevel { debug, info, warning, error }
 
 enum ProfileType { url, file }
 

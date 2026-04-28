@@ -1,4 +1,4 @@
-import 'package:clash_for_flutter/presentation/router.dart';
+import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 

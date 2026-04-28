@@ -1,0 +1,11 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - region
+    - generic [ref=e3]:
+      - link "Skip to content" [ref=e4] [cursor=pointer]:
+        - /url: "#start-of-content"
+      - banner [ref=e6]
+    - main [ref=e28]:
+      - generic [ref=e29]
+      - generic [ref=e108]
+  - alert [ref=e574]

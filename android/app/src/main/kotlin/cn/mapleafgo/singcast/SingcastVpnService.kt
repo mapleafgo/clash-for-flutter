@@ -1,0 +1,127 @@
+package cn.mapleafgo.singcast
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.VpnService
+import android.os.Binder
+import android.os.IBinder
+import android.os.ParcelFileDescriptor
+import androidx.core.app.NotificationCompat
+
+class SingcastVpnService : VpnService() {
+
+    companion object {
+        const val ACTION_CONNECT = "cn.mapleafgo.singcast.CONNECT"
+        const val ACTION_DISCONNECT = "cn.mapleafgo.singcast.DISCONNECT"
+        const val EXTRA_CONFIG = "configContent"
+        const val EXTRA_PROXY = "ruleSetProxy"
+        private const val NOTIFY_ID = 2
+        private const val CHANNEL_ID = "vpn_status"
+        private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
+    }
+
+    private val binder = LocalBinder()
+    private var pfd: ParcelFileDescriptor? = null
+    private var running = false
+
+    inner class LocalBinder : Binder() {
+        fun getService() = this@SingcastVpnService
+    }
+
+    override fun onBind(intent: Intent?): IBinder = binder
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_CONNECT -> {
+                val config = intent.getStringExtra(EXTRA_CONFIG) ?: ""
+                val proxy = intent.getStringExtra(EXTRA_PROXY) ?: ""
+                connect(config, proxy)
+            }
+            ACTION_DISCONNECT, ACTION_DISCONNECT_NOTIFY -> disconnect()
+        }
+        return START_NOT_STICKY
+    }
+
+    private fun connect(configContent: String, ruleSetProxy: String) {
+        if (running) return
+
+        val fd = establishTun()
+        Mobile.setTunFd(fd)
+        Mobile.startWithContent(configContent, ruleSetProxy)
+        running = true
+        showNotification()
+    }
+
+    private fun establishTun(): Int {
+        val builder = Builder()
+            .setSession("singcast")
+            .setMtu(9000)
+            .addAddress("172.18.0.1", 30)
+            .addRoute("0.0.0.0", 0)
+            .addDnsServer("8.8.8.8")
+            .addDnsServer("8.8.4.4")
+
+        pfd = builder.establish() ?: throw IllegalStateException("VPN establish failed")
+        return pfd!!.fd
+    }
+
+    fun disconnect() {
+        try { Mobile.stopCore() } catch (_: Exception) {}
+        try { pfd?.close() } catch (_: Exception) {}
+        pfd = null
+        running = false
+        Mobile.notifyVpnStateChanged(false)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    fun isRunning() = running
+
+    fun protectSocket(fd: Int) = protect(fd)
+
+    override fun onRevoke() = disconnect()
+
+    override fun onDestroy() {
+        disconnect()
+        super.onDestroy()
+    }
+
+    private fun showNotification() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Singcast VPN 服务状态"
+                setShowBadge(false)
+            }
+        )
+
+        // 点击通知打开 App
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openPending = PendingIntent.getActivity(
+            this, 0, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 通知栏断开按钮
+        val disconnectIntent = Intent(this, SingcastVpnService::class.java).apply {
+            action = ACTION_DISCONNECT_NOTIFY
+        }
+        val disconnectPending = PendingIntent.getService(
+            this, 1, disconnectIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Singcast")
+            .setContentText("TUN 模式已启用")
+            .setOngoing(true)
+            .setContentIntent(openPending)
+            .addAction(R.mipmap.ic_launcher, "断开", disconnectPending)
+            .build()
+        startForeground(NOTIFY_ID, notification)
+    }
+}

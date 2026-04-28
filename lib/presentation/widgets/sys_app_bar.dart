@@ -1,14 +1,33 @@
+import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
 class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  const SysAppBar({super.key, required this.title});
+  final bool showClose;
+  const SysAppBar({super.key, required this.title, this.showClose = true});
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      title: Text(title),
-      centerTitle: true,
+    if (!Constants.isDesktop) {
+      return AppBar(title: Text(title), centerTitle: true);
+    }
+
+    return DragToMoveArea(
+      child: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        centerTitle: true,
+        title: Text(title),
+        actions: [
+          if (showClose)
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: '关闭',
+              onPressed: () => windowManager.hide(),
+            ),
+        ],
+      ),
     );
   }
 

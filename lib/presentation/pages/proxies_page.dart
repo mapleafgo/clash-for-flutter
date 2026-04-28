@@ -1,141 +1,139 @@
-import 'package:clash_for_flutter/domain/enums.dart';
-import 'package:clash_for_flutter/domain/proxy_group.dart';
-import 'package:clash_for_flutter/presentation/widgets/loading.dart';
-import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
-import 'package:clash_for_flutter/services/app_config.dart';
-import 'package:clash_for_flutter/services/clash_api.dart';
-import 'package:clash_for_flutter/services/core_config.dart';
+import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/domain/proxy_group.dart';
+import 'package:singcast/presentation/widgets/animated_fab.dart';
+import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-final _groups = signal<List<ProxyGroup>>([]);
-final _proxies = signal<Map<String, dynamic>>({});
 final _sortType = signal(SortType.defaults);
 final _loading = signal(false);
 final _currentTab = signal(0);
 
 class ProxiesPage extends StatefulWidget {
   const ProxiesPage({super.key});
+
   @override
   State<ProxiesPage> createState() => _ProxiesPageState();
 }
 
 class _ProxiesPageState extends State<ProxiesPage> {
+  final _fabVisible = ValueNotifier<bool>(true);
+
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final data = await api.getProxies();
-    final groupList = <ProxyGroup>[];
-    final allProxies = <String, dynamic>{};
-
-    data.forEach((key, value) {
-      if (value is Map<String, dynamic>) {
-        allProxies[key] = value;
-        if (isGroupType(value['type'] as String? ?? '') &&
-            !isUsedProxy(key)) {
-          groupList.add(ProxyGroup.fromJson(value));
-        }
-      }
-    });
-
-    if (clashConfig.value.mode == Mode.global) {
-      final global = allProxies['GLOBAL'];
-      if (global is Map<String, dynamic>) {
-        groupList.insert(0, ProxyGroup.fromJson(global));
-      }
-    }
-
-    _groups.value = groupList;
-    _proxies.value = allProxies;
+  void dispose() {
+    _fabVisible.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: SysAppBar(title: '代理'),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            heroTag: 'sort',
-            mini: true,
-            onPressed: _showSort,
-            child: const Icon(Icons.sort),
-          ),
-          const SizedBox(width: 8),
-          Watch((context) => FloatingActionButton(
-                onPressed: _loading.value ? null : _testAllDelay,
-                child: _loading.value
-                    ? const Icon(Icons.hourglass_empty)
-                    : const Icon(Icons.speed),
-              )),
-        ],
-      ),
-      body: Watch((context) {
-        final groups = _groups.value;
-        if (groups.isEmpty) return const Center(child: Text('暂无代理'));
-        return DefaultTabController(
-          length: groups.length,
-          child: Column(children: [
-            TabBar(
-              isScrollable: true,
-              tabs: groups.map((g) => Tab(text: g.name)).toList(),
-              onTap: (i) => _currentTab.value = i,
-            ),
-            Expanded(
-              child: TabBarView(
-                children: groups.map((g) => _ProxyList(
-                      group: g,
-                      onRefresh: _load,
-                    )).toList(),
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _fabVisible,
+        builder: (_, visible, _) => AnimatedFab(
+          visible: visible,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: 'sort',
+                onPressed: () => _showSort(context),
+                tooltip: '排序',
+                child: const Icon(Icons.sort),
               ),
-            ),
-          ]),
-        );
-      }),
+              const SizedBox(width: 8),
+              Watch((context) => FloatingActionButton(
+                    onPressed: _loading.value ? null : _testAllDelay,
+                    tooltip: '测速',
+                    child: _loading.value
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.speed),
+                  )),
+            ],
+          ),
+        ),
+      ),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollUpdateNotification) {
+            final delta = notification.scrollDelta ?? 0;
+            if (delta > 5 && _fabVisible.value) {
+              _fabVisible.value = false;
+            } else if (delta < -5 && !_fabVisible.value) {
+              _fabVisible.value = true;
+            }
+          }
+          return false;
+        },
+        child: Watch((context) {
+          final allGroups = LibCore.instance.proxiesSignal.value;
+          final groups = allGroups
+              .where((g) => !_isUsedProxy(g.tag))
+              .toList();
+
+          if (groups.isEmpty) return const Center(child: Text('暂无代理'));
+          return DefaultTabController(
+            length: groups.length,
+            child: Column(children: [
+              TabBar(
+                isScrollable: true,
+                tabs: groups.map((g) => Tab(text: g.tag)).toList(),
+                onTap: (i) => _currentTab.value = i,
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: groups.map((g) => _ProxyList(
+                        group: g,
+                      )).toList(),
+                ),
+              ),
+            ]),
+          );
+        }),
+      ),
     );
   }
 
   Future<void> _testAllDelay() async {
     _loading.value = true;
-    final overlay = Loading.show(context);
     try {
       final index = _currentTab.value;
-      final groups = _groups.value;
+      final allGroups = LibCore.instance.proxiesSignal.value;
+      final groups = allGroups.where((g) => !_isUsedProxy(g.tag)).toList();
       if (index >= groups.length) return;
       final group = groups[index];
-      await Future.wait(group.all.map((name) async {
-        try {
-          await api.getProxyDelay(name, delayTestUrl.value);
-        } catch (_) {}
-      }));
-      await _load();
+      for (final item in group.items) {
+        if (!_isUsedProxy(item.tag)) {
+          LibCore.instance.testDelay(item.tag).catchError((_) {});
+        }
+      }
+      await Future.delayed(const Duration(seconds: 5));
     } finally {
-      overlay.remove();
       _loading.value = false;
     }
   }
 
-  void _showSort() {
-    showModalBottomSheet(
+  void _showSort(BuildContext context) {
+    showDialog(
       context: context,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('排序方式'),
         children: SortType.values.map((type) => ListTile(
               title: Text(switch (type) {
                 SortType.defaults => '默认',
                 SortType.name => '按名称',
                 SortType.delay => '按延迟',
               }),
-              trailing:
-                  _sortType.value == type ? const Icon(Icons.check) : null,
+              selected: _sortType.value == type,
               onTap: () {
                 _sortType.value = type;
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
             )).toList(),
       ),
@@ -143,45 +141,36 @@ class _ProxiesPageState extends State<ProxiesPage> {
   }
 }
 
+bool _isUsedProxy(String name) =>
+    const {'DIRECT', 'REJECT', 'GLOBAL'}.contains(name);
+
 class _ProxyList extends StatelessWidget {
   final ProxyGroup group;
-  final VoidCallback onRefresh;
-  const _ProxyList({required this.group, required this.onRefresh});
+  const _ProxyList({required this.group});
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final sorted = _sortedItems();
+      final items = _sortedItems();
       return ListView.builder(
-        itemCount: sorted.length,
+        itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
-          item: sorted[i],
-          selected: sorted[i].name == group.now,
-          onRefresh: onRefresh,
+          item: items[i],
+          selected: items[i].tag == group.selected,
+          groupName: group.tag,
         ),
       );
     });
   }
 
-  List<_ProxyItem> _sortedItems() {
-    final items = group.all
-        .where((name) => !isUsedProxy(name))
-        .map((name) {
-      final data = _proxies.value[name];
-      final type = data is Map ? data['type'] as String? : null;
-      int delay = -1;
-      if (data is Map<String, dynamic>) {
-        final history = data['history'] as List?;
-        if (history != null && history.isNotEmpty) {
-          delay = (history.last['delay'] as int?) ?? -1;
-        }
-      }
-      return _ProxyItem(name: name, type: type ?? '', delay: delay);
-    }).toList();
+  List<ProxyGroupItem> _sortedItems() {
+    final items = group.items
+        .where((item) => !_isUsedProxy(item.tag))
+        .toList();
 
     switch (_sortType.value) {
       case SortType.name:
-        items.sort((a, b) => a.name.compareTo(b.name));
+        items.sort((a, b) => a.tag.compareTo(b.tag));
       case SortType.delay:
         items.sort((a, b) => a.delay.compareTo(b.delay));
       case SortType.defaults:
@@ -192,43 +181,49 @@ class _ProxyList extends StatelessWidget {
 }
 
 class _ProxyTile extends StatelessWidget {
-  final _ProxyItem item;
+  final ProxyGroupItem item;
   final bool selected;
-  final VoidCallback onRefresh;
+  final String groupName;
   const _ProxyTile({
     required this.item,
     required this.selected,
-    required this.onRefresh,
+    required this.groupName,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 查找 urltest 类型的代理组，显示其选中的节点
+    String? urlTestSelected;
+    if (item.type == 'urltest') {
+      final allGroups = LibCore.instance.proxiesSignal.value;
+      final group = allGroups.where((g) => g.tag == item.tag).firstOrNull;
+      if (group != null && group.selected.isNotEmpty) {
+        urlTestSelected = group.selected;
+      }
+    }
+
+    final cs = Theme.of(context).colorScheme;
     return ListTile(
       selected: selected,
       dense: true,
-      title: Text(item.name, style: const TextStyle(fontSize: 14)),
-      subtitle: Text(item.type, style: const TextStyle(fontSize: 12)),
+      selectedTileColor: cs.primaryContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(item.tag, style: TextStyle(
+        fontSize: 14,
+        fontWeight: selected ? FontWeight.w600 : null,
+        color: selected ? cs.primary : null,
+      )),
+      subtitle: Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
       trailing: _delayWidget(item.delay),
       onTap: () async {
-        final group = _groups.value.firstWhere(
-          (g) => g.all.contains(item.name),
-        );
-        await api.changeProxy(name: group.name, select: item.name);
-        onRefresh();
+        await LibCore.instance.selectProxy(groupName, item.tag);
       },
     );
   }
 }
 
 Widget _delayWidget(int delay) {
-  if (delay < 0) return const SizedBox.shrink();
   if (delay == 0) return const Text('...');
+  if (delay < 0) return const SizedBox.shrink();
   return Text('${delay}ms');
-}
-
-class _ProxyItem {
-  final String name;
-  final String type;
-  final int delay;
-  _ProxyItem({required this.name, required this.type, required this.delay});
 }

@@ -1,22 +1,57 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'proxy_group.g.dart';
-
-@JsonSerializable()
-class ProxyGroup {
-  final String name;
+/// cff-core returns: {"tag": string, "type": string, "delay": int32}
+class ProxyGroupItem {
+  final String tag;
   final String type;
-  final List<String> all;
-  final String now;
+  final int delay;
+
+  ProxyGroupItem({required this.tag, this.type = '', this.delay = 0});
+
+  factory ProxyGroupItem.fromJson(Map<String, dynamic> json) => ProxyGroupItem(
+    tag: json['tag'] as String? ?? '',
+    type: json['type'] as String? ?? '',
+    delay: (json['delay'] as num?)?.toInt() ?? 0,
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'tag': tag,
+    'type': type,
+    'delay': delay,
+  };
+}
+
+/// cff-core returns:
+/// {"tag": string, "type": string, "selectable": bool, "selected": string,
+///  "items": [ProxyGroupItem, ...]}
+class ProxyGroup {
+  final String tag;
+  final String type;
+  final bool selectable;
+  final String selected;
+  final List<ProxyGroupItem> items;
 
   ProxyGroup({
-    required this.name,
-    required this.type,
-    required this.all,
-    required this.now,
+    required this.tag,
+    this.type = '',
+    this.selectable = false,
+    this.selected = '',
+    this.items = const [],
   });
 
-  factory ProxyGroup.fromJson(Map<String, dynamic> json) =>
-      _$ProxyGroupFromJson(json);
-  Map<String, dynamic> toJson() => _$ProxyGroupToJson(this);
+  factory ProxyGroup.fromJson(Map<String, dynamic> json) => ProxyGroup(
+    tag: json['tag'] as String? ?? '',
+    type: json['type'] as String? ?? '',
+    selectable: json['selectable'] as bool? ?? false,
+    selected: json['selected'] as String? ?? '',
+    items: (json['items'] as List?)
+        ?.map((e) => ProxyGroupItem.fromJson(e as Map<String, dynamic>))
+        .toList() ?? [],
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'tag': tag,
+    'type': type,
+    'selectable': selectable,
+    'selected': selected,
+    'items': items.map((e) => e.toJson()).toList(),
+  };
 }

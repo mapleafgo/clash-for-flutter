@@ -1,12 +1,11 @@
-import 'dart:io';
-
-import 'package:clash_for_flutter/domain/enums.dart';
-import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
-import 'package:clash_for_flutter/services/app_config.dart';
-import 'package:clash_for_flutter/services/clash_api.dart';
-import 'package:clash_for_flutter/services/core_config.dart';
-import 'package:clash_for_flutter/utils/constants.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_config.dart';
+import 'package:singcast/utils/constants.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -22,8 +21,6 @@ class SettingsPage extends StatelessWidget {
         return ListView(children: [
           _Section('Clash 代理端口'),
           _PortTile('Mixed Port', config.mixedPort, (v) => updateClashConfig(mixedPort: v)),
-          _PortTile('Redir Port', config.redirPort, (v) => updateClashConfig(redirPort: v)),
-          _PortTile('TProxy Port', config.tproxyPort, (v) => updateClashConfig(tproxyPort: v)),
           _Section('Clash 设置'),
           SwitchListTile(
             title: const Text('允许局域网'),
@@ -39,6 +36,7 @@ class SettingsPage extends StatelessWidget {
             title: const Text('代理模式'),
             trailing: DropdownButton<Mode>(
               value: config.mode ?? Mode.rule,
+              underline: const SizedBox(),
               items: Mode.values.map((m) => DropdownMenuItem(
                 value: m, child: Text(m.name))).toList(),
               onChanged: (m) { if (m != null) updateClashConfig(mode: m); },
@@ -48,14 +46,16 @@ class SettingsPage extends StatelessWidget {
             title: const Text('日志等级'),
             trailing: DropdownButton<LogLevel>(
               value: config.logLevel ?? LogLevel.info,
+              underline: const SizedBox(),
               items: LogLevel.values.map((l) => DropdownMenuItem(
                 value: l, child: Text(l.name))).toList(),
               onChanged: (l) { if (l != null) updateClashConfig(logLevel: l); },
             ),
           ),
           _Section('其他设置'),
-          _MmdbTile(),
+          _UaTile(),
           _UrlTile('延迟测试 Url', delayTestUrl.value, (v) => delayTestUrl.value = v),
+          _UrlTile('Rule-Set 代理', ruleSetProxy.value, (v) => ruleSetProxy.value = v),
           _Section('关于'),
           ListTile(
             title: const Text('官方网站'),
@@ -97,18 +97,35 @@ class _PortTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(label),
-      trailing: SizedBox(
-        width: 100,
-        child: TextFormField(
-          initialValue: value?.toString() ?? '',
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-          onFieldSubmitted: (v) {
-            final port = int.tryParse(v);
-            if (port != null) onChanged(port);
-          },
-        ),
-      ),
+      subtitle: Text(value?.toString() ?? '未设置'),
+      onTap: () async {
+        final controller = TextEditingController(text: value?.toString() ?? '');
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(label),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                hintText: '输入端口号',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, controller.text),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+        if (result != null) {
+          final port = int.tryParse(result);
+          if (port != null) onChanged(port);
+        }
+      },
     );
   }
 }
@@ -125,18 +142,23 @@ class _UrlTile extends StatelessWidget {
       title: Text(label),
       subtitle: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
       onTap: () async {
+        final controller = TextEditingController(text: value);
         final result = await showDialog<String>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (ctx) => AlertDialog(
             title: Text(label),
             content: TextFormField(
-              initialValue: value,
-              onFieldSubmitted: (v) => Navigator.pop(context, v),
+              controller: controller,
+              maxLines: null,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+              onFieldSubmitted: (v) => Navigator.pop(ctx, v),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-              TextButton(
-                onPressed: () => Navigator.pop(context, value),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, controller.text),
                 child: const Text('确定'),
               ),
             ],
@@ -154,12 +176,26 @@ class _CheckUpdateTile extends StatefulWidget {
 }
 
 class _CheckUpdateTileState extends State<_CheckUpdateTile> {
-  int _state = 0; // 0=idle, 1=checking, 2=up-to-date, -1=error
+  int _state = 0; // 0=idle, 1=checking, 2=up-to-date, 3=has-update, -1=error
+  String _currentVersion = '';
+  String _latestVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) setState(() => _currentVersion = info.version);
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('检查更新'),
+      title: const Text('版本'),
+      subtitle: Text(_currentVersion.isNotEmpty ? _currentVersion : '加载中...'),
       trailing: _trailing(),
       onTap: _state == 1 ? null : _check,
     );
@@ -169,6 +205,7 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
     return switch (_state) {
       1 => const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
       2 => const Icon(Icons.check, color: Colors.green),
+      3 => const Icon(Icons.system_update, color: Colors.blue),
       -1 => const Icon(Icons.error, color: Colors.red),
       _ => const Icon(Icons.refresh),
     };
@@ -177,93 +214,102 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   Future<void> _check() async {
     setState(() => _state = 1);
     try {
-      await api.checkLatestVersion();
-      if (mounted) setState(() => _state = 2);
+      final resp = await Dio().get<Map<String, dynamic>>(Constants.releaseUrl);
+      final tagName = resp.data?['tag_name'] as String? ?? '';
+      _latestVersion = tagName.replaceFirst('v', '');
+
+      if (_currentVersion == _latestVersion) {
+        if (mounted) setState(() => _state = 2);
+      } else {
+        if (mounted) setState(() => _state = 3);
+        _showUpdateDialog();
+      }
     } catch (_) {
       if (mounted) setState(() => _state = -1);
     }
   }
+
+  void _showUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('发现新版本'),
+        content: Text('当前版本: $_currentVersion\n最新版本: $_latestVersion'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('忽略')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              launchUrl(Uri.parse('${Constants.sourceUrl}/releases/latest'));
+            },
+            child: const Text('前往下载'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _MmdbTile extends StatefulWidget {
-  @override
-  State<_MmdbTile> createState() => _MmdbTileState();
-}
-
-class _MmdbTileState extends State<_MmdbTile> {
-  int _state = 0; // 0=idle, 1=downloading, 2=success, -1=error
-  double _progress = 0;
-
+class _UaTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final url = mmdbUrl.value;
+      final ua = subUA.value;
       return ListTile(
-        title: const Text('MMDB Url'),
-        subtitle: Text(url, maxLines: 1, overflow: TextOverflow.ellipsis),
-        onTap: _state == 1 ? null : () => _editUrl(context),
-        trailing: _trailing(),
+        title: const Text('订阅 User-Agent'),
+        subtitle: Text(ua == Defaults.subUA ? '默认' : ua, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onTap: () => _showUaPicker(context),
       );
     });
   }
 
-  Widget _trailing() {
-    return switch (_state) {
-      1 => SizedBox(
-          width: 20, height: 20,
-          child: Stack(fit: StackFit.expand, children: [
-            CircularProgressIndicator(
-              value: _progress > 0 ? _progress : null,
-              strokeWidth: 2,
-            ),
-            Center(child: Text('${(_progress * 100).round()}',
-                style: const TextStyle(fontSize: 6))),
-          ]),
-        ),
-      2 => const Icon(Icons.check, color: Colors.green),
-      -1 => const Icon(Icons.error, color: Colors.red),
-      _ => IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _download,
-          tooltip: '刷新 MMDB',
-        ),
-    };
-  }
-
-  Future<void> _editUrl(BuildContext context) async {
-    final result = await showDialog<String>(
+  void _showUaPicker(BuildContext context) {
+    final controller = TextEditingController(text: subUA.value);
+    showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('MMDB Url'),
-        content: TextFormField(
-          initialValue: mmdbUrl.value,
-          onFieldSubmitted: (v) => Navigator.pop(context, v),
+      builder: (ctx) => AlertDialog(
+        title: const Text('订阅 User-Agent'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              maxLines: null,
+              decoration: const InputDecoration(
+                hintText: '输入 User-Agent',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  label: const Text('默认', style: TextStyle(fontSize: 12)),
+                  onPressed: () => controller.text = Defaults.subUA,
+                ),
+                ...Defaults.uaPresets.skip(1).map((ua) => ActionChip(
+                  label: Text(ua, style: const TextStyle(fontSize: 12)),
+                  onPressed: () => controller.text = ua,
+                )),
+              ],
+            ),
+          ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, mmdbUrl.value), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              final v = controller.text.trim();
+              if (v.isNotEmpty) subUA.value = v;
+              Navigator.pop(ctx);
+            },
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
-    if (result != null) mmdbUrl.value = result;
-  }
-
-  Future<void> _download() async {
-    setState(() { _state = 1; _progress = 0; });
-    try {
-      final newPath = '${Constants.homeDir.path}${Constants.mmdbNew}';
-      await api.downloadFile(mmdbUrl.value, newPath,
-          onProgress: (received, total) {
-        if (total > 0 && mounted) setState(() => _progress = received / total);
-      });
-      final oldPath = '${Constants.homeDir.path}${Constants.mmdb}';
-      if (File(oldPath).existsSync()) await File(oldPath).delete();
-      await File(newPath).rename(oldPath);
-      if (mounted) setState(() => _state = 2);
-    } catch (_) {
-      final newPath = '${Constants.homeDir.path}${Constants.mmdbNew}';
-      if (File(newPath).existsSync()) await File(newPath).delete();
-      if (mounted) setState(() => _state = -1);
-    }
   }
 }

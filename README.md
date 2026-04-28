@@ -1,6 +1,6 @@
-# Clash for Flutter
+# Singcast
 
-这是一个 **Clash** 的多平台客户端，支持 windows、linux、macos、android、~~ios~~。
+这是一个多平台代理客户端，支持 windows、linux、macos、android、~~ios~~。
 
 > [使用说明](https://mapleafgo.github.io/clash-for-flutter)
 
@@ -35,15 +35,15 @@
 
   ```shell
   # windows
-  windows/core/libclash.dll
+  windows/core/libsingcast-windows.dll
   # linux
-  linux/core/libclash.so
+  linux/core/libsingcast-linux.so
   # android
-  android/app/libs/libclash.aar
+  android/app/libs/libsingcast.aar
   # macos
-  macos/Frameworks/libclash.dylib
+  macos/Frameworks/libsingcast-darwin.dylib
   # ios
-  ios/Frameworks/libclash.xcframework
+  ios/Frameworks/libsingcast-darwin.xcframework
   ```
 
   > 注意：解压出来的文件，仅保留所需的后缀名文件即可，且将其改名为路径的文件名

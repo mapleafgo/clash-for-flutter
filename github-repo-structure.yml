@@ -1,0 +1,15 @@
+- generic [ref=e2]:
+  - region
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e9]
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]
+      - navigation "Repository" [ref=e57]
+    - generic [ref=e110]:
+      - heading "MetaCubeX/mihomo" [level=1] [ref=e112]
+      - generic [ref=e113]

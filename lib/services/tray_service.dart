@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:clash_for_flutter/domain/enums.dart';
-import 'package:clash_for_flutter/services/app_config.dart';
-import 'package:clash_for_flutter/services/core_config.dart';
-import 'package:clash_for_flutter/utils/constants.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_config.dart';
+import 'package:singcast/utils/constants.dart';
 import 'package:desktop_tray/desktop_tray.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';

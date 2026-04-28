@@ -1,14 +1,15 @@
-display_name: Clash for Flutter
+display_name: Singcast
 icon: assets/icon.png
-generic_name: Clash Application
+generic_name: Proxy Application
 categories:
   - Network
   - Science
   - Development
   - System
 keywords:
-  - Clash
-  - Flutter
+  - Proxy
+  - VPN
+  - sing-box
   - Application
 startup_notify: true
 include: []

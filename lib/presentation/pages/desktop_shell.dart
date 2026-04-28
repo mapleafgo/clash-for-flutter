@@ -1,6 +1,7 @@
-import 'package:clash_for_flutter/presentation/router.dart';
+import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:window_manager/window_manager.dart';
 
 class DesktopShell extends StatelessWidget {
   final StatefulNavigationShell shell;
@@ -16,7 +17,18 @@ class DesktopShell extends StatelessWidget {
           labelType: NavigationRailLabelType.all,
           leading: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text('Clash', style: Theme.of(context).textTheme.titleMedium),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: (_) => windowManager.startDragging(),
+              onDoubleTap: () async {
+                if (await windowManager.isMaximized()) {
+                  windowManager.unmaximize();
+                } else {
+                  windowManager.maximize();
+                }
+              },
+              child: Text('Sing', style: Theme.of(context).textTheme.titleMedium),
+            ),
           ),
           destinations: navItems
               .map((e) => NavigationRailDestination(

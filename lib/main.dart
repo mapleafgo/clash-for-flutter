@@ -1,11 +1,9 @@
 import 'dart:io';
-import 'dart:math';
 
-import 'package:clash_for_flutter/presentation/app.dart';
-import 'package:clash_for_flutter/services/tray_service.dart';
-import 'package:clash_for_flutter/utils/constants.dart';
-import 'package:clash_for_flutter/core_control.dart' as core;
-import 'package:clash_for_flutter/data/local/core_config_storage.dart';
+import 'package:singcast/data/local/core_config_storage.dart';
+import 'package:singcast/presentation/app.dart';
+import 'package:singcast/services/tray_service.dart';
+import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:protocol_handler/protocol_handler.dart';
@@ -14,14 +12,19 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Defaults.init();
 
   if (Constants.isDesktop) {
     await windowManager.ensureInitialized();
-    if (!Platform.isLinux) await protocolHandler.register('clash');
+    if (!Platform.isLinux) {
+      try {
+        await protocolHandler.register('clash');
+      } catch (_) {}
+    }
     await windowManager.waitUntilReadyToShow(
       const WindowOptions(
         minimumSize: Size(460, 600),
-        size: Size(900, 650),
+        size: Size(630, 580),
         center: true,
         backgroundColor: Colors.transparent,
         skipTaskbar: false,
@@ -36,16 +39,8 @@ void main() async {
 
   timeago.setLocaleMessages('zh_cn', TimeagoZhCnMessages());
 
-  core.CoreControl.init();
   Constants.homeDir = await getApplicationSupportDirectory();
-  await core.CoreControl.setHomeDir(Constants.homeDir);
-
   CoreConfigStorage.createDefault();
-
-  final addr = '${Constants.localhost}:${Random().nextInt(9999) + 10000}';
-  Constants.rustAddr =
-      await core.CoreControl.startRust(addr) ?? '';
-  await core.CoreControl.startService();
 
   if (Constants.isDesktop) {
     await initTray();

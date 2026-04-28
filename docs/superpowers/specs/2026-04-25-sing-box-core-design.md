@@ -111,7 +111,7 @@ export fn CoreSetCallback(cb: extern fn(eventType: c_int, data: *const c_char))
 
 ```dart
 typedef CoreCallback = Void Function(Int32 eventType, Pointer<Utf8> data);
-// eventType: 0=流量, 1=日志, 2=连接, 3=代理组变更, 4=延迟测试结果
+// eventType: 0=流量, 1=日志, 2=连接, 3=代理组变更, 4=延迟测试结果, 5=Clash 模式变更
 ```
 
 ### libbox 集成参考
@@ -289,7 +289,7 @@ GEOSITE,category-ads-all → geosite-category-ads-all.srs
 
 > - 规则顺序至关重要：sniff → 劫持 DNS → 隐私 IP 直连 → 用户规则 → 兜底代理。
 > - sniff 规则不带 inbound 限制，对所有入站流量生效。若需要仅对 TUN 流量嗅探，可加 `{ "inbound": "tun-in", "action": "sniff" }` 替代。
-> - `route.final` 的值从 mihomo 配置中 `MATCH,<目标组>` 规则提取。如果用户没有 MATCH 规则，默认为第一个代理组的 tag 值。
+> - `route.final` 的值从 mihomo 配置中 `MATCH,<目标组>` 规则提取。如果用户没有 MATCH 规则，默认为第一个代理组的 tag 值。若所有代理组均被跳过（极端情况），回退为 `"DIRECT"`。
 
 #### dns
 

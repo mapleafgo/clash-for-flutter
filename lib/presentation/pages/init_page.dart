@@ -1,15 +1,11 @@
-import 'dart:io';
-
-import 'package:clash_for_flutter/presentation/pages/connections_page.dart';
-import 'package:clash_for_flutter/presentation/pages/home_page.dart';
-import 'package:clash_for_flutter/presentation/pages/logs_page.dart';
-import 'package:clash_for_flutter/services/app_config.dart';
-import 'package:clash_for_flutter/services/clash_api.dart';
-import 'package:clash_for_flutter/services/core_config.dart';
-import 'package:clash_for_flutter/utils/constants.dart';
+import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/presentation/router.dart';
+import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_config.dart';
+import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path/path.dart' as p;
 
 class InitPage extends StatefulWidget {
   const InitPage({super.key});
@@ -18,8 +14,8 @@ class InitPage extends StatefulWidget {
 }
 
 class _InitPageState extends State<InitPage> {
-  double _progress = 0;
   String _status = '初始化中...';
+  String? _error;
 
   @override
   void initState() {
@@ -28,60 +24,69 @@ class _InitPageState extends State<InitPage> {
   }
 
   Future<void> _init() async {
+    setState(() {
+      _error = null;
+      _status = '初始化中...';
+    });
+
     try {
-      await api.hello();
+      // Initialize LibCore (load native library / setup MethodChannel)
+      await LibCore.instance.init();
+
+      // Initialize core runtime with home directory
+      await LibCore.instance.initCore(Constants.homeDir.path);
+
+      // Initialize configs
       initCoreConfig();
-      await syncFromCore();
+      watchModeFromCore();
       initAppConfig();
-      await _downloadMmdbIfNeeded();
-      await api.changeConfig(
-        p.join(Constants.homeDir.path, Constants.profilesPath, selectedFile.value ?? ''),
-      );
-      if (clashConfig.value.tunEnabled) {
-        await openTun();
+
+      // Activate the selected profile (read YAML -> start core with content)
+      final ok = await asyncProfile();
+      if (!ok && selectedFile.value != null) {
+        if (mounted) {
+          setState(() => _error = '配置激活失败，请检查订阅配置是否有效');
+        }
+        return;
       }
-      startTrafficSubscription();
-      startLogSubscription();
-      startConnectionsSubscription();
-      if (mounted) context.go('/home');
+
+      _onInitComplete();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('初始化失败: $e')),
-        );
+        setState(() => _error = e.toString());
       }
     }
   }
 
-  Future<void> _downloadMmdbIfNeeded() async {
-    final path = '${Constants.homeDir.path}${Constants.mmdb}';
-    if (File(path).existsSync()) return;
-
-    setState(() {
-      _status = '正在初始下载 Country.mmdb 文件';
-      _progress = 0;
-    });
-
-    await api.downloadFile(
-      mmdbUrl.value,
-      path,
-      onProgress: (received, total) {
-        if (total > 0 && mounted) {
-          setState(() => _progress = received / total);
-        }
-      },
-    );
+  void _onInitComplete() {
+    startWatchingSelectedFile();
+    if (mounted) context.go(Routes.home);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const SysAppBar(title: 'Singcast', showClose: false),
       body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_status),
-          const SizedBox(height: 16),
-          LinearProgressIndicator(value: _progress > 0 ? _progress : null),
-        ]),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(_status),
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              SelectableText(_error!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _init, child: const Text('重试')),
+            ],
+          ]),
+        ),
       ),
     );
   }

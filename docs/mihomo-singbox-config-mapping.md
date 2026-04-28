@@ -285,9 +285,9 @@ sing-box 没有 fallback 类型。用 `urltest` 近似替代。
 - 区别：fallback 按顺序选第一个可用节点，urltest 选延迟最低的
 - 行为差异可接受
 
-### C.4 Load-Balance → URLTest（降级）
+### C.4 Load-Balance → Selector（降级）
 
-sing-box 没有原生的 load-balance 类型。第一版映射为 `urltest` 作为降级方案。
+sing-box 没有原生的 load-balance 类型。翻译时降级为 `selector`，记录警告。用户可手动选择节点，但无法实现负载均衡语义。
 
 ### C.5 Relay
 
@@ -304,12 +304,14 @@ mihomo relay 已弃用（建议用 dialer-proxy）。sing-box 无对应。跳过
 
 ## D. 规则映射
 
+> **大小写约定**：sing-box 规则中的 `outbound` 字段值必须与目标 outbound 的 `tag` 精确匹配。内置组使用大写 `"DIRECT"` / `"REJECT"`（见 C.6），代理组名称保留 mihomo 原始大小写。以下示例统一使用大写。
+
 ### D.1 域名规则
 
 | mihomo 规则 | sing-box route rule | 说明 |
 |---|---|---|
 | `DOMAIN,example.com,PROXY` | `{domain:["example.com"], outbound:"PROXY"}` | 完整域名 |
-| `DOMAIN-SUFFIX,google.com,DIRECT` | `{domain_suffix:["google.com"], outbound:"direct"}` | 域名后缀 |
+| `DOMAIN-SUFFIX,google.com,DIRECT` | `{domain_suffix:["google.com"], outbound:"DIRECT"}` | 域名后缀 |
 | `DOMAIN-KEYWORD,ads,REJECT` | `{domain_keyword:["ads"], action:"reject"}` | 关键字 |
 | `DOMAIN-REGEX,^abc.*,PROXY` | `{domain_regex:["^abc.*"], outbound:"PROXY"}` | 正则 |
 | `DOMAIN-WILDCARD,*.google.com,PROXY` | `{domain_regex:["^.*\\.google\\.com$"], outbound:"PROXY"}` | **需转为正则** |
@@ -319,12 +321,12 @@ mihomo relay 已弃用（建议用 dialer-proxy）。sing-box 无对应。跳过
 
 | mihomo 规则 | sing-box route rule | 说明 |
 |---|---|---|
-| `IP-CIDR,10.0.0.0/8,DIRECT` | `{ip_cidr:["10.0.0.0/8"], outbound:"direct"}` | 直接 |
-| `IP-CIDR6,::1/128,DIRECT` | `{ip_cidr:["::1/128"], outbound:"direct"}` | 直接 |
+| `IP-CIDR,10.0.0.0/8,DIRECT` | `{ip_cidr:["10.0.0.0/8"], outbound:"DIRECT"}` | 直接 |
+| `IP-CIDR6,::1/128,DIRECT` | `{ip_cidr:["::1/128"], outbound:"DIRECT"}` | 直接 |
 | `IP-SUFFIX,8.8.8.8/24,PROXY` | (无直接对应) | 需转为 ip_cidr 列表或忽略 |
 | `IP-ASN,13335,DIRECT` | (无直接对应) | 需 rule_set 或忽略 |
-| `GEOIP,CN,DIRECT` | `{rule_set:["geoip-cn"], outbound:"direct"}` | **需预配置 rule_set** |
-| `SRC-GEOIP,cn,DIRECT` | `{rule_set:["geoip-cn"], rule_set_ipcidr_match_source:true}` | 来源匹配 |
+| `GEOIP,CN,DIRECT` | `{rule_set:["geoip-cn"], outbound:"DIRECT"}` | **需预配置 rule_set** |
+| `SRC-GEOIP,cn,DIRECT` | `{rule_set:["geoip-cn"], rule_set_ipcidr_match_source:true, outbound:"DIRECT"}` | 来源匹配 |
 | `SRC-IP-CIDR,...` | `{source_ip_cidr:[...], outbound:"..."}` | 直接 |
 | `IP-CIDR,...,no-resolve` | (sing-box 默认行为不同) | 通常可忽略 |
 
@@ -332,16 +334,16 @@ mihomo relay 已弃用（建议用 dialer-proxy）。sing-box 无对应。跳过
 
 | mihomo 规则 | sing-box route rule | 说明 |
 |---|---|---|
-| `DST-PORT,80,DIRECT` | `{port:[80], outbound:"direct"}` | 直接 |
-| `DST-PORT,80-443,DIRECT` | `{port_range:["80:443"], outbound:"direct"}` | 范围映射 |
-| `SRC-PORT,7777,DIRECT` | `{source_port:[7777], outbound:"direct"}` | 直接 |
+| `DST-PORT,80,DIRECT` | `{port:[80], outbound:"DIRECT"}` | 直接 |
+| `DST-PORT,80-443,DIRECT` | `{port_range:["80:443"], outbound:"DIRECT"}` | 范围映射 |
+| `SRC-PORT,7777,DIRECT` | `{source_port:[7777], outbound:"DIRECT"}` | 直接 |
 | `IN-PORT,7890,PROXY` | `{inbound:["mixed-in"], outbound:"PROXY"}` | 通过 inbound tag 匹配 |
 | `IN-TYPE,SOCKS/HTTP,PROXY` | `{inbound:["socks-in","http-in"], outbound:"PROXY"}` | 通过 inbound tag 匹配 |
 | `PROCESS-NAME,curl,PROXY` | `{process_name:["curl"], outbound:"PROXY"}` | 直接 |
 | `PROCESS-PATH,/usr/bin/wget` | `{process_path:["/usr/bin/wget"], outbound:"PROXY"}` | 直接 |
 | `PROCESS-PATH-REGEX,.*wget` | `{process_path_regex:[".*wget"], outbound:"PROXY"}` | 直接 |
-| `NETWORK,udp,DIRECT` | `{network:"udp", outbound:"direct"}` | 直接 |
-| `UID,1001,DIRECT` | `{user_id:[1001], outbound:"direct"}` | Linux |
+| `NETWORK,udp,DIRECT` | `{network:"udp", outbound:"DIRECT"}` | 直接 |
+| `UID,1001,DIRECT` | `{user_id:[1001], outbound:"DIRECT"}` | Linux |
 
 ### D.4 逻辑规则
 
@@ -368,7 +370,7 @@ mihomo relay 已弃用（建议用 dialer-proxy）。sing-box 无对应。跳过
 | `behavior: classical` | `format: "source"` | 行为映射 |
 | `behavior: domain/ipcidr` | `format: "source"` 或 `"binary"` | 建议用 binary |
 | `format: yaml/text` | `format: "source"` | 格式映射 |
-| `proxy: DIRECT` | `download_detour: "direct"` | **字段名不同** |
+| `proxy: DIRECT` | `download_detour: "DIRECT"` | **字段名不同** |
 
 ### D.7 mihomo 不支持但 sing-box 支持的规则字段
 
@@ -487,14 +489,16 @@ sing-box:
     }
   ],
   "outbounds": [
-    {"type": "direct", "tag": "direct"},
+    {"type": "direct", "tag": "DIRECT"},
+    {"type": "block", "tag": "REJECT"},
+    {"type": "dns", "tag": "dns-out"},
     {"type": "selector", "tag": "...", "outbounds": []},
     {"type": "vless", "tag": "...", ...}
   ],
   "route": {
     "rules": [],
     "rule_set": [],
-    "final": "direct",
+    "final": "DIRECT",
     "auto_detect_interface": true,
     "find_process": true
   },
@@ -505,7 +509,8 @@ sing-box:
     },
     "cache_file": {
       "enabled": true,
-      "store_fakeip": true
+      "store_fakeip": true,
+      "store_dns": true
     }
   }
 }
@@ -529,6 +534,9 @@ translator/
 │   ├── shadowsocks.go Shadowsocks 翻译
 │   ├── hysteria2.go   Hysteria2 翻译
 │   ├── wireguard.go   WireGuard 翻译
+│   ├── tuic.go        TUIC 翻译
+│   ├── http.go        HTTP Proxy 翻译
+│   ├── socks.go       SOCKS5 翻译
 │   └── tls.go         TLS/REALITY/uTLS 公共翻译
 ├── group.go           代理组 → selector/urltest
 ├── rule.go            规则翻译
@@ -549,11 +557,11 @@ translator/
 
 3. **fallback 代理组**：sing-box 无 fallback 类型，用 urltest 近似替代。
 
-4. **load-balance 代理组**：sing-box 无对应，降级为 urltest。
+4. **load-balance 代理组**：sing-box 无对应，降级为 selector。
 
 5. **DNS fallback-filter**：mihomo 基于 geoip/geosite 判断何时使用 fallback DNS，sing-box 需要显式 DNS 规则实现相同效果。
 
-6. **SSR/Snell/SSH/TUIC/Hysteria v1**：sing-box 不支持这些协议，翻译时跳过并输出警告。
+6. **SSR/Snell/SSH/Hysteria v1**：sing-box 不支持这些协议，翻译时跳过并输出警告。TUIC v4（token 认证）同样不支持，但 TUIC v5（uuid+password）完全支持（见 B.11）。
 
 7. **WireGuard 结构**：sing-box 1.11+ 将 WireGuard 从 outbound 迁移为 endpoint，结构完全不同。
 
@@ -763,7 +771,7 @@ translator/
 | mihomo | sing-box | 翻译说明 |
 |---|---|---|
 | `udp-over-tcp: true` | `udp_over_tcp: true` | 直接 |
-| `udp-over-toc-version: 2` | `udp_over_tcp: {version: 2}` | **简单→对象** |
+| `udp-over-tcp-version: 2` | `udp_over_tcp: {version: 2}` | **简单→对象** |
 
 ---
 
@@ -1049,9 +1057,9 @@ mihomo 无此概念，翻译时按平台生成默认值。
 
 | mihomo strategy | sing-box 对应 | 状态 |
 |---|---|---|
-| `consistent-hashing` | 无对应 | 降级为 urltest |
-| `round-robin` | 无对应 | 降级为 urltest |
-| `sticky-sessions` | 无对应 | 降级为 urltest |
+| `consistent-hashing` | 无对应 | 降级为 selector |
+| `round-robin` | 无对应 | 降级为 selector |
+| `sticky-sessions` | 无对应 | 降级为 selector |
 
 ---
 
@@ -1082,7 +1090,7 @@ mihomo 无此概念，翻译时按平台生成默认值。
 | `"50 Mbps"` | `50` | 解析字符串 |
 | `"50 mbps"` | `50` | 大小写不敏感 |
 | `"30 Mbps"` (Hysteria2) | `30` (up_mbps/down_mbps) | 解析字符串 |
-| `"500 Kbps"` | `0` (向上取整到 1) | Kbps→Mbps 向上取整 |
+| `"500 Kbps"` | `1` | Kbps→Mbps 向上取整（不低于 1） |
 | `"1 Gbps"` | `1000` | Gbps→Mbps |
 
 转换函数：`parseBandwidth(s string) int` (返回 Mbps)

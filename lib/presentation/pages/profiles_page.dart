@@ -1,36 +1,89 @@
 import 'dart:io';
 
-import 'package:clash_for_flutter/domain/enums.dart';
-import 'package:clash_for_flutter/domain/profile.dart';
-import 'package:clash_for_flutter/domain/subscription_info.dart';
-import 'package:clash_for_flutter/presentation/widgets/sys_app_bar.dart';
-import 'package:clash_for_flutter/services/app_config.dart';
-import 'package:clash_for_flutter/services/clash_api.dart';
-import 'package:clash_for_flutter/utils/format.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/domain/profile.dart';
+import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/subscription.dart';
+import 'package:singcast/utils/format.dart';
+import 'package:singcast/utils/dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class ProfilesPage extends StatelessWidget {
+class ProfilesPage extends StatefulWidget {
   const ProfilesPage({super.key});
+
+  @override
+  State<ProfilesPage> createState() => _ProfilesPageState();
+}
+
+class _ProfilesPageState extends State<ProfilesPage> {
+  final _scrollController = ScrollController();
+  final _fabVisible = ValueNotifier<bool>(true);
+  double _lastOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _fabVisible.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final offset = _scrollController.offset;
+    final delta = offset - _lastOffset;
+    if (delta > 5 && _fabVisible.value) {
+      _fabVisible.value = false;
+    } else if (delta < -5 && !_fabVisible.value) {
+      _fabVisible.value = true;
+    }
+    _lastOffset = offset;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const SysAppBar(title: '订阅'),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () => _showAddOptions(context),
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _fabVisible,
+        builder: (_, visible, _) => AnimatedFab(
+          visible: visible,
+          child: FloatingActionButton(
+            onPressed: () => _showAddOptions(context),
+            tooltip: '添加',
+            child: const Icon(Icons.add),
+          ),
+        ),
       ),
       body: Watch((context) {
         final list = profiles.value;
+        final sel = selectedFile.value;
+        final err = profileError.value;
+        if (err != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              showErrorDialog(context, '切换配置失败: $err');
+            }
+            profileError.value = null;
+          });
+        }
         if (list.isEmpty) return const Center(child: Text('暂无订阅'));
         return LayoutBuilder(builder: (_, constraints) {
-          final cols = constraints.maxWidth > 600 ? 2 : 1;
+          final cols = constraints.maxWidth > 400 ? 2 : 1;
           return MasonryGridView.count(
+            controller: _scrollController,
             crossAxisCount: cols,
             mainAxisSpacing: 20,
             crossAxisSpacing: 20,
@@ -38,7 +91,7 @@ class ProfilesPage extends StatelessWidget {
             itemCount: list.length,
             itemBuilder: (_, i) => _ProfileCard(
               profile: list[i],
-              isSelected: list[i].file == selectedFile.value,
+              isSelected: list[i].file == sel,
             ),
           );
         });
@@ -47,20 +100,26 @@ class ProfilesPage extends StatelessWidget {
   }
 
   void _showAddOptions(BuildContext context) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('添加订阅'),
         children: [
           ListTile(
             leading: const Icon(Icons.insert_drive_file),
-            title: const Text('文件'),
-            onTap: () => _addFromFile(context),
+            title: const Text('从文件'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _addFromFile(context);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.link),
-            title: const Text('URL'),
-            onTap: () => _addFromUrl(context),
+            title: const Text('从 URL'),
+            onTap: () {
+              Navigator.pop(ctx);
+              _addFromUrl(context);
+            },
           ),
         ],
       ),
@@ -68,8 +127,7 @@ class ProfilesPage extends StatelessWidget {
   }
 
   Future<void> _addFromFile(BuildContext context) async {
-    Navigator.pop(context);
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['yaml', 'yml'],
     );
@@ -92,12 +150,11 @@ class ProfilesPage extends StatelessWidget {
   }
 
   Future<void> _addFromUrl(BuildContext context) async {
-    Navigator.pop(context);
     final url = await _showInputDialog(context, '输入订阅 URL');
     if (url == null || url.isEmpty) return;
 
     try {
-      final profile = await api.downloadSubscription(
+      final profile = await downloadSubscription(
         url: url,
         profilesDir: profilesPath,
       );
@@ -105,9 +162,7 @@ class ProfilesPage extends StatelessWidget {
       selectedFile.value = profile.file;
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入失败: $e')),
-        );
+        showErrorDialog(context, '导入失败: $e');
       }
     }
   }
@@ -116,16 +171,24 @@ class ProfilesPage extends StatelessWidget {
     final controller = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: Text(hint),
-        content: TextField(controller: controller),
+        content: TextField(
+          controller: controller,
+          maxLines: null,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            hintText: '请输入',
+            border: OutlineInputBorder(),
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('取消'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
             child: const Text('确定'),
           ),
         ],
@@ -143,55 +206,94 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final info = profile.userinfo;
     final expire = info?.expire;
+    final cs = Theme.of(context).colorScheme;
+    final hasTraffic = info != null && (info.total ?? 0) > 0;
+    final expireDate = expire != null && expire > 0
+        ? DateTime.fromMillisecondsSinceEpoch(expire * 1000)
+        : null;
+    final expireStr = expireDate != null
+        ? '${expireDate.year % 100}.${expireDate.month.toString().padLeft(2, '0')}.${expireDate.day.toString().padLeft(2, '0')}'
+        : null;
     return Card(
-      color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+      elevation: 0,
+      color: isSelected ? cs.primaryContainer : cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => selectedFile.value = profile.file,
-        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          selectedFile.value = profile.file;
+        },
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(
                 child: Text(profile.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? cs.primary : null,
+                    )),
               ),
-              Text(profile.type.name.toUpperCase()),
+              Text(profile.type.name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSelected
+                        ? cs.primary
+                        : cs.onSurfaceVariant,
+                  )),
             ]),
-            Text(timeago.format(profile.time, locale: 'zh_cn')),
-            if (info != null && (info.total ?? 0) > 0) ...[
+            if (hasTraffic) ...[
               const SizedBox(height: 8),
-              _TrafficBar(info: info),
+              LinearProgressIndicator(value: info.used / info.total!, minHeight: 6),
             ],
-            if (expire != null && expire > 0) ...[
-              const SizedBox(height: 4),
-              Text('过期: ${timeago.format(DateTime.fromMillisecondsSinceEpoch(expire * 1000), locale: 'zh_cn')}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-            const Divider(),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            const SizedBox(height: 4),
+            Row(children: [
+              Text(timeago.format(profile.time, locale: 'zh_cn'),
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              const Spacer(),
+              if (hasTraffic)
+                Text('${formatBytes(info.used)} / ${formatBytes(info.total!)}',
+                    style:
+                        TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            ]),
+            Row(children: [
+              Expanded(
+                child: expireStr != null
+                    ? Row(children: [
+                        Icon(Icons.event, size: 14, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(expireStr,
+                            style: TextStyle(
+                                fontSize: 12, color: cs.onSurfaceVariant)),
+                      ])
+                    : const SizedBox.shrink(),
+              ),
               IconButton(
-                icon: const Icon(Icons.edit_note, size: 20),
+                icon: const Icon(Icons.edit_note, size: 18),
                 tooltip: '修改名称',
                 onPressed: () => _editName(context),
+                visualDensity: VisualDensity.compact,
               ),
               IconButton(
-                icon: const Icon(Icons.code, size: 20),
+                icon: const Icon(Icons.code, size: 18),
                 tooltip: '修改源',
                 onPressed: () => _editSource(context),
+                visualDensity: VisualDensity.compact,
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20),
+                icon: const Icon(Icons.delete_outline, size: 18),
                 tooltip: '移除',
                 onPressed: () => _remove(context),
+                visualDensity: VisualDensity.compact,
               ),
               if (profile.type == ProfileType.url)
                 IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
+                  icon: const Icon(Icons.refresh, size: 18),
                   tooltip: '更新',
                   onPressed: () => _update(context),
+                  visualDensity: VisualDensity.compact,
                 ),
             ]),
           ]),
@@ -215,12 +317,18 @@ class _ProfileCard extends StatelessWidget {
     final controller = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: Text(hint),
-        content: TextField(controller: controller),
+        content: TextField(
+          controller: controller,
+          maxLines: null,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('确定')),
         ],
       ),
     );
@@ -240,28 +348,42 @@ class _ProfileCard extends StatelessWidget {
   }
 
   void _remove(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('确认删除？'),
-      action: SnackBarAction(
-        label: '删除',
-        onPressed: () async {
-          final file = profile.file;
-          final list = profiles.value.where((p) => p.file != file).toList();
-          profiles.value = list;
-          if (selectedFile.value == file) {
-            selectedFile.value = list.isEmpty ? null : list.first.file;
-          }
-          final path = p.join(profilesPath, file);
-          if (File(path).existsSync()) await File(path).delete();
-        },
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除「${profile.name}」吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
       ),
-    ));
+    ).then((confirmed) async {
+      if (confirmed != true) return;
+      final file = profile.file;
+      final list = profiles.value.where((p) => p.file != file).toList();
+      profiles.value = list;
+      if (selectedFile.value == file) {
+        selectedFile.value = list.isEmpty ? null : list.first.file;
+      }
+      final path = p.join(profilesPath, file);
+      if (File(path).existsSync()) await File(path).delete();
+    });
   }
 
   Future<void> _update(BuildContext context) async {
     if (profile.url == null) return;
     try {
-      final updated = await api.downloadSubscription(
+      final updated = await downloadSubscription(
         url: profile.url!,
         profilesDir: profilesPath,
         name: profile.name,
@@ -271,28 +393,13 @@ class _ProfileCard extends StatelessWidget {
       final list = profiles.value.map((p) =>
           p.file == profile.file ? updated : p).toList();
       profiles.value = list;
+      if (selectedFile.value == profile.file) {
+        selectedFile.value = updated.file;
+      }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新失败: $e')),
-        );
+        showErrorDialog(context, '更新失败: $e');
       }
     }
-  }
-}
-
-class _TrafficBar extends StatelessWidget {
-  final SubscriptionInfo info;
-  const _TrafficBar({required this.info});
-
-  @override
-  Widget build(BuildContext context) {
-    final total = info.total ?? 0;
-    if (total == 0) return const SizedBox.shrink();
-    final used = info.used;
-    return Column(children: [
-      LinearProgressIndicator(value: used / total),
-      Text('${formatBytes(used)} / ${formatBytes(total)}'),
-    ]);
   }
 }
