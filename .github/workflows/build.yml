@@ -117,7 +117,7 @@ jobs:
           asset_path: build/windows/x64/Output/*
           overwrite: true
   build-linux-amd64:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v4
