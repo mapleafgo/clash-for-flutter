@@ -6,7 +6,7 @@ on:
     types: [ published ]
 env:
   FLUTTER_VERSION: "3.29.0"
-  CORE_VERSION: "1.18.1"
+  CORE_VERSION: "v1.13.11-1"
 jobs:
   get-release:
     runs-on: ubuntu-latest
