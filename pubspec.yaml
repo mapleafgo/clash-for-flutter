@@ -1,10 +1,10 @@
 name: singcast
 description: A multi-platform Clash client.
-publish_to: 'none'
-version: 1.2.7
+publish_to: "none"
+version: 1.13.11-beta
 
 environment:
-  sdk: '>=3.8.0 <4.0.0'
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -63,12 +63,12 @@ flutter:
 ffigen:
   name: "LibCoreBindings"
   description: "FFI bindings for cff-core (singcast) native library"
-  output: 'lib/core/ffi_bindings.dart'
+  output: "lib/core/ffi_bindings.dart"
   headers:
     entry-points:
-      - 'lib/core/libsingcast-linux.h'
+      - "lib/core/libsingcast-linux.h"
   compiler-opts:
-    - '-I/usr/lib/clang/22/include'
+    - "-I/usr/lib/clang/22/include"
   functions:
     include:
       - CoreInit
