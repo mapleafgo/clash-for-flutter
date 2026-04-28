@@ -5,7 +5,7 @@ on:
   release:
     types: [ published ]
 env:
-  FLUTTER_VERSION: "3.29.0"
+  FLUTTER_VERSION: "3.41.7"
   CORE_VERSION: "v1.13.11-1"
 jobs:
   get-release:
