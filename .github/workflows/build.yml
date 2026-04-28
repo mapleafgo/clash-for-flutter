@@ -33,7 +33,7 @@ jobs:
         run: |
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/libsingcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "libsingcast.tar.gz"
           tar -zxf libsingcast.tar.gz
-          mv singcast-windows-amd64.dll windows/core/libsingcast-windows.dll
+          Move-Item -Force singcast-windows-amd64.dll windows/core/libsingcast-windows.dll
 
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
@@ -162,7 +162,8 @@ jobs:
           channel: 'stable'
       - name: Install appdmg
         run: |
-          python3 -m pip install setuptools
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install setuptools
           npm install -g appdmg
       - name: Mkdir core
         run: mkdir core
