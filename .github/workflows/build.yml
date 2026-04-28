@@ -33,7 +33,7 @@ jobs:
         run: |
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/libsingcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "libsingcast.tar.gz"
           tar -zxf libsingcast.tar.gz
-          mv build/*.dll windows/core/libsingcast-windows.dll
+          mv singcast-windows-amd64.dll windows/core/libsingcast-windows.dll
 
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
@@ -138,7 +138,7 @@ jobs:
 
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-linux-amd64.tar.gz -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv build/*.so linux/core/libsingcast-linux.so
+          mv libsingcast-linux-amd64.so linux/core/libsingcast-linux.so
 
           dart pub global activate flutter_distributor
           flutter_distributor package --platform=linux --targets=appimage,zip
@@ -175,10 +175,10 @@ jobs:
           pushd core
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-amd64.tar.gz -o libsingcast-amd64.tar.gz
           tar -zxf libsingcast-amd64.tar.gz
-          mv build/*.dylib libsingcast-amd64.dylib
+          mv libsingcast-darwin-amd64.dylib libsingcast-amd64.dylib
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz -o libsingcast-arm64.tar.gz
           tar -zxf libsingcast-arm64.tar.gz
-          mv build/*.dylib libsingcast-arm64.dylib
+          mv libsingcast-darwin-arm64.dylib libsingcast-arm64.dylib
           popd
 
           mkdir -p $PROJECT_DIR/macos/Frameworks
@@ -228,7 +228,7 @@ jobs:
         run: |
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-arm64.tar.gz -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv build/*.aar android/app/libs/libsingcast.aar
+          mv libsingcast-arm64.aar android/app/libs/libsingcast.aar
 
           flutter build apk --release --target-platform android-arm64
           cd build/app/outputs/flutter-apk
@@ -258,7 +258,7 @@ jobs:
         run: |
           curl -L https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-amd64.tar.gz -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv build/*.aar android/app/libs/libsingcast.aar
+          mv libsingcast-amd64.aar android/app/libs/libsingcast.aar
 
           flutter build apk --release --target-platform android-x64
           cd build/app/outputs/flutter-apk
