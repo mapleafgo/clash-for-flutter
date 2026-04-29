@@ -50,10 +50,15 @@ class SingcastVpnService : VpnService() {
         if (running) return
 
         try {
-            if (tunEnabled) {
-                val fd = establishTun()
-                Mobile.setTunFd(fd)
+            val fd = if (tunEnabled) {
+                // TUN 模式：建立完整 VPN，接管所有流量
+                establishTun()
+            } else {
+                // 代理模式：建立最小化 VPN，不接管流量
+                // 仅为内核提供 netlink 路由表访问权限
+                establishMinimalVpn()
             }
+            Mobile.setTunFd(fd)
             Mobile.startWithContent(configContent, ruleSetProxy)
             running = true
             showNotification(tunEnabled)
@@ -63,6 +68,7 @@ class SingcastVpnService : VpnService() {
         }
     }
 
+    /// TUN 模式：完整 VPN，接管所有流量
     private fun establishTun(): Int {
         val builder = Builder()
             .setSession("singcast")
@@ -77,6 +83,23 @@ class SingcastVpnService : VpnService() {
             return pfd!!.fd
         } catch (e: Exception) {
             throw IllegalStateException("Failed to establish TUN: ${e.message}", e)
+        }
+    }
+
+    /// 代理模式：最小化 VPN，不接管流量，仅为内核提供 netlink 访问权限
+    private fun establishMinimalVpn(): Int {
+        val builder = Builder()
+            .setSession("singcast")
+            .setMtu(9000)
+            .addAddress("172.18.0.2", 30)
+            // 使用精确路由（/32），不匹配任何实际流量
+            .addRoute("255.255.255.255", 32)
+
+        try {
+            pfd = builder.establish() ?: throw IllegalStateException("VPN establish failed - check VPN permission")
+            return pfd!!.fd
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to establish minimal VPN: ${e.message}", e)
         }
     }
 
