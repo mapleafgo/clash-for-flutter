@@ -97,10 +97,9 @@ Future<bool> _activateProfile(String yamlPath) async {
 
   if (Platform.isAndroid || Platform.isIOS) {
     // 移动端仅在 TUN 已启用时通过 VPN 服务启动内核
-    // 未启用时不启动 VPN，避免 netlinkrib 权限崩溃
     if (clashConfig.value.tunEnabled) {
       await LibCore.instance.connectVpn(
-        merged,
+        prepareMobileConfig(merged),
         ruleSetProxy: ruleSetProxy.value,
       );
     }

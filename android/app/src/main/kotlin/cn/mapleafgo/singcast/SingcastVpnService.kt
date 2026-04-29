@@ -47,16 +47,17 @@ class SingcastVpnService : VpnService() {
     private fun connect(configContent: String, ruleSetProxy: String) {
         if (running) return
 
-        try {
-            val fd = establishTun()
-            Mobile.setTunFd(fd)
-            Mobile.startWithContent(configContent, ruleSetProxy)
-            running = true
-            showNotification()
-        } catch (e: Exception) {
-            disconnect()
-            throw e
-        }
+        Thread {
+            try {
+                val fd = establishTun()
+                Mobile.setTunFd(fd)
+                Mobile.startWithContent(configContent, ruleSetProxy)
+                running = true
+                showNotification()
+            } catch (e: Throwable) {
+                disconnect()
+            }
+        }.start()
     }
 
     private fun establishTun(): Int {
@@ -73,8 +74,8 @@ class SingcastVpnService : VpnService() {
     }
 
     fun disconnect() {
-        try { Mobile.stopCore() } catch (_: Exception) {}
-        try { pfd?.close() } catch (_: Exception) {}
+        try { Mobile.stopCore() } catch (_: Throwable) {}
+        try { pfd?.close() } catch (_: Throwable) {}
         pfd = null
         running = false
         Mobile.notifyVpnStateChanged(false)

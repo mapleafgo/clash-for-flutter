@@ -179,7 +179,10 @@ Future<void> _openTunMobile() async {
   try {
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
-    await LibCore.instance.connectVpn(merged, ruleSetProxy: ruleSetProxy.value);
+    await LibCore.instance.connectVpn(
+      prepareMobileConfig(merged),
+      ruleSetProxy: ruleSetProxy.value,
+    );
 
     _setTunEnabled(true);
   } catch (e) {
@@ -198,4 +201,68 @@ Future<void> _closeTunMobile() async {
 String _resolveProfilePath(String file) {
   if (file.startsWith('/')) return file;
   return '${Constants.homeDir.path}${Constants.profilesPath}/$file';
+}
+
+/// Modify TUN config for mobile (Android/iOS).
+/// VpnService / Network Extension handles routing, so the core must not
+/// access netlink. Follows community best practice (FlClash, sing-box SFA):
+///   auto-route: false           — VpnService manages routing
+///   strict-route: false         — not supported on mobile
+///   auto-detect-interface: false — prevents netlink socket creation
+String prepareMobileConfig(String yaml) {
+  final lines = yaml.split('\n');
+  final result = <String>[];
+  bool inTun = false;
+  bool hasAutoRoute = false;
+  bool hasStrictRoute = false;
+  bool hasAutoDetect = false;
+
+  for (int i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    final trimmed = line.trim();
+
+    if (line.startsWith('tun:')) {
+      inTun = true;
+      result.add(line);
+      continue;
+    }
+
+    if (inTun &&
+        !line.startsWith(' ') &&
+        !line.startsWith('\t') &&
+        trimmed.isNotEmpty) {
+      if (!hasAutoRoute) result.add('  auto-route: false');
+      if (!hasStrictRoute) result.add('  strict-route: false');
+      if (!hasAutoDetect) result.add('  auto-detect-interface: false');
+      inTun = false;
+    }
+
+    if (inTun) {
+      if (trimmed.startsWith('auto-route:')) {
+        result.add('  auto-route: false');
+        hasAutoRoute = true;
+        continue;
+      }
+      if (trimmed.startsWith('strict-route:')) {
+        result.add('  strict-route: false');
+        hasStrictRoute = true;
+        continue;
+      }
+      if (trimmed.startsWith('auto-detect-interface:')) {
+        result.add('  auto-detect-interface: false');
+        hasAutoDetect = true;
+        continue;
+      }
+    }
+
+    result.add(line);
+  }
+
+  if (inTun) {
+    if (!hasAutoRoute) result.add('  auto-route: false');
+    if (!hasStrictRoute) result.add('  strict-route: false');
+    if (!hasAutoDetect) result.add('  auto-detect-interface: false');
+  }
+
+  return result.join('\n');
 }
