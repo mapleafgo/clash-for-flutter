@@ -5,13 +5,11 @@ import 'package:singcast/presentation/pages/mobile_shell.dart';
 import 'package:singcast/presentation/pages/profiles_page.dart';
 import 'package:singcast/presentation/pages/proxies_page.dart';
 import 'package:singcast/presentation/pages/settings_page.dart';
-import 'package:singcast/presentation/pages/init_page.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Routes {
-  static const init = '/';
   static const home = '/home';
   static const proxies = '/proxies';
   static const logs = '/logs';
@@ -24,7 +22,7 @@ Widget _shellBuilder(
     Constants.isDesktop ? DesktopShell(shell: shell) : MobileShell(shell: shell);
 
 final router = GoRouter(
-  initialLocation: Routes.init,
+  initialLocation: Routes.home,
   errorBuilder: (context, state) => Scaffold(
     body: Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -40,10 +38,6 @@ final router = GoRouter(
     ),
   ),
   routes: [
-    GoRoute(
-      path: Routes.init,
-      builder: (context, state) => const InitPage(),
-    ),
     StatefulShellRoute.indexedStack(
       builder: _shellBuilder,
       branches: [

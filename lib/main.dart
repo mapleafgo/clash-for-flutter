@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/presentation/app.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
@@ -37,12 +41,32 @@ void main() async {
   Constants.homeDir = await getApplicationSupportDirectory();
   CoreConfigStorage.createDefault();
 
+  // 初始化内核和配置
+  await _initApp();
+
   if (Constants.isDesktop) {
     await initTray();
     windowManager.addListener(_WindowListener());
   }
 
   runApp(const App());
+}
+
+Future<void> _initApp() async {
+  try {
+    await LibCore.instance.init();
+    await LibCore.instance.initCore(Constants.homeDir.path)
+        .timeout(const Duration(seconds: 10));
+  } on TimeoutException {
+    initError.value = '内核初始化超时';
+  } catch (e) {
+    initError.value = '内核初始化失败: $e';
+  }
+
+  initCoreConfig();
+  watchModeFromCore();
+  initAppConfig();
+  startWatchingSelectedFile();
 }
 
 class _WindowListener with WindowListener {

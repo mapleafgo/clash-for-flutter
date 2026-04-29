@@ -21,6 +21,7 @@ final delayTestUrl = signal(Defaults.delayTestUrl);
 final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
+final initError = signal<String?>(null);
 
 Timer? _saveTimer;
 

@@ -10,8 +10,26 @@ import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/format.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _hasInitError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    effect(() {
+      final err = initError.value;
+      if (err != null && !_hasInitError) {
+        setState(() => _hasInitError = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,14 +46,18 @@ class HomePage extends StatelessWidget {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             padding: const EdgeInsets.all(16),
-            itemCount: Constants.isDesktop ? 5 : 4,
-            itemBuilder: (_, index) => switch (index) {
-              0 => const _SpeedCard(),
-              1 => const _TrafficTotalCard(),
-              2 => const _ConnectionsCard(),
-              3 => const _ModeCard(),
-              4 when Constants.isDesktop => const _ProxyModeCard(),
-              _ => const SizedBox.shrink(),
+            itemCount: (Constants.isDesktop ? 5 : 4) + (_hasInitError ? 1 : 0),
+            itemBuilder: (_, index) {
+              if (_hasInitError && index == 0) return const _InitErrorCard();
+              final offset = _hasInitError ? 1 : 0;
+              return switch (index - offset) {
+                0 => const _SpeedCard(),
+                1 => const _TrafficTotalCard(),
+                2 => const _ConnectionsCard(),
+                3 => const _ModeCard(),
+                4 when Constants.isDesktop => const _ProxyModeCard(),
+                _ => const SizedBox.shrink(),
+              };
             },
           );
         },
@@ -577,5 +599,47 @@ class _ProxyModeOption extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// --- Init Error Card ---
+
+class _InitErrorCard extends StatelessWidget {
+  const _InitErrorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final err = initError.value;
+      if (err == null) return const SizedBox.shrink();
+      final cs = Theme.of(context).colorScheme;
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: cs.errorContainer,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.error_outline, color: cs.error),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  err,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onErrorContainer,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, size: 18, color: cs.onErrorContainer),
+                onPressed: () => initError.value = null,
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
