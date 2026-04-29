@@ -171,11 +171,10 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true}) =>
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
       _channel.invokeMethod('connectVpn', {
         'configContent': configContent,
         'ruleSetProxy': ruleSetProxy ?? '',
-        'tunEnabled': tunEnabled,
       });
 
   @override

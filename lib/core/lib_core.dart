@@ -37,7 +37,7 @@ abstract class LibCorePlatform {
   Future<String> checkConfig(String content);
   Future<String> getVersion();
 
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true});
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy});
   Future<void> disconnectVpn();
 }
 
@@ -109,8 +109,8 @@ class LibCore {
 
   Future<String> getVersion() => _platform.getVersion();
 
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true}) =>
-      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy, tunEnabled: tunEnabled);
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
+      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy);
 
   Future<void> disconnectVpn() => _platform.disconnectVpn();
 
@@ -155,9 +155,10 @@ class LibCoreFFI implements LibCorePlatform {
   }
 
   String get _platformLibPath {
-    if (Platform.isLinux) return 'lib/core/libsingcast-linux.so';
-    if (Platform.isMacOS) return 'lib/core/libsingcast-darwin.dylib';
-    if (Platform.isWindows) return 'lib/core/libsingcast-windows.dll';
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    if (Platform.isLinux) return '$exeDir/lib/libsingcast-linux.so';
+    if (Platform.isMacOS) return '$exeDir/../Frameworks/libsingcast-darwin.dylib';
+    if (Platform.isWindows) return '$exeDir/libsingcast-windows.dll';
     throw UnsupportedError('Unsupported platform');
   }
 
@@ -482,7 +483,7 @@ class LibCoreFFI implements LibCorePlatform {
   }
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true}) async {
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) async {
     throw UnsupportedError('connectVpn is only available on mobile platforms');
   }
 

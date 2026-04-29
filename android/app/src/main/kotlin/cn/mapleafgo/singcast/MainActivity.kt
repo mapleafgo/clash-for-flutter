@@ -21,7 +21,6 @@ class MainActivity : FlutterFragmentActivity() {
     private data class VpnRequest(
         val configContent: String,
         val ruleSetProxy: String,
-        val tunEnabled: Boolean,
         val result: MethodChannel.Result
     )
 
@@ -42,7 +41,7 @@ class MainActivity : FlutterFragmentActivity() {
         val pending = pendingVpn
         pendingVpn = null
         if (result.resultCode == RESULT_OK && pending != null) {
-            startVpn(pending.configContent, pending.ruleSetProxy, pending.tunEnabled, pending.result)
+            startVpn(pending.configContent, pending.ruleSetProxy, pending.result)
         } else {
             pending?.result?.error("VPN_DENIED", "VPN permission denied", null)
         }
@@ -79,8 +78,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 // TUN / VPN
                 "connectVpn" -> {
-                    val tunEnabled = (args?.get("tunEnabled") as? Boolean) ?: true
-                    requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", tunEnabled, result)
+                    requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", result)
                 }
                 "disconnectVpn" -> { stopVpn(); result.success(true) }
 
@@ -106,26 +104,25 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun requestVpn(configContent: String, ruleSetProxy: String, tunEnabled: Boolean, result: MethodChannel.Result) {
+    private fun requestVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
         try {
             val intent = VpnService.prepare(this)
             if (intent != null) {
-                pendingVpn = VpnRequest(configContent, ruleSetProxy, tunEnabled, result)
+                pendingVpn = VpnRequest(configContent, ruleSetProxy, result)
                 vpnPermissionLauncher.launch(intent)
             } else {
-                startVpn(configContent, ruleSetProxy, tunEnabled, result)
+                startVpn(configContent, ruleSetProxy, result)
             }
         } catch (e: Exception) {
             result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
         }
     }
 
-    private fun startVpn(configContent: String, ruleSetProxy: String, tunEnabled: Boolean, result: MethodChannel.Result) {
+    private fun startVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
             putExtra(SingcastVpnService.EXTRA_PROXY, ruleSetProxy)
-            putExtra(SingcastVpnService.EXTRA_TUN_ENABLED, tunEnabled)
         }
         startService(intent)
         bindService(intent, vpnConnection, BIND_AUTO_CREATE)

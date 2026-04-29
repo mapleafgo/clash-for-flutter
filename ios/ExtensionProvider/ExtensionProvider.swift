@@ -18,26 +18,14 @@ class ExtensionProvider: NEPacketTunnelProvider {
             throw ExtensionError.missingConfig
         }
         let ruleSetProxy = options?["ruleSetProxy"] as? String ?? ""
-        let tunEnabled = options?["tunEnabled"] as? Bool ?? true
 
-        if tunEnabled {
-            // TUN 模式：完整 VPN，接管所有流量
-            let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-            let ipv4 = NEIPv4Settings(addresses: ["172.18.0.1"], subnetMasks: ["255.255.255.252"])
-            ipv4.includedRoutes = [NEIPv4Route.default()]
-            settings.ipv4Settings = ipv4
-            settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
-            settings.mtu = 9000
-            try await setTunnelNetworkSettings(settings)
-        } else {
-            // 代理模式：最小化 VPN，不接管流量，仅为内核提供 netlink 访问权限
-            let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-            let ipv4 = NEIPv4Settings(addresses: ["172.18.0.2"], subnetMasks: ["255.255.255.252"])
-            // 不设置 includedRoutes，不接管流量
-            settings.ipv4Settings = ipv4
-            settings.mtu = 9000
-            try await setTunnelNetworkSettings(settings)
-        }
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
+        let ipv4 = NEIPv4Settings(addresses: ["172.18.0.1"], subnetMasks: ["255.255.255.252"])
+        ipv4.includedRoutes = [NEIPv4Route.default()]
+        settings.ipv4Settings = ipv4
+        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
+        settings.mtu = 9000
+        try await setTunnelNetworkSettings(settings)
 
         guard let tunFd = extractTunFd() ?? getTunnelFileDescriptor() else {
             throw ExtensionError.tunnelSetupFailed

@@ -78,8 +78,7 @@ class AppDelegate: FlutterAppDelegate {
         case "connectVpn":
             let config = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
-            let tunEnabled = args["tunEnabled"] as? Bool ?? true
-            startTunnel(configContent: config, ruleSetProxy: proxy, tunEnabled: tunEnabled, result: result)
+            startTunnel(configContent: config, ruleSetProxy: proxy, result: result)
 
         case "disconnectVpn":
             stopTunnel(result: result)
@@ -144,7 +143,7 @@ class AppDelegate: FlutterAppDelegate {
 
     // MARK: - Network Extension
 
-    private func startTunnel(configContent: String, ruleSetProxy: String, tunEnabled: Bool, result: @escaping FlutterResult) {
+    private func startTunnel(configContent: String, ruleSetProxy: String, result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, error in
             if let error = error {
                 result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
@@ -156,7 +155,7 @@ class AppDelegate: FlutterAppDelegate {
             proto.providerBundleIdentifier = (Bundle.main.bundleIdentifier ?? "") + ".tunnel"
             proto.serverAddress = "127.0.0.1"
             manager.protocolConfiguration = proto
-            manager.localizedDescription = tunEnabled ? "Singcast TUN" : "Singcast Proxy"
+            manager.localizedDescription = "Singcast TUN"
             manager.isEnabled = true
 
             manager.saveToPreferences { error in
@@ -169,7 +168,6 @@ class AppDelegate: FlutterAppDelegate {
                     try (manager.connection as? NETunnelProviderSession)?.startVPNTunnel(options: [
                         "configContent": configContent as NSObject,
                         "ruleSetProxy": ruleSetProxy as NSObject,
-                        "tunEnabled": tunEnabled as NSObject,
                     ])
                     result(true)
                 } catch {

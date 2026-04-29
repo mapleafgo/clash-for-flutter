@@ -96,13 +96,14 @@ Future<bool> _activateProfile(String yamlPath) async {
   final merged = mergeProfileConfig(yamlContent);
 
   if (Platform.isAndroid || Platform.isIOS) {
-    // 移动端始终通过 VPN 服务启动内核（避免 netlinkrib 权限问题）
-    // tunEnabled 控制是否建立 TUN 接口
-    await LibCore.instance.connectVpn(
-      merged,
-      ruleSetProxy: ruleSetProxy.value,
-      tunEnabled: clashConfig.value.tunEnabled,
-    );
+    // 移动端仅在 TUN 已启用时通过 VPN 服务启动内核
+    // 未启用时不启动 VPN，避免 netlinkrib 权限崩溃
+    if (clashConfig.value.tunEnabled) {
+      await LibCore.instance.connectVpn(
+        merged,
+        ruleSetProxy: ruleSetProxy.value,
+      );
+    }
   } else {
     // 桌面端
     try {
