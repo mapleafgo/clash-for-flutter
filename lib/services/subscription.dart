@@ -17,6 +17,12 @@ Future<Profile> downloadSubscription({
   final file = '${time.millisecondsSinceEpoch}.yaml';
   final savePath = p.join(profilesDir, file);
 
+  // 确保 profiles 目录存在
+  final dir = Directory(profilesDir);
+  if (!dir.existsSync()) {
+    await dir.create(recursive: true);
+  }
+
   final client = HttpClient()..userAgent = subUA.value;
   try {
     final req = await client.getUrl(Uri.parse(url));
