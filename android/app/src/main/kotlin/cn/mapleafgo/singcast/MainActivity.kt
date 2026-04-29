@@ -99,7 +99,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 else -> result.notImplemented()
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             result.error("CORE_ERROR", e.message, null)
         }
     }
