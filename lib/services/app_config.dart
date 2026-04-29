@@ -94,13 +94,20 @@ void startWatchingSelectedFile() {
 Future<bool> _activateProfile(String yamlPath) async {
   final yamlContent = await File(yamlPath).readAsString();
   final merged = mergeProfileConfig(yamlContent);
-  try {
-    await LibCore.instance.stopCore();
-  } catch (_) {}
-  await LibCore.instance.startCoreWithContent(
-    merged,
-    ruleSetProxy: ruleSetProxy.value,
-  );
+
+  if (clashConfig.value.tunEnabled && (Platform.isAndroid || Platform.isIOS)) {
+    // 移动端 TUN 模式：通过 VPN 服务启动
+    await LibCore.instance.connectVpn(merged, ruleSetProxy: ruleSetProxy.value);
+  } else {
+    // 普通模式或桌面端
+    try {
+      await LibCore.instance.stopCore();
+    } catch (_) {}
+    await LibCore.instance.startCoreWithContent(
+      merged,
+      ruleSetProxy: ruleSetProxy.value,
+    );
+  }
   return true;
 }
 
