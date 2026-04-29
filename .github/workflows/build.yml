@@ -16,12 +16,21 @@ jobs:
   get-release:
     runs-on: ubuntu-latest
     outputs:
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      tag_name: ${{ steps.get-tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-      - name: Get release info
-        id: release
-        uses: thebritican/fetch-latest-release@v2.0.0
+      - name: Get release tag
+        id: get-tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            # workflow_dispatch: get latest release tag
+            TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build-windows:
     runs-on: windows-latest
