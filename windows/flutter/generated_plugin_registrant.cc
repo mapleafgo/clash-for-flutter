@@ -9,7 +9,6 @@
 #include <desktop_lifecycle/desktop_lifecycle_plugin.h>
 #include <desktop_tray/desktop_tray_plugin.h>
 #include <local_notifier/local_notifier_plugin.h>
-#include <protocol_handler_windows/protocol_handler_windows_plugin_c_api.h>
 #include <proxy_manager/proxy_manager_plugin.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
 #include <url_launcher_windows/url_launcher_windows.h>
@@ -22,8 +21,6 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("DesktopTrayPlugin"));
   LocalNotifierPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("LocalNotifierPlugin"));
-  ProtocolHandlerWindowsPluginCApiRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("ProtocolHandlerWindowsPluginCApi"));
   ProxyManagerPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ProxyManagerPlugin"));
   ScreenRetrieverWindowsPluginCApiRegisterWithRegistrar(

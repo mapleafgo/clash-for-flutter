@@ -28,7 +28,6 @@ dependencies:
   desktop_lifecycle: ^0.1.1
   proxy_manager: ^0.0.3
   local_notifier: ^0.1.6
-  protocol_handler: ^0.2.0
 
   # 工具
   ffi: ^2.2.0

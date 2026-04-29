@@ -6,7 +6,7 @@ import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:protocol_handler/protocol_handler.dart';
+
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
@@ -16,11 +16,6 @@ void main() async {
 
   if (Constants.isDesktop) {
     await windowManager.ensureInitialized();
-    if (!Platform.isLinux) {
-      try {
-        await protocolHandler.register('clash');
-      } catch (_) {}
-    }
     await windowManager.waitUntilReadyToShow(
       const WindowOptions(
         minimumSize: Size(460, 600),

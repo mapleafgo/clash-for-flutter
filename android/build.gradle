@@ -30,23 +30,6 @@ ext {
   javaVersion = JavaVersion.VERSION_17
 }
 
-// 修复第三方 Flutter 插件 compileSdk 过低导致 AAR 元数据校验失败的问题
-// 例如 protocol_handler_android 0.2.0 硬编码 compileSdk 33，但其传递依赖
-// (androidx.fragment:fragment:1.7.1 等) 要求 compileSdk >= 34
-subprojects {
-  afterEvaluate {
-    if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
-      android {
-        compileSdkVersion rootProject.ext.compileSdkVersion
-        compileOptions {
-          sourceCompatibility rootProject.ext.javaVersion
-          targetCompatibility rootProject.ext.javaVersion
-        }
-      }
-    }
-  }
-}
-
 tasks.register("clean", Delete) {
   delete rootProject.buildDir
 }
