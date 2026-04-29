@@ -37,7 +37,7 @@ abstract class LibCorePlatform {
   Future<String> checkConfig(String content);
   Future<String> getVersion();
 
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy});
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true});
   Future<void> disconnectVpn();
 }
 
@@ -109,8 +109,8 @@ class LibCore {
 
   Future<String> getVersion() => _platform.getVersion();
 
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
-      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy);
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true}) =>
+      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy, tunEnabled: tunEnabled);
 
   Future<void> disconnectVpn() => _platform.disconnectVpn();
 
@@ -482,7 +482,7 @@ class LibCoreFFI implements LibCorePlatform {
   }
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) async {
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool tunEnabled = true}) async {
     throw UnsupportedError('connectVpn is only available on mobile platforms');
   }
 

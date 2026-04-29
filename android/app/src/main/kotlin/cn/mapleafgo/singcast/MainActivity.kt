@@ -16,7 +16,14 @@ class MainActivity : FlutterFragmentActivity() {
     private val eventChannelName = "cn.mapleafgo/singcast/events"
     private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
-    private var pendingVpn: Triple<String, String, MethodChannel.Result>? = null
+    private var pendingVpn: VpnRequest? = null
+
+    private data class VpnRequest(
+        val configContent: String,
+        val ruleSetProxy: String,
+        val tunEnabled: Boolean,
+        val result: MethodChannel.Result
+    )
 
     private val vpnConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -35,9 +42,9 @@ class MainActivity : FlutterFragmentActivity() {
         val pending = pendingVpn
         pendingVpn = null
         if (result.resultCode == RESULT_OK && pending != null) {
-            startVpn(pending.first, pending.second, pending.third)
+            startVpn(pending.configContent, pending.ruleSetProxy, pending.tunEnabled, pending.result)
         } else {
-            pending?.third?.error("VPN_DENIED", "VPN permission denied", null)
+            pending?.result?.error("VPN_DENIED", "VPN permission denied", null)
         }
     }
 
@@ -71,7 +78,10 @@ class MainActivity : FlutterFragmentActivity() {
                 "reloadConfig" -> { Mobile.reloadConfig(); result.success(null) }
 
                 // TUN / VPN
-                "connectVpn" -> requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", result)
+                "connectVpn" -> {
+                    val tunEnabled = (args?.get("tunEnabled") as? Boolean) ?: true
+                    requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", tunEnabled, result)
+                }
                 "disconnectVpn" -> { stopVpn(); result.success(true) }
 
                 // Queries
@@ -96,21 +106,26 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun requestVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            pendingVpn = Triple(configContent, ruleSetProxy, result)
-            vpnPermissionLauncher.launch(intent)
-        } else {
-            startVpn(configContent, ruleSetProxy, result)
+    private fun requestVpn(configContent: String, ruleSetProxy: String, tunEnabled: Boolean, result: MethodChannel.Result) {
+        try {
+            val intent = VpnService.prepare(this)
+            if (intent != null) {
+                pendingVpn = VpnRequest(configContent, ruleSetProxy, tunEnabled, result)
+                vpnPermissionLauncher.launch(intent)
+            } else {
+                startVpn(configContent, ruleSetProxy, tunEnabled, result)
+            }
+        } catch (e: Exception) {
+            result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
         }
     }
 
-    private fun startVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
+    private fun startVpn(configContent: String, ruleSetProxy: String, tunEnabled: Boolean, result: MethodChannel.Result) {
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
             putExtra(SingcastVpnService.EXTRA_PROXY, ruleSetProxy)
+            putExtra(SingcastVpnService.EXTRA_TUN_ENABLED, tunEnabled)
         }
         startService(intent)
         bindService(intent, vpnConnection, BIND_AUTO_CREATE)

@@ -17,6 +17,7 @@ class SingcastVpnService : VpnService() {
         const val ACTION_DISCONNECT = "cn.mapleafgo.singcast.DISCONNECT"
         const val EXTRA_CONFIG = "configContent"
         const val EXTRA_PROXY = "ruleSetProxy"
+        const val EXTRA_TUN_ENABLED = "tunEnabled"
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
@@ -37,21 +38,29 @@ class SingcastVpnService : VpnService() {
             ACTION_CONNECT -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG) ?: ""
                 val proxy = intent.getStringExtra(EXTRA_PROXY) ?: ""
-                connect(config, proxy)
+                val tunEnabled = intent.getBooleanExtra(EXTRA_TUN_ENABLED, true)
+                connect(config, proxy, tunEnabled)
             }
             ACTION_DISCONNECT, ACTION_DISCONNECT_NOTIFY -> disconnect()
         }
         return START_NOT_STICKY
     }
 
-    private fun connect(configContent: String, ruleSetProxy: String) {
+    private fun connect(configContent: String, ruleSetProxy: String, tunEnabled: Boolean) {
         if (running) return
 
-        val fd = establishTun()
-        Mobile.setTunFd(fd)
-        Mobile.startWithContent(configContent, ruleSetProxy)
-        running = true
-        showNotification()
+        try {
+            if (tunEnabled) {
+                val fd = establishTun()
+                Mobile.setTunFd(fd)
+            }
+            Mobile.startWithContent(configContent, ruleSetProxy)
+            running = true
+            showNotification(tunEnabled)
+        } catch (e: Exception) {
+            disconnect()
+            throw e
+        }
     }
 
     private fun establishTun(): Int {
@@ -63,8 +72,12 @@ class SingcastVpnService : VpnService() {
             .addDnsServer("8.8.8.8")
             .addDnsServer("8.8.4.4")
 
-        pfd = builder.establish() ?: throw IllegalStateException("VPN establish failed")
-        return pfd!!.fd
+        try {
+            pfd = builder.establish() ?: throw IllegalStateException("VPN establish failed - check VPN permission")
+            return pfd!!.fd
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to establish TUN: ${e.message}", e)
+        }
     }
 
     fun disconnect() {
@@ -87,7 +100,7 @@ class SingcastVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun showNotification() {
+    private fun showNotification(tunEnabled: Boolean = true) {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -114,14 +127,21 @@ class SingcastVpnService : VpnService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val statusText = if (tunEnabled) "TUN 模式已启用" else "代理模式已启用"
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Singcast")
-            .setContentText("TUN 模式已启用")
+            .setContentText(statusText)
             .setOngoing(true)
             .setContentIntent(openPending)
             .addAction(R.mipmap.ic_launcher, "断开", disconnectPending)
             .build()
-        startForeground(NOTIFY_ID, notification)
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFY_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFY_ID, notification)
+        }
     }
 }
