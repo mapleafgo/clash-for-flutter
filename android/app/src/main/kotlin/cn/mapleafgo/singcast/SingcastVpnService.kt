@@ -49,6 +49,7 @@ class SingcastVpnService : VpnService() {
 
         Thread {
             try {
+                Mobile.setVpnService(this@SingcastVpnService)
                 val fd = establishTun()
                 Mobile.setTunFd(fd)
                 Mobile.startWithContent(configContent, ruleSetProxy)
@@ -78,6 +79,7 @@ class SingcastVpnService : VpnService() {
         try { pfd?.close() } catch (_: Throwable) {}
         pfd = null
         running = false
+        Mobile.setVpnService(null)
         Mobile.notifyVpnStateChanged(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
     }

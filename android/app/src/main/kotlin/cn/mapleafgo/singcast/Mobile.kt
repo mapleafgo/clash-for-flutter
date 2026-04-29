@@ -3,6 +3,7 @@ package cn.mapleafgo.singcast
 import android.os.Handler
 import android.os.Looper
 import cn.mapleafgo.ffi.EventHandler
+import cn.mapleafgo.ffi.SocketProtector
 import cn.mapleafgo.ffi.Singcast
 import io.flutter.plugin.common.EventChannel
 
@@ -10,6 +11,21 @@ object Mobile {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val singcast = Singcast()
     private var eventSink: EventChannel.EventSink? = null
+    private var vpnService: SingcastVpnService? = null
+
+    private val socketProtector = object : SocketProtector {
+        override fun protect(fd: Long): Boolean {
+            val svc = vpnService ?: return false
+            return svc.protectSocket(fd.toInt())
+        }
+    }
+
+    fun setVpnService(svc: SingcastVpnService?) {
+        vpnService = svc
+        if (svc != null) {
+            singcast.setSocketProtector(socketProtector)
+        }
+    }
 
     private val eventHandler = object : EventHandler {
         override fun onEvent(eventType: Long, jsonPayload: String) {
