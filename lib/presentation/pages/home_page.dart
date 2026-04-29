@@ -7,6 +7,7 @@ import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/dialog.dart';
+import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/format.dart';
 
 class HomePage extends StatelessWidget {
@@ -27,13 +28,13 @@ class HomePage extends StatelessWidget {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             padding: const EdgeInsets.all(16),
-            itemCount: 5,
+            itemCount: Constants.isDesktop ? 5 : 4,
             itemBuilder: (_, index) => switch (index) {
               0 => const _SpeedCard(),
               1 => const _TrafficTotalCard(),
               2 => const _ConnectionsCard(),
               3 => const _ModeCard(),
-              4 => const _ProxyModeCard(),
+              4 when Constants.isDesktop => const _ProxyModeCard(),
               _ => const SizedBox.shrink(),
             },
           );
@@ -127,9 +128,54 @@ class _StatBadge extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Stat Row (narrow layout) ---
+
+class _StatRow extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final Color color;
+
+  const _StatRow({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -149,29 +195,51 @@ class _SpeedCard extends StatelessWidget {
       final traffic = LibCore.instance.trafficSignal.value;
       final up = traffic?.up ?? 0;
       final down = traffic?.down ?? 0;
-      return _CardShell(
-        icon: Icons.speed,
-        title: '网速',
-        height: _smallH,
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_upward,
-                value: '${formatBytes(up)}/s',
-                color: Colors.deepOrange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_downward,
-                value: '${formatBytes(down)}/s',
-                color: Colors.blue,
-              ),
-            ),
-          ],
-        ),
+      return LayoutBuilder(
+        builder: (_, constraints) {
+          final narrow = constraints.maxWidth < 200;
+          return _CardShell(
+            icon: Icons.speed,
+            title: '网速',
+            height: narrow ? _mediumH : _smallH,
+            child: narrow
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatRow(
+                        icon: Icons.arrow_upward,
+                        value: '${formatBytes(up)}/s',
+                        color: Colors.deepOrange,
+                      ),
+                      const SizedBox(height: 16),
+                      _StatRow(
+                        icon: Icons.arrow_downward,
+                        value: '${formatBytes(down)}/s',
+                        color: Colors.blue,
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _StatBadge(
+                          icon: Icons.arrow_upward,
+                          value: '${formatBytes(up)}/s',
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatBadge(
+                          icon: Icons.arrow_downward,
+                          value: '${formatBytes(down)}/s',
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
       );
     });
   }
@@ -280,29 +348,51 @@ class _TrafficTotalCard extends StatelessWidget {
       final traffic = LibCore.instance.trafficSignal.value;
       final upTotal = traffic?.upTotal ?? 0;
       final downTotal = traffic?.downTotal ?? 0;
-      return _CardShell(
-        icon: Icons.data_usage,
-        title: '累计流量',
-        height: _smallH,
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_upward,
-                value: formatBytes(upTotal),
-                color: Colors.deepOrange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_downward,
-                value: formatBytes(downTotal),
-                color: Colors.blue,
-              ),
-            ),
-          ],
-        ),
+      return LayoutBuilder(
+        builder: (_, constraints) {
+          final narrow = constraints.maxWidth < 200;
+          return _CardShell(
+            icon: Icons.data_usage,
+            title: '累计流量',
+            height: narrow ? _mediumH : _smallH,
+            child: narrow
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatRow(
+                        icon: Icons.arrow_upward,
+                        value: formatBytes(upTotal),
+                        color: Colors.deepOrange,
+                      ),
+                      const SizedBox(height: 16),
+                      _StatRow(
+                        icon: Icons.arrow_downward,
+                        value: formatBytes(downTotal),
+                        color: Colors.blue,
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _StatBadge(
+                          icon: Icons.arrow_upward,
+                          value: formatBytes(upTotal),
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatBadge(
+                          icon: Icons.arrow_downward,
+                          value: formatBytes(downTotal),
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
       );
     });
   }

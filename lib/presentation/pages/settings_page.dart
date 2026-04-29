@@ -32,16 +32,17 @@ class SettingsPage extends StatelessWidget {
             value: config.ipv6 ?? false,
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
-          ListTile(
-            title: const Text('代理模式'),
-            trailing: DropdownButton<Mode>(
-              value: config.mode ?? Mode.rule,
-              underline: const SizedBox(),
-              items: Mode.values.map((m) => DropdownMenuItem(
-                value: m, child: Text(m.name))).toList(),
-              onChanged: (m) { if (m != null) updateClashConfig(mode: m); },
+          if (Constants.isDesktop)
+            ListTile(
+              title: const Text('代理模式'),
+              trailing: DropdownButton<Mode>(
+                value: config.mode ?? Mode.rule,
+                underline: const SizedBox(),
+                items: Mode.values.map((m) => DropdownMenuItem(
+                  value: m, child: Text(m.name))).toList(),
+                onChanged: (m) { if (m != null) updateClashConfig(mode: m); },
+              ),
             ),
-          ),
           ListTile(
             title: const Text('日志等级'),
             trailing: DropdownButton<LogLevel>(
