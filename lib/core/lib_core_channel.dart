@@ -88,11 +88,17 @@ class LibCoreChannel implements LibCorePlatform {
       _channel.invokeMethod('initCore', {'homeDir': homeDir});
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
-      _channel.invokeMethod('startCoreWithContent', {
-        'content': content,
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+    await _channel.invokeMethod('startCoreWithContent', {
+      'content': content,
+      'ruleSetProxy': ruleSetProxy ?? '',
+    });
+    // 移动端依赖事件推送更新 UI，但内核启动后不一定立即推送代理数据
+    // 主动查询一次确保代理列表可用
+    try {
+      LibCore.instance.proxiesSignal.value = await queryProxies();
+    } catch (_) {}
+  }
 
   @override
   Future<void> stopCore() => _channel.invokeMethod('stopCore');
