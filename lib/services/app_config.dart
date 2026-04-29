@@ -96,10 +96,17 @@ Future<bool> _activateProfile(String yamlPath) async {
   final merged = mergeProfileConfig(yamlContent);
 
   if (Platform.isAndroid || Platform.isIOS) {
-    // 移动端仅在 TUN 已启用时通过 VPN 服务启动内核
+    try {
+      await LibCore.instance.stopCore();
+    } catch (_) {}
     if (clashConfig.value.tunEnabled) {
       await LibCore.instance.connectVpn(
         prepareMobileConfig(merged),
+        ruleSetProxy: ruleSetProxy.value,
+      );
+    } else {
+      await LibCore.instance.startCoreWithContent(
+        merged,
         ruleSetProxy: ruleSetProxy.value,
       );
     }

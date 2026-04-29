@@ -177,6 +177,9 @@ Future<void> _openTunMobile() async {
   if (!File(path).existsSync()) return;
 
   try {
+    try {
+      await LibCore.instance.stopCore();
+    } catch (_) {}
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
     await LibCore.instance.connectVpn(
@@ -196,6 +199,21 @@ Future<void> _closeTunMobile() async {
   } catch (_) {}
 
   _setTunEnabled(false);
+
+  // 关闭 TUN 后重新以代理模式启动内核，保持 API 可用
+  final file = selectedFile.value;
+  if (file == null) return;
+  final path = _resolveProfilePath(file);
+  if (!File(path).existsSync()) return;
+
+  try {
+    final yamlContent = await File(path).readAsString();
+    final merged = mergeProfileConfig(yamlContent);
+    await LibCore.instance.startCoreWithContent(
+      merged,
+      ruleSetProxy: ruleSetProxy.value,
+    );
+  } catch (_) {}
 }
 
 String _resolveProfilePath(String file) {
