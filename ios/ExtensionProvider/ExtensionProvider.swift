@@ -18,24 +18,27 @@ class ExtensionProvider: NEPacketTunnelProvider {
             throw ExtensionError.missingConfig
         }
         let ruleSetProxy = options?["ruleSetProxy"] as? String ?? ""
+        let tunEnabled = options?["tunEnabled"] as? Bool ?? true
 
-        // Configure tunnel network settings
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        let ipv4 = NEIPv4Settings(addresses: ["172.18.0.1"], subnetMasks: ["255.255.255.252"])
-        ipv4.includedRoutes = [NEIPv4Route.default()]
-        settings.ipv4Settings = ipv4
-        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
-        settings.mtu = 9000
+        if tunEnabled {
+            // Configure tunnel network settings
+            let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
+            let ipv4 = NEIPv4Settings(addresses: ["172.18.0.1"], subnetMasks: ["255.255.255.252"])
+            ipv4.includedRoutes = [NEIPv4Route.default()]
+            settings.ipv4Settings = ipv4
+            settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
+            settings.mtu = 9000
 
-        try await setTunnelNetworkSettings(settings)
+            try await setTunnelNetworkSettings(settings)
 
-        // Extract TUN file descriptor from the packet flow.
-        guard let tunFd = extractTunFd() ?? getTunnelFileDescriptor() else {
-            throw ExtensionError.tunnelSetupFailed
+            // Extract TUN file descriptor from the packet flow.
+            guard let tunFd = extractTunFd() ?? getTunnelFileDescriptor() else {
+                throw ExtensionError.tunnelSetupFailed
+            }
+
+            singcast.setTunFd(tunFd)
         }
 
-        // Inject fd and start core with content
-        singcast.setTunFd(tunFd)
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
     }
 
