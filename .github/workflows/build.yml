@@ -231,6 +231,10 @@ jobs:
       - name: Build Flutter
         run: flutter build macos
 
+      - name: Ad-hoc sign
+        run: |
+          codesign --force --deep --sign - build/macos/Build/Products/Release/singcast.app
+
       - name: Create DMG
         run: |
           cd build/macos/Build/Products/Release
@@ -272,6 +276,20 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Setup Android signing
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
+            cat > android/key.properties << EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.jks
+          EOF
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set, using debug keystore"
+          fi
+
       - name: Download core
         run: |
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-arm64.tar.gz" -o libsingcast.tar.gz
@@ -310,6 +328,20 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      - name: Setup Android signing
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
+            cat > android/key.properties << EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.jks
+          EOF
+          else
+            echo "Using debug keystore (set ANDROID_KEYSTORE_BASE64 secret for release signing)"
+          fi
 
       - name: Download core
         run: |
