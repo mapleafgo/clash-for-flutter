@@ -25,11 +25,6 @@ subprojects {
   project.evaluationDependsOn(':app')
 }
 
-ext {
-  compileSdkVersion = 36
-  javaVersion = JavaVersion.VERSION_17
-}
-
 tasks.register("clean", Delete) {
   delete rootProject.buildDir
 }
