@@ -26,11 +26,11 @@ class LibCoreChannel implements LibCorePlatform {
     switch (eventType) {
       case 0: // traffic
         if (rawData is String) {
-          final json = jsonDecode(rawData) as Map<String, dynamic>;
-          core.trafficSignal.value = TrafficSnapshot.fromJson(json);
+          core.trafficSignal.value = TrafficSnapshot.fromJson(
+              jsonDecode(rawData) as Map<String, dynamic>);
         } else if (rawData is Map) {
-          core.trafficSignal.value =
-              TrafficSnapshot.fromJson(Map<String, dynamic>.from(rawData));
+          core.trafficSignal.value = TrafficSnapshot.fromJson(
+              Map<String, dynamic>.from(rawData));
         }
       case 1: // logs
         final list = rawData is String

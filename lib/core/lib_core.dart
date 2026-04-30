@@ -177,13 +177,27 @@ class LibCoreFFI implements LibCorePlatform {
     _running = true;
     try {
       final core = LibCore.instance;
-      core.trafficSignal.value = await core.queryTraffic();
-      core.proxiesSignal.value = await core.queryProxies();
-      core.appendLogs(await core.queryLogs());
-      final events = await core.queryConnections();
-      core.handleConnectionEvents(events);
+      await Future.wait([
+        _safeQuery(
+            () => core.queryTraffic(), (r) => core.trafficSignal.value = r),
+        _safeQuery(
+            () => core.queryProxies(), (r) => core.proxiesSignal.value = r),
+        _safeQuery(() => core.queryLogs(), (r) => core.appendLogs(r)),
+        _safeQuery(() => core.queryConnections(),
+            (r) => core.handleConnectionEvents(r)),
+      ]);
+    } finally {
+      _running = false;
+    }
+  }
+
+  Future<void> _safeQuery<T>(
+    Future<T> Function() query,
+    void Function(T) apply,
+  ) async {
+    try {
+      apply(await query().timeout(const Duration(seconds: 5)));
     } catch (_) {}
-    _running = false;
   }
 
   // ---- Static helpers for use inside Isolates ----
