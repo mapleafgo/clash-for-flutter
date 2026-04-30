@@ -10,6 +10,8 @@ import 'package:singcast/utils/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:proxy_manager/proxy_manager.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 final _proxyManager = ProxyManager();
 
@@ -119,77 +121,36 @@ Future<bool> _activateProfile(String yamlPath) async {
 }
 
 /// Overlay [ClashConfig] values onto the profile YAML string.
-/// Injects or replaces top-level keys without converting to JSON.
 String mergeProfileConfig(String yamlContent) {
   final config = clashConfig.value;
-  var result = yamlContent;
+  final editor = YamlEditor(yamlContent);
 
   if (config.mixedPort != null) {
-    result = _overrideYamlKey(result, 'mixed-port', config.mixedPort!);
+    editor.update(['mixed-port'], config.mixedPort);
   }
   if (config.allowLan != null) {
-    result = _overrideYamlKey(result, 'allow-lan', config.allowLan!);
+    editor.update(['allow-lan'], config.allowLan);
   }
   if (config.mode != null) {
-    result = _overrideYamlKey(result, 'mode', config.mode!.name);
+    editor.update(['mode'], config.mode!.name);
   }
   if (config.logLevel != null) {
-    result = _overrideYamlKey(result, 'log-level', config.logLevel!.name);
+    editor.update(['log-level'], config.logLevel!.name);
   }
   if (config.ipv6 != null) {
-    result = _overrideYamlKey(result, 'ipv6', config.ipv6!);
+    editor.update(['ipv6'], config.ipv6);
   }
   if (config.tun != null) {
-    result = _overrideTunSection(result, config.tun!.enable ?? false);
-  }
-
-  // Ensure external-controller is always set for sing-box API
-  if (!RegExp(r'^external-controller\s*:', multiLine: true).hasMatch(result)) {
-    result = 'external-controller: 127.0.0.1:9090\n$result';
-  }
-
-  return result;
-}
-
-String _overrideYamlKey(String yaml, String key, dynamic value) {
-  final pattern = RegExp('^' + RegExp.escape(key) + r'\s*:\s*.*$', multiLine: true);
-  if (pattern.hasMatch(yaml)) {
-    return yaml.replaceFirst(pattern, '$key: $value');
-  }
-  return '$key: $value\n$yaml';
-}
-
-String _overrideTunSection(String yaml, bool enable) {
-  final lines = yaml.split('\n');
-  int tunIndex = -1;
-  int enableIndex = -1;
-
-  for (int i = 0; i < lines.length; i++) {
-    if (tunIndex < 0 && lines[i].startsWith('tun:')) {
-      tunIndex = i;
-    } else if (tunIndex >= 0 && enableIndex < 0) {
-      final trimmed = lines[i].trim();
-      if (trimmed.startsWith('enable:')) {
-        enableIndex = i;
-        break;
-      }
-      // Stop looking if we hit another top-level key
-      if (!lines[i].startsWith(' ') && !lines[i].startsWith('\t') && trimmed.isNotEmpty) {
-        break;
-      }
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && !doc.containsKey('tun')) {
+      editor.update(['tun'], {});
     }
+    editor.update(['tun', 'enable'], config.tun!.enable ?? false);
   }
 
-  if (enableIndex >= 0) {
-    lines[enableIndex] = '  enable: $enable';
-  } else if (tunIndex >= 0) {
-    lines.insert(tunIndex + 1, '  enable: $enable');
-  } else {
-    lines.insert(0, 'tun:');
-    lines.insert(1, '  enable: $enable');
-  }
+  editor.update(['external-controller'], '127.0.0.1:9090');
 
-  return lines.join('\n');
+  return editor.toString();
 }
 
 Profile? get activeProfile {

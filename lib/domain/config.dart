@@ -31,6 +31,23 @@ class ClashConfig {
 
   factory ClashConfig.defaults() => ClashConfig(mixedPort: 7890);
 
+  ClashConfig copyWith({
+    int? mixedPort,
+    bool? allowLan,
+    Mode? mode,
+    LogLevel? logLevel,
+    bool? ipv6,
+    TunConfig? tun,
+  }) =>
+      ClashConfig(
+        mixedPort: mixedPort ?? this.mixedPort,
+        allowLan: allowLan ?? this.allowLan,
+        mode: mode ?? this.mode,
+        logLevel: logLevel ?? this.logLevel,
+        ipv6: ipv6 ?? this.ipv6,
+        tun: tun ?? this.tun,
+      );
+
   bool get tunEnabled => tun?.enable ?? false;
   int get port => mixedPort ?? 0;
 }
@@ -39,6 +56,9 @@ class ClashConfig {
 class TunConfig {
   final bool? enable;
   TunConfig({this.enable});
+
+  TunConfig copyWith({bool? enable}) => TunConfig(enable: enable ?? this.enable);
+
   factory TunConfig.fromJson(Map<String, dynamic> json) =>
       _$TunConfigFromJson(json);
   Map<String, dynamic> toJson() => _$TunConfigToJson(this);

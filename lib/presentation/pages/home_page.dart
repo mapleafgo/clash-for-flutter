@@ -36,31 +36,34 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: const SysAppBar(title: 'Singcast'),
       floatingActionButton: const _ToggleFab(),
-      body: LayoutBuilder(
-        builder: (_, constraints) {
-          final cols = constraints.maxWidth > 600
-              ? 3
-              : (constraints.maxWidth > 350 ? 2 : 1);
-          return MasonryGridView.count(
-            crossAxisCount: cols,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            padding: const EdgeInsets.all(16),
-            itemCount: (Constants.isDesktop ? 5 : 4) + (_hasInitError ? 1 : 0),
-            itemBuilder: (_, index) {
-              if (_hasInitError && index == 0) return const _InitErrorCard();
-              final offset = _hasInitError ? 1 : 0;
-              return switch (index - offset) {
-                0 => const _SpeedCard(),
-                1 => const _TrafficTotalCard(),
-                2 => const _ModeCard(),
-                3 => const _ConnectionsCard(),
-                4 when Constants.isDesktop => const _ProxyModeCard(),
-                _ => const SizedBox.shrink(),
-              };
-            },
-          );
-        },
+      body: Column(
+        children: [
+          if (_hasInitError) const _InitErrorCard(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (_, constraints) {
+                final cols = constraints.maxWidth > 600
+                    ? 3
+                    : (constraints.maxWidth > 350 ? 2 : 1);
+                return MasonryGridView.count(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: Constants.isDesktop ? 5 : 4,
+                  itemBuilder: (_, index) => switch (index) {
+                    0 => const _SpeedCard(),
+                    1 => const _TrafficTotalCard(),
+                    2 => const _ModeCard(),
+                    3 => const _ConnectionsCard(),
+                    4 when Constants.isDesktop => const _ProxyModeCard(),
+                    _ => const SizedBox.shrink(),
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -437,6 +440,7 @@ class _ModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Watch((context) {
       final current = clashConfig.value.mode ?? Mode.rule;
+      final busy = modeChanging.value;
       return _CardShell(
         icon: Icons.alt_route,
         title: '出站模式',
@@ -453,7 +457,7 @@ class _ModeCard extends StatelessWidget {
                     icon: _modeIcons[mode]!,
                     label: _modeLabels[mode]!,
                     selected: mode == current,
-                    onTap: () => updateClashConfig(mode: mode),
+                    onTap: busy ? null : () => changeMode(mode),
                   ),
                 ),
               ),
@@ -468,13 +472,13 @@ class _ModeOption extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ModeOption({
     required this.icon,
     required this.label,
     required this.selected,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
@@ -613,13 +617,10 @@ class _InitErrorCard extends StatelessWidget {
       final err = initError.value;
       if (err == null) return const SizedBox.shrink();
       final cs = Theme.of(context).colorScheme;
-      return Card(
-        margin: EdgeInsets.zero,
-        elevation: 0,
+      return Material(
         color: cs.errorContainer,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           child: Row(
             children: [
               Icon(Icons.error_outline, color: cs.error),
@@ -629,12 +630,14 @@ class _InitErrorCard extends StatelessWidget {
                   err,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: cs.onErrorContainer),
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer),
                 ),
               ),
               IconButton(
                 icon: Icon(Icons.close, size: 18, color: cs.onErrorContainer),
-                onPressed: () => initError.value = null,
+                onPressed: () {
+                  initError.value = null;
+                },
               ),
             ],
           ),

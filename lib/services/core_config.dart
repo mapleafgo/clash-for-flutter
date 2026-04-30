@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
@@ -9,12 +10,17 @@ import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
 Timer? _syncTimer;
 Timer? _reloadTimer;
 Mode? _lastSyncedMode;
+int? _lastSyncedPort;
+
+final modeChanging = signal(false);
 
 void initCoreConfig() {
   if (CoreConfigStorage.exists()) {
@@ -28,11 +34,10 @@ void initCoreConfig() {
     _syncTimer = Timer(const Duration(seconds: 1), () {
       CoreConfigStorage.save(config);
     });
-    // mode 变化走 setMode 热更新 + 立即持久化，其他变化延迟重载内核
+    // mode 由 watchModeFromCore 从内核回写更新，不触发重载
     if (config.mode != _lastSyncedMode) {
       _lastSyncedMode = config.mode;
       _saveSync();
-      _syncModeToCore(config.mode);
     } else {
       _scheduleReload();
     }
@@ -57,11 +62,20 @@ Future<void> _syncModeToCore(Mode? mode) async {
     await LibCore.instance.setMode(mode.name);
     LibCore.instance.modeSignal.value = mode.name;
   } catch (e) {
-    print('[core_config] setMode(${mode.name}) failed: $e');
+    log('[core_config] setMode(${mode.name}) failed: $e');
   }
 }
 
-int? _lastSyncedPort;
+/// 通知内核切换模式，UI 状态由 [watchModeFromCore] 从内核事件回写更新。
+Future<void> changeMode(Mode mode) async {
+  if (modeChanging.value) return;
+  modeChanging.value = true;
+  try {
+    await _syncModeToCore(mode);
+  } finally {
+    modeChanging.value = false;
+  }
+}
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
@@ -82,14 +96,12 @@ void updateClashConfig({
   LogLevel? logLevel,
   bool? ipv6,
 }) {
-  final old = clashConfig.value;
-  clashConfig.value = ClashConfig(
-    mixedPort: mixedPort ?? old.mixedPort,
-    allowLan: allowLan ?? old.allowLan,
-    mode: mode ?? old.mode,
-    logLevel: logLevel ?? old.logLevel,
-    ipv6: ipv6 ?? old.ipv6,
-    tun: old.tun,
+  clashConfig.value = clashConfig.value.copyWith(
+    mixedPort: mixedPort,
+    allowLan: allowLan,
+    mode: mode,
+    logLevel: logLevel,
+    ipv6: ipv6,
   );
 }
 
@@ -98,14 +110,8 @@ void watchModeFromCore() {
     final modeStr = LibCore.instance.modeSignal.value;
     final mode = Mode.values.where((m) => m.name == modeStr).firstOrNull;
     if (mode != null && clashConfig.value.mode != mode) {
-      clashConfig.value = ClashConfig(
-        mixedPort: clashConfig.value.mixedPort,
-        allowLan: clashConfig.value.allowLan,
-        mode: mode,
-        logLevel: clashConfig.value.logLevel,
-        ipv6: clashConfig.value.ipv6,
-        tun: clashConfig.value.tun,
-      );
+      _lastSyncedMode = mode;
+      clashConfig.value = clashConfig.value.copyWith(mode: mode);
     }
   });
 }
@@ -163,12 +169,7 @@ Future<void> _closeTunDesktop() async {
 }
 
 void _setTunEnabled(bool enable) {
-  clashConfig.value = ClashConfig(
-    mixedPort: clashConfig.value.mixedPort,
-    allowLan: clashConfig.value.allowLan,
-    mode: clashConfig.value.mode,
-    logLevel: clashConfig.value.logLevel,
-    ipv6: clashConfig.value.ipv6,
+  clashConfig.value = clashConfig.value.copyWith(
     tun: TunConfig(enable: enable),
   );
   _saveSync();
@@ -228,63 +229,19 @@ String _resolveProfilePath(String file) {
 /// Modify TUN config for mobile (Android/iOS).
 /// VpnService / Network Extension handles routing, so the core must not
 /// access netlink. Follows community best practice (FlClash, sing-box SFA):
+///   enable: true               — force TUN on for VPN mode
 ///   auto-route: false           — VpnService manages routing
 ///   strict-route: false         — not supported on mobile
 ///   auto-detect-interface: false — prevents netlink socket creation
 String prepareMobileConfig(String yaml) {
-  final lines = yaml.split('\n');
-  final result = <String>[];
-  bool inTun = false;
-  bool hasAutoRoute = false;
-  bool hasStrictRoute = false;
-  bool hasAutoDetect = false;
-
-  for (int i = 0; i < lines.length; i++) {
-    final line = lines[i];
-    final trimmed = line.trim();
-
-    if (line.startsWith('tun:')) {
-      inTun = true;
-      result.add(line);
-      continue;
-    }
-
-    if (inTun &&
-        !line.startsWith(' ') &&
-        !line.startsWith('\t') &&
-        trimmed.isNotEmpty) {
-      if (!hasAutoRoute) result.add('  auto-route: false');
-      if (!hasStrictRoute) result.add('  strict-route: false');
-      if (!hasAutoDetect) result.add('  auto-detect-interface: false');
-      inTun = false;
-    }
-
-    if (inTun) {
-      if (trimmed.startsWith('auto-route:')) {
-        result.add('  auto-route: false');
-        hasAutoRoute = true;
-        continue;
-      }
-      if (trimmed.startsWith('strict-route:')) {
-        result.add('  strict-route: false');
-        hasStrictRoute = true;
-        continue;
-      }
-      if (trimmed.startsWith('auto-detect-interface:')) {
-        result.add('  auto-detect-interface: false');
-        hasAutoDetect = true;
-        continue;
-      }
-    }
-
-    result.add(line);
+  final editor = YamlEditor(yaml);
+  final doc = loadYaml(editor.toString());
+  if (doc is YamlMap && !doc.containsKey('tun')) {
+    editor.update(['tun'], {});
   }
-
-  if (inTun) {
-    if (!hasAutoRoute) result.add('  auto-route: false');
-    if (!hasStrictRoute) result.add('  strict-route: false');
-    if (!hasAutoDetect) result.add('  auto-detect-interface: false');
-  }
-
-  return result.join('\n');
+  editor.update(['tun', 'enable'], true);
+  editor.update(['tun', 'auto-route'], false);
+  editor.update(['tun', 'strict-route'], false);
+  editor.update(['tun', 'auto-detect-interface'], false);
+  return editor.toString();
 }

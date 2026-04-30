@@ -73,7 +73,7 @@ class _TrayHandler with DesktopTrayListener {
         await windowManager.destroy();
       default:
         final mode = Mode.values.where((m) => m.name == item.key);
-        if (mode.isNotEmpty) updateClashConfig(mode: mode.first);
+        if (mode.isNotEmpty) changeMode(mode.first);
     }
   }
 }

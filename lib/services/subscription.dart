@@ -6,6 +6,7 @@ import 'package:singcast/domain/profile.dart';
 import 'package:singcast/domain/subscription_info.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:path/path.dart' as p;
+import 'package:yaml_edit/yaml_edit.dart';
 
 /// Download a subscription from a URL and save it as a profile file.
 Future<Profile> downloadSubscription({
@@ -75,19 +76,9 @@ String decodeBase64Subscription(String raw) {
     if (proxy != null) proxies.add(proxy);
   }
   if (proxies.isEmpty) return raw;
-  final yaml = StringBuffer('proxies:\n');
-  for (final p in proxies) {
-    yaml.writeln('  - name: "${p['name']}"');
-    yaml.writeln('    type: ${p['type']}');
-    yaml.writeln('    server: ${p['server']}');
-    yaml.writeln('    port: ${p['port']}');
-    for (final entry in p.entries) {
-      if (!{'name', 'type', 'server', 'port'}.contains(entry.key)) {
-        yaml.writeln('    ${entry.key}: ${entry.value}');
-      }
-    }
-  }
-  return yaml.toString();
+  final editor = YamlEditor('proxies: []\n');
+  editor.update(['proxies'], proxies);
+  return editor.toString();
 }
 
 Map<String, dynamic>? parseProxyUri(String uri) {

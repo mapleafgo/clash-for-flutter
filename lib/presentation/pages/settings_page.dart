@@ -55,7 +55,7 @@ class SettingsPage extends StatelessWidget {
               value: config.mode ?? Mode.rule,
               items: Mode.values,
               labelBuilder: (m) => _modeLabels[m] ?? m.name,
-              onChanged: (m) => updateClashConfig(mode: m),
+              onChanged: (m) => changeMode(m),
             ),
           _ChoiceTile<LogLevel>(
             title: '日志等级',
