@@ -21,20 +21,31 @@ Future<void> initTray() async {
 }
 
 Future<void> _rebuildMenu(bool proxyOn, Mode? mode) async {
-  final menu = TrayMenu(items: [
-    TrayMenuItem(label: '显示窗口', key: 'show'),
-    TrayMenuItem.separator(),
-    TrayMenuItem.checkbox(label: '代理', key: 'proxy', checked: proxyOn),
-    TrayMenuItem.submenu(
-      label: '模式',
-      children: [
-        TrayMenuItem.checkbox(label: 'Rule', key: Mode.rule.name, checked: mode == Mode.rule),
-        TrayMenuItem.checkbox(label: 'Global', key: Mode.global.name, checked: mode == Mode.global),
-        TrayMenuItem.checkbox(label: 'Direct', key: Mode.direct.name, checked: mode == Mode.direct),
-      ],
-    ),
-    TrayMenuItem(label: '退出', key: 'exit'),
-  ]);
+  final menu = TrayMenu(
+    items: [
+      TrayMenuItem(label: '显示窗口', key: 'show'),
+      TrayMenuItem.separator(),
+      TrayMenuItem.checkbox(label: '系统代理', key: 'proxy', checked: proxyOn),
+      TrayMenuItem.separator(),
+      TrayMenuItem.checkbox(
+        label: '规则模式',
+        key: Mode.rule.name,
+        checked: mode == Mode.rule,
+      ),
+      TrayMenuItem.checkbox(
+        label: '全局模式',
+        key: Mode.global.name,
+        checked: mode == Mode.global,
+      ),
+      TrayMenuItem.checkbox(
+        label: '直连模式',
+        key: Mode.direct.name,
+        checked: mode == Mode.direct,
+      ),
+      TrayMenuItem.separator(),
+      TrayMenuItem(label: '退出', key: 'exit'),
+    ],
+  );
   await desktopTray.setContextMenu(menu);
 }
 

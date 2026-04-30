@@ -53,8 +53,8 @@ class _HomePageState extends State<HomePage> {
               return switch (index - offset) {
                 0 => const _SpeedCard(),
                 1 => const _TrafficTotalCard(),
-                2 => const _ConnectionsCard(),
-                3 => const _ModeCard(),
+                2 => const _ModeCard(),
+                3 => const _ConnectionsCard(),
                 4 when Constants.isDesktop => const _ProxyModeCard(),
                 _ => const SizedBox.shrink(),
               };
@@ -627,9 +627,9 @@ class _InitErrorCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   err,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onErrorContainer,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onErrorContainer),
                 ),
               ),
               IconButton(
