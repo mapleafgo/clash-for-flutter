@@ -24,6 +24,8 @@ final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
 final initError = signal<String?>(null);
+final coreActivating = signal(false);
+final vpnConnected = signal(false);
 
 Timer? _saveTimer;
 
@@ -95,29 +97,36 @@ void startWatchingSelectedFile() {
 /// Merge the profile YAML with the app's [ClashConfig] overrides,
 /// then start the core with the merged content.
 Future<bool> _activateProfile(String yamlPath) async {
-  final yamlContent = await File(yamlPath).readAsString();
-  final merged = mergeProfileConfig(yamlContent);
+  coreActivating.value = true;
+  try {
+    final yamlContent = await File(yamlPath).readAsString();
+    final merged = mergeProfileConfig(yamlContent);
 
-  if (Platform.isAndroid || Platform.isIOS) {
-    if (clashConfig.value.tunEnabled) {
-      await LibCore.instance.connectVpn(
-        prepareMobileConfig(merged),
-        ruleSetProxy: ruleSetProxy.value,
-      );
+    if (Platform.isAndroid || Platform.isIOS) {
+      if (clashConfig.value.tunEnabled && !vpnConnected.value) {
+        // 首次建立 VPN 隧道
+        await LibCore.instance.connectVpn(
+          prepareMobileConfig(merged),
+          ruleSetProxy: ruleSetProxy.value,
+        );
+      } else {
+        // 核心已运行（VPN 或代理模式），直接重启核心
+        // VPN 模式下 TUN fd 保存在 native 单例中，重启核心不会重建隧道
+        await LibCore.instance.startCoreWithContent(
+          merged,
+          ruleSetProxy: ruleSetProxy.value,
+        );
+      }
     } else {
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,
       );
     }
-  } else {
-    // 桌面端
-    await LibCore.instance.startCoreWithContent(
-      merged,
-      ruleSetProxy: ruleSetProxy.value,
-    );
+    return true;
+  } finally {
+    coreActivating.value = false;
   }
-  return true;
 }
 
 /// Overlay [ClashConfig] values onto the profile YAML string.

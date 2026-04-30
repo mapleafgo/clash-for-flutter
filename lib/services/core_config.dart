@@ -19,6 +19,7 @@ Timer? _syncTimer;
 Timer? _reloadTimer;
 Mode? _lastSyncedMode;
 int? _lastSyncedPort;
+bool? _lastSyncedTun;
 
 final modeChanging = signal(false);
 
@@ -28,6 +29,7 @@ void initCoreConfig() {
   }
   _lastSyncedMode = clashConfig.value.mode;
   _lastSyncedPort = clashConfig.value.mixedPort;
+  _lastSyncedTun = clashConfig.value.tunEnabled;
   effect(() {
     final config = clashConfig.value;
     _syncTimer?.cancel();
@@ -38,6 +40,10 @@ void initCoreConfig() {
     if (config.mode != _lastSyncedMode) {
       _lastSyncedMode = config.mode;
       _saveSync();
+    } else if (config.tunEnabled != _lastSyncedTun) {
+      // TUN 状态由 toggleTun 独立管理，不触发重载（避免移动端 VPN 双重连接）
+      _lastSyncedTun = config.tunEnabled;
+      _saveSync();
     } else {
       _scheduleReload();
     }
@@ -46,6 +52,7 @@ void initCoreConfig() {
   effect(() {
     if (LibCore.instance.vpnDisconnectedByUser.value) {
       _setTunEnabled(false);
+      vpnConnected.value = false;
       LibCore.instance.vpnDisconnectedByUser.value = false;
     }
   });
@@ -193,6 +200,7 @@ Future<void> _openTunMobile() async {
     );
 
     _setTunEnabled(true);
+    vpnConnected.value = true;
   } catch (e) {
     rethrow;
   }
@@ -204,6 +212,7 @@ Future<void> _closeTunMobile() async {
   } catch (_) {}
 
   _setTunEnabled(false);
+  vpnConnected.value = false;
 
   // 关闭 TUN 后重新以代理模式启动内核，保持 API 可用
   final file = selectedFile.value;

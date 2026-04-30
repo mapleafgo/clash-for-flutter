@@ -23,6 +23,7 @@ class SingcastVpnService : VpnService() {
     }
 
     private val binder = LocalBinder()
+    private val lock = Any()
     private var pfd: ParcelFileDescriptor? = null
     private var running = false
     private var lastUp: Long = 0
@@ -49,7 +50,10 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun connect(configContent: String, ruleSetProxy: String) {
-        if (running) return
+        synchronized(lock) {
+            if (running) return
+            running = true
+        }
 
         Thread {
             try {
@@ -57,7 +61,6 @@ class SingcastVpnService : VpnService() {
                 val fd = establishTun()
                 Mobile.setTunFd(fd)
                 Mobile.startWithContent(configContent, ruleSetProxy)
-                running = true
                 showNotification()
             } catch (e: Throwable) {
                 disconnect()
@@ -79,10 +82,10 @@ class SingcastVpnService : VpnService() {
     }
 
     fun disconnect() {
+        synchronized(lock) { running = false }
         try { Mobile.stopCore() } catch (_: Throwable) {}
         try { pfd?.close() } catch (_: Throwable) {}
         pfd = null
-        running = false
         Mobile.setVpnService(null)
         Mobile.notifyVpnStateChanged(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
