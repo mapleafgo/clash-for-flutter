@@ -8,6 +8,7 @@ class AppDelegate: FlutterAppDelegate {
 
     private let singcast = FfiSingcast()
     private var eventSink: FlutterEventSink?
+    private let bgQueue = DispatchQueue(label: "cn.mapleafgo.singcast.core", qos: .userInitiated)
 
     private lazy var eventHandler = SingcastEventHandler { [weak self] eventType, jsonPayload in
         guard let self, let sink = self.eventSink else { return }
@@ -45,34 +46,27 @@ class AppDelegate: FlutterAppDelegate {
         let args = call.arguments as? [String: Any] ?? [:]
 
         switch call.method {
-        // Core lifecycle
+        // Heavy core lifecycle — run off main thread to avoid UI jank
         case "initCore":
-            do {
-                try singcast.init_(args["homeDir"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.init_(args["homeDir"] as? String ?? "")
+            }
         case "startCoreWithContent":
-            do {
-                try singcast.startWithContent(args["content"] as? String ?? "", ruleSetProxy: args["ruleSetProxy"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.startWithContent(args["content"] as? String ?? "", ruleSetProxy: args["ruleSetProxy"] as? String ?? "")
+            }
         case "stopCore":
-            do {
-                try singcast.stop()
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.stop()
+            }
         case "closeCore":
-            singcast.close()
-            result(nil)
-
+            runAsync(result: result) {
+                self.singcast.close()
+            }
         case "reloadConfig":
-            do {
-                try singcast.reloadConfig()
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
+            runAsync(result: result) {
+                try self.singcast.reloadConfig()
+            }
 
         // TUN / VPN
         case "connectVpn":
@@ -83,7 +77,7 @@ class AppDelegate: FlutterAppDelegate {
         case "disconnectVpn":
             stopTunnel(result: result)
 
-        // Queries (return JSON strings)
+        // Lightweight queries — safe on main thread
         case "queryProxies":
             result(singcast.queryProxies())
 
@@ -96,48 +90,54 @@ class AppDelegate: FlutterAppDelegate {
         case "queryConnections":
             result(singcast.queryConnections())
 
-        // Actions
+        // Lightweight actions — run off main thread
         case "selectProxy":
-            do {
-                try singcast.selectProxy(args["group"] as? String ?? "", tag: args["tag"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.selectProxy(args["group"] as? String ?? "", tag: args["tag"] as? String ?? "")
+            }
         case "testDelay":
-            do {
-                try singcast.testDelay(args["name"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.testDelay(args["name"] as? String ?? "")
+            }
         case "setMode":
-            do {
-                try singcast.setMode(args["mode"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.setMode(args["mode"] as? String ?? "")
+            }
         case "closeConnection":
-            do {
-                try singcast.closeConnection(args["id"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-
+            runAsync(result: result) {
+                try self.singcast.closeConnection(args["id"] as? String ?? "")
+            }
         case "closeAllConnections":
-            do {
-                try singcast.closeAllConnections()
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
+            runAsync(result: result) {
+                try self.singcast.closeAllConnections()
+            }
 
         case "checkConfig":
-            do {
-                try singcast.checkConfig(args["content"] as? String ?? "")
-                result(nil)
-            } catch { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
+            result(singcast.checkConfig(args["content"] as? String ?? ""))
 
         case "getVersion":
             result(singcast.version())
 
+        case "requestNotificationPermission":
+            result(nil)
+
+        case "updateVpnTraffic":
+            result(nil)
+
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    /// Run a blocking operation on a background queue, then post the result back to the main thread.
+    private func runAsync(result: @escaping FlutterResult, block: @escaping () throws -> Void) {
+        bgQueue.async {
+            do {
+                try block()
+                DispatchQueue.main.async { result(nil) }
+            } catch {
+                DispatchQueue.main.async { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
+            }
         }
     }
 
