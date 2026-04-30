@@ -14,9 +14,9 @@ object Mobile {
     private var vpnService: SingcastVpnService? = null
 
     private val socketProtector = object : SocketProtector {
-        override fun protect(fd: Long): Boolean {
+        override fun protect(fd: Int): Boolean {
             val svc = vpnService ?: return false
-            return svc.protectSocket(fd.toInt())
+            return svc.protectSocket(fd)
         }
     }
 
