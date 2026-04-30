@@ -33,25 +33,19 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
           if (Constants.isDesktop)
-            ListTile(
-              title: const Text('代理模式'),
-              trailing: DropdownButton<Mode>(
-                value: config.mode ?? Mode.rule,
-                underline: const SizedBox(),
-                items: Mode.values.map((m) => DropdownMenuItem(
-                  value: m, child: Text(m.name))).toList(),
-                onChanged: (m) { if (m != null) updateClashConfig(mode: m); },
-              ),
+            _ChoiceTile<Mode>(
+              title: '代理模式',
+              value: config.mode ?? Mode.rule,
+              items: Mode.values,
+              labelBuilder: (m) => m.name,
+              onChanged: (m) => updateClashConfig(mode: m),
             ),
-          ListTile(
-            title: const Text('日志等级'),
-            trailing: DropdownButton<LogLevel>(
-              value: config.logLevel ?? LogLevel.info,
-              underline: const SizedBox(),
-              items: LogLevel.values.map((l) => DropdownMenuItem(
-                value: l, child: Text(l.name))).toList(),
-              onChanged: (l) { if (l != null) updateClashConfig(logLevel: l); },
-            ),
+          _ChoiceTile<LogLevel>(
+            title: '日志等级',
+            value: config.logLevel ?? LogLevel.info,
+            items: LogLevel.values,
+            labelBuilder: (l) => l.name,
+            onChanged: (l) => updateClashConfig(logLevel: l),
           ),
           _Section('其他设置'),
           _UaTile(),
@@ -311,6 +305,49 @@ class _UaTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChoiceTile<T> extends StatelessWidget {
+  final String title;
+  final T value;
+  final List<T> items;
+  final String Function(T) labelBuilder;
+  final ValueChanged<T> onChanged;
+  const _ChoiceTile({
+    required this.title,
+    required this.value,
+    required this.items,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(labelBuilder(value)),
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: items.map((item) => ListTile(
+                title: Text(labelBuilder(item)),
+                trailing: item == value
+                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                    : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (item != value) onChanged(item);
+                },
+              )).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

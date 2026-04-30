@@ -13,18 +13,27 @@ import 'package:signals_flutter/signals_flutter.dart';
 final clashConfig = signal(ClashConfig.defaults());
 
 Timer? _syncTimer;
+Timer? _reloadTimer;
+Mode? _lastSyncedMode;
 
 void initCoreConfig() {
   if (CoreConfigStorage.exists()) {
     clashConfig.value = CoreConfigStorage.load();
   }
+  _lastSyncedMode = clashConfig.value.mode;
   effect(() {
     final config = clashConfig.value;
     _syncTimer?.cancel();
     _syncTimer = Timer(const Duration(seconds: 1), () {
       CoreConfigStorage.save(config);
     });
-    _syncModeToCore(config.mode);
+    // mode 变化走 setMode 热更新，其他变化延迟重载内核
+    if (config.mode != _lastSyncedMode) {
+      _lastSyncedMode = config.mode;
+      _syncModeToCore(config.mode);
+    } else {
+      _scheduleReload();
+    }
   });
   // 监听通知栏断开 VPN 事件，同步本地状态
   effect(() {
@@ -48,6 +57,12 @@ Future<void> _syncModeToCore(Mode? mode) async {
   } catch (e) {
     print('[core_config] setMode(${mode.name}) failed: $e');
   }
+}
+
+void _scheduleReload() {
+  if (selectedFile.value == null) return;
+  _reloadTimer?.cancel();
+  _reloadTimer = Timer(const Duration(seconds: 1), _reloadCoreWithCurrentProfile);
 }
 
 void updateClashConfig({
