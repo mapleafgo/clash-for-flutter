@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/connection.dart';
@@ -14,6 +15,9 @@ class LibCoreChannel implements LibCorePlatform {
   @override
   Future<void> init() async {
     _eventChannel.receiveBroadcastStream().listen(_onEvent);
+    if (Platform.isAndroid) {
+      await _channel.invokeMethod('requestNotificationPermission');
+    }
   }
 
   void _onEvent(dynamic event) {
@@ -32,6 +36,7 @@ class LibCoreChannel implements LibCorePlatform {
           core.trafficSignal.value = TrafficSnapshot.fromJson(
               Map<String, dynamic>.from(rawData));
         }
+        _updateVpnNotification(core.trafficSignal.value);
       case 1: // logs
         final list = rawData is String
             ? jsonDecode(rawData) as List
@@ -75,6 +80,18 @@ class LibCoreChannel implements LibCorePlatform {
           core.vpnDisconnectedByUser.value = !(m['connected'] as bool? ?? true);
         }
     }
+  }
+
+  void _updateVpnNotification(TrafficSnapshot? traffic) {
+    if (!Platform.isAndroid || traffic == null) return;
+    try {
+      _channel.invokeMethod('updateVpnTraffic', {
+        'up': traffic.up,
+        'down': traffic.down,
+        'upTotal': traffic.upTotal,
+        'downTotal': traffic.downTotal,
+      });
+    } catch (_) {}
   }
 
   Future<dynamic> _invokeJson(String method, [Map<String, dynamic>? args]) async {

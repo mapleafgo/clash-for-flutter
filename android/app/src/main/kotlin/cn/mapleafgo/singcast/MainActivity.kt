@@ -1,11 +1,17 @@
 package cn.mapleafgo.singcast
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.net.VpnService
+import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +20,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     private val channel = "cn.mapleafgo/singcast"
     private val eventChannelName = "cn.mapleafgo/singcast/events"
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
     private var pendingVpn: VpnRequest? = null
@@ -47,6 +54,10 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* best-effort, ignore result */ }
+
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
@@ -66,41 +77,122 @@ class MainActivity : FlutterFragmentActivity() {
         })
     }
 
+    private fun runOnThread(block: () -> Unit) = Thread(block).start()
+
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
-        try {
-            when (method) {
-                // Core lifecycle
-                "initCore" -> { Mobile.initCore(args?.str("homeDir") ?: ""); result.success(null) }
-                "startCoreWithContent" -> { Mobile.startWithContent(args?.str("content") ?: "", args?.str("ruleSetProxy") ?: ""); result.success(null) }
-                "stopCore" -> { Mobile.stopCore(); result.success(null) }
-                "closeCore" -> { Mobile.closeCore(); result.success(null) }
-                "reloadConfig" -> { Mobile.reloadConfig(); result.success(null) }
-
-                // TUN / VPN
-                "connectVpn" -> {
-                    requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", result)
+        when (method) {
+            // Heavy core lifecycle — run off main thread to avoid UI jank
+            "initCore" -> runOnThread {
+                try {
+                    Mobile.initCore(args?.str("homeDir") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
-                "disconnectVpn" -> { stopVpn(); result.success(true) }
-
-                // Queries
-                "queryProxies" -> result.success(Mobile.queryProxies())
-                "queryTraffic" -> result.success(Mobile.queryTraffic())
-                "queryLogs" -> result.success(Mobile.queryLogs())
-                "queryConnections" -> result.success(Mobile.queryConnections())
-
-                // Actions
-                "selectProxy" -> { Mobile.selectProxy(args?.str("group") ?: "", args?.str("tag") ?: ""); result.success(null) }
-                "testDelay" -> { Mobile.testDelay(args?.str("name") ?: ""); result.success(null) }
-                "setMode" -> { Mobile.setMode(args?.str("mode") ?: ""); result.success(null) }
-                "closeConnection" -> { Mobile.closeConnection(args?.str("id") ?: ""); result.success(null) }
-                "closeAllConnections" -> { Mobile.closeAllConnections(); result.success(null) }
-                "checkConfig" -> { Mobile.checkConfig(args?.str("content") ?: ""); result.success(null) }
-                "getVersion" -> result.success(Mobile.getVersion())
-
-                else -> result.notImplemented()
             }
-        } catch (e: Throwable) {
-            result.error("CORE_ERROR", e.message, null)
+            "startCoreWithContent" -> runOnThread {
+                try {
+                    Mobile.startWithContent(args?.str("content") ?: "", args?.str("ruleSetProxy") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "stopCore" -> runOnThread {
+                try {
+                    Mobile.stopCore()
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "closeCore" -> runOnThread {
+                try {
+                    Mobile.closeCore()
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "reloadConfig" -> runOnThread {
+                try {
+                    Mobile.reloadConfig()
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+
+            // TUN / VPN
+            "connectVpn" -> {
+                requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", result)
+            }
+            "disconnectVpn" -> { stopVpn(); result.success(true) }
+
+            // Lightweight queries — safe on main thread
+            "queryProxies" -> result.success(Mobile.queryProxies())
+            "queryTraffic" -> result.success(Mobile.queryTraffic())
+            "queryLogs" -> result.success(Mobile.queryLogs())
+            "queryConnections" -> result.success(Mobile.queryConnections())
+
+            // Lightweight actions
+            "selectProxy" -> runOnThread {
+                try {
+                    Mobile.selectProxy(args?.str("group") ?: "", args?.str("tag") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "testDelay" -> runOnThread {
+                try {
+                    Mobile.testDelay(args?.str("name") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "setMode" -> runOnThread {
+                try {
+                    Mobile.setMode(args?.str("mode") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "closeConnection" -> runOnThread {
+                try {
+                    Mobile.closeConnection(args?.str("id") ?: "")
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "closeAllConnections" -> runOnThread {
+                try {
+                    Mobile.closeAllConnections()
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "checkConfig" -> result.success(Mobile.checkConfig(args?.str("content") ?: ""))
+            "getVersion" -> result.success(Mobile.getVersion())
+            "requestNotificationPermission" -> {
+                requestNotificationPermission()
+                result.success(null)
+            }
+            "updateVpnTraffic" -> {
+                vpnService?.updateTraffic(
+                    up = args?.getLong("up") ?: 0,
+                    down = args?.getLong("down") ?: 0,
+                    upTotal = args?.getLong("upTotal") ?: 0,
+                    downTotal = args?.getLong("downTotal") ?: 0,
+                )
+                result.success(null)
+            }
+
+            else -> result.notImplemented()
         }
     }
 
@@ -141,5 +233,16 @@ class MainActivity : FlutterFragmentActivity() {
         super.onDestroy()
     }
 
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     private fun Map<String, Any>.str(key: String) = this[key] as? String
+    private fun Map<String, Any>.getLong(key: String): Long = (this[key] as? Number)?.toLong() ?: 0
 }

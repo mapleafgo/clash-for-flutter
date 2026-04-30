@@ -25,6 +25,10 @@ class SingcastVpnService : VpnService() {
     private val binder = LocalBinder()
     private var pfd: ParcelFileDescriptor? = null
     private var running = false
+    private var lastUp: Long = 0
+    private var lastDown: Long = 0
+    private var lastUpTotal: Long = 0
+    private var lastDownTotal: Long = 0
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
@@ -86,6 +90,14 @@ class SingcastVpnService : VpnService() {
 
     fun isRunning() = running
 
+    fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {
+        lastUp = up
+        lastDown = down
+        lastUpTotal = upTotal
+        lastDownTotal = downTotal
+        updateNotification()
+    }
+
     fun protectSocket(fd: Int) = protect(fd)
 
     override fun onRevoke() = disconnect()
@@ -95,16 +107,15 @@ class SingcastVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun showNotification() {
+    private fun buildBaseNotification(): NotificationCompat.Builder {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Singcast VPN 服务状态"
                 setShowBadge(false)
             }
         )
 
-        // 点击通知打开 App
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -113,7 +124,6 @@ class SingcastVpnService : VpnService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 通知栏断开按钮
         val disconnectIntent = Intent(this, SingcastVpnService::class.java).apply {
             action = ACTION_DISCONNECT_NOTIFY
         }
@@ -122,13 +132,21 @@ class SingcastVpnService : VpnService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Singcast")
-            .setContentText("TUN 模式已启用")
             .setOngoing(true)
             .setContentIntent(openPending)
             .addAction(R.mipmap.ic_launcher, "断开", disconnectPending)
+    }
+
+    private fun showNotification() {
+        val notification = buildBaseNotification()
+            .setContentTitle("Singcast")
+            .setContentText(formatTraffic())
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(formatTrafficDetail())
+            )
             .build()
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -136,5 +154,37 @@ class SingcastVpnService : VpnService() {
         } else {
             startForeground(NOTIFY_ID, notification)
         }
+    }
+
+    private fun updateNotification() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val notification = buildBaseNotification()
+            .setContentTitle("Singcast")
+            .setContentText(formatTraffic())
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(formatTrafficDetail())
+            )
+            .build()
+        nm.notify(NOTIFY_ID, notification)
+    }
+
+    private fun formatTraffic(): String {
+        return "↑ ${formatBytes(lastUp)}/s  ↓ ${formatBytes(lastDown)}/s"
+    }
+
+    private fun formatTrafficDetail(): String {
+        return "网速: ↑ ${formatBytes(lastUp)}/s  ↓ ${formatBytes(lastDown)}/s\n" +
+               "流量: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return "%.1f MB".format(mb)
+        val gb = mb / 1024.0
+        return "%.2f GB".format(gb)
     }
 }
