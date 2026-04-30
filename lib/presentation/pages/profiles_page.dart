@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:singcast/domain/enums.dart';
@@ -15,6 +16,8 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+final _updatingFile = signal<String?>(null);
+
 class ProfilesPage extends StatefulWidget {
   const ProfilesPage({super.key});
 
@@ -26,6 +29,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
   final _scrollController = ScrollController();
   final _fabVisible = ValueNotifier<bool>(true);
   double _lastOffset = 0;
+  bool _showingLoading = false;
 
   @override
   void initState() {
@@ -146,55 +150,56 @@ class _ProfilesPageState extends State<ProfilesPage> {
       time: DateTime.now(),
     );
     profiles.value = [...profiles.value, profile];
+    if (!context.mounted) return;
+    _showLoadingDialog(context);
     selectedFile.value = fileName;
   }
 
   Future<void> _addFromUrl(BuildContext context) async {
-    final url = await _showInputDialog(context, '输入订阅 URL');
-    if (url == null || url.isEmpty) return;
-
-    try {
-      final profile = await downloadSubscription(
-        url: url,
-        profilesDir: profilesPath,
-      );
-      profiles.value = [...profiles.value, profile];
-      selectedFile.value = profile.file;
-    } catch (e) {
-      if (context.mounted) {
-        showErrorDialog(context, '导入失败: $e');
-      }
-    }
-  }
-
-  Future<String?> _showInputDialog(BuildContext context, String hint) {
-    final controller = TextEditingController();
-    return showDialog<String>(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(hint),
-        content: TextField(
-          controller: controller,
-          maxLines: null,
-          keyboardType: TextInputType.url,
-          decoration: const InputDecoration(
-            hintText: '请输入',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _AddFromUrlDialog(),
     );
   }
+
+  void _showLoadingDialog(BuildContext context) {
+    if (_showingLoading) return;
+    _showingLoading = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Watch((_) {
+        if (!coreActivating.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_showingLoading) {
+              _showingLoading = false;
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+          });
+        }
+        return const PopScope(
+          canPop: false,
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }),
+    );
+  }
+
+  // _showInputDialog with initial value is in _ProfileCard below
+}
+
+Future<void> _waitForCore() async {
+  if (!coreActivating.value) return;
+  final completer = Completer<void>();
+  final dispose = effect(() {
+    if (!coreActivating.value && !completer.isCompleted) {
+      completer.complete();
+    }
+  });
+  await completer.future;
+  dispose();
 }
 
 class _ProfileCard extends StatelessWidget {
@@ -220,6 +225,10 @@ class _ProfileCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
+          final state = context.findAncestorStateOfType<_ProfilesPageState>();
+          if (state != null && !state._showingLoading) {
+            state._showLoadingDialog(context);
+          }
           selectedFile.value = profile.file;
         },
         borderRadius: BorderRadius.circular(16),
@@ -289,12 +298,21 @@ class _ProfileCard extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
               ),
               if (profile.type == ProfileType.url)
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 18),
-                  tooltip: '更新',
-                  onPressed: () => _update(context),
-                  visualDensity: VisualDensity.compact,
-                ),
+                Watch((_) {
+                  final busy = _updatingFile.value == profile.file;
+                  return IconButton(
+                    icon: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 18),
+                    tooltip: busy ? '更新中...' : '更新',
+                    onPressed: busy ? null : () => _update(context),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }),
             ]),
           ]),
         ),
@@ -382,6 +400,7 @@ class _ProfileCard extends StatelessWidget {
 
   Future<void> _update(BuildContext context) async {
     if (profile.url == null) return;
+    _updatingFile.value = profile.file;
     try {
       final updated = await downloadSubscription(
         url: profile.url!,
@@ -393,13 +412,95 @@ class _ProfileCard extends StatelessWidget {
       final list = profiles.value.map((p) =>
           p.file == profile.file ? updated : p).toList();
       profiles.value = list;
-      if (selectedFile.value == profile.file) {
+      final isActive = selectedFile.value == profile.file;
+      if (isActive) {
         selectedFile.value = updated.file;
+        await _waitForCore();
       }
     } catch (e) {
       if (context.mounted) {
         showErrorDialog(context, '更新失败: $e');
       }
+    } finally {
+      _updatingFile.value = null;
     }
+  }
+}
+
+class _AddFromUrlDialog extends StatefulWidget {
+  const _AddFromUrlDialog();
+
+  @override
+  State<_AddFromUrlDialog> createState() => _AddFromUrlDialogState();
+}
+
+class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
+  final _controller = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final url = _controller.text.trim();
+    if (url.isEmpty) return;
+
+    setState(() => _loading = true);
+    try {
+      final profile = await downloadSubscription(
+        url: url,
+        profilesDir: profilesPath,
+      );
+      profiles.value = [...profiles.value, profile];
+      selectedFile.value = profile.file;
+
+      // 等待内核启动完成
+      if (!mounted) return;
+      await _waitForCore();
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        showErrorDialog(context, '导入失败: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('输入订阅 URL'),
+      content: TextField(
+        controller: _controller,
+        maxLines: null,
+        keyboardType: TextInputType.url,
+        enabled: !_loading,
+        decoration: const InputDecoration(
+          hintText: '请输入',
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: _loading ? null : (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _submit,
+          child: _loading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('确定'),
+        ),
+      ],
+    );
   }
 }
