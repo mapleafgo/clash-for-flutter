@@ -39,6 +39,7 @@ abstract class LibCorePlatform {
 
   Future<void> connectVpn(String configContent, {String? ruleSetProxy});
   Future<void> disconnectVpn();
+  Future<bool> isVpnRunning();
 }
 
 class LibCore {
@@ -113,6 +114,8 @@ class LibCore {
       _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy);
 
   Future<void> disconnectVpn() => _platform.disconnectVpn();
+
+  Future<bool> isVpnRunning() => _platform.isVpnRunning();
 
   void appendLogs(List<LogEntry> newLogs) {
     _logBuffer.addAll(newLogs);
@@ -505,4 +508,7 @@ class LibCoreFFI implements LibCorePlatform {
   Future<void> disconnectVpn() async {
     throw UnsupportedError('disconnectVpn is only available on mobile platforms');
   }
+
+  @override
+  Future<bool> isVpnRunning() async => false;
 }

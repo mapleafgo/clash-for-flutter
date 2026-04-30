@@ -203,4 +203,13 @@ class LibCoreChannel implements LibCorePlatform {
   @override
   Future<void> disconnectVpn() =>
       _channel.invokeMethod('disconnectVpn');
+
+  @override
+  Future<bool> isVpnRunning() async {
+    try {
+      return await _channel.invokeMethod<bool>('isVpnRunning') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

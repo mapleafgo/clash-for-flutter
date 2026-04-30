@@ -121,6 +121,12 @@ class AppDelegate: FlutterAppDelegate {
         case "requestNotificationPermission":
             result(nil)
 
+        case "isVpnRunning":
+            NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+                let status = (managers?.first?.connection as? NETunnelProviderSession)?.status ?? .invalid
+                result(status == .connected)
+            }
+
         case "updateVpnTraffic":
             result(nil)
 

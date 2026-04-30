@@ -182,6 +182,7 @@ class MainActivity : FlutterFragmentActivity() {
                 requestNotificationPermission()
                 result.success(null)
             }
+            "isVpnRunning" -> result.success(vpnService?.isRunning() ?: false)
             "updateVpnTraffic" -> {
                 vpnService?.updateTraffic(
                     up = args?.getLong("up") ?: 0,

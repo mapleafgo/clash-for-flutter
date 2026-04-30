@@ -91,7 +91,9 @@ class SingcastVpnService : VpnService() {
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    fun isRunning() = running
+    fun isRunning(): Boolean {
+        synchronized(lock) { return running }
+    }
 
     fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {
         lastUp = up
