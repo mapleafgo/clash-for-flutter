@@ -21,15 +21,17 @@ void initCoreConfig() {
     clashConfig.value = CoreConfigStorage.load();
   }
   _lastSyncedMode = clashConfig.value.mode;
+  _lastSyncedPort = clashConfig.value.mixedPort;
   effect(() {
     final config = clashConfig.value;
     _syncTimer?.cancel();
     _syncTimer = Timer(const Duration(seconds: 1), () {
       CoreConfigStorage.save(config);
     });
-    // mode 变化走 setMode 热更新，其他变化延迟重载内核
+    // mode 变化走 setMode 热更新 + 立即持久化，其他变化延迟重载内核
     if (config.mode != _lastSyncedMode) {
       _lastSyncedMode = config.mode;
+      _saveSync();
       _syncModeToCore(config.mode);
     } else {
       _scheduleReload();
@@ -59,10 +61,18 @@ Future<void> _syncModeToCore(Mode? mode) async {
   }
 }
 
+int? _lastSyncedPort;
+
 void _scheduleReload() {
   if (selectedFile.value == null) return;
   _reloadTimer?.cancel();
-  _reloadTimer = Timer(const Duration(seconds: 1), () => asyncProfile());
+  _reloadTimer = Timer(const Duration(seconds: 1), () async {
+    await asyncProfile();
+    if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
+      _lastSyncedPort = clashConfig.value.mixedPort;
+      await openProxy();
+    }
+  });
 }
 
 void updateClashConfig({

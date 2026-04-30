@@ -47,9 +47,9 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        val messenger = flutterEngine?.dartExecutor?.binaryMessenger ?: return
+    override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
 
         MethodChannel(messenger, channel).setMethodCallHandler { call, result ->
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
