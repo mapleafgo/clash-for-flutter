@@ -97,9 +97,6 @@ Future<bool> _activateProfile(String yamlPath) async {
   final merged = mergeProfileConfig(yamlContent);
 
   if (Platform.isAndroid || Platform.isIOS) {
-    try {
-      await LibCore.instance.stopCore();
-    } catch (_) {}
     if (clashConfig.value.tunEnabled) {
       await LibCore.instance.connectVpn(
         prepareMobileConfig(merged),
@@ -113,9 +110,6 @@ Future<bool> _activateProfile(String yamlPath) async {
     }
   } else {
     // 桌面端
-    try {
-      await LibCore.instance.stopCore();
-    } catch (_) {}
     await LibCore.instance.startCoreWithContent(
       merged,
       ruleSetProxy: ruleSetProxy.value,

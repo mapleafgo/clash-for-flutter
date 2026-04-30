@@ -174,7 +174,6 @@ Future<void> _reloadCoreWithCurrentProfile() async {
   try {
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
-    await LibCore.instance.stopCore();
     await LibCore.instance.startCoreWithContent(
       merged,
       ruleSetProxy: ruleSetProxy.value,
