@@ -62,7 +62,7 @@ Future<void> _syncModeToCore(Mode? mode) async {
 void _scheduleReload() {
   if (selectedFile.value == null) return;
   _reloadTimer?.cancel();
-  _reloadTimer = Timer(const Duration(seconds: 1), _reloadCoreWithCurrentProfile);
+  _reloadTimer = Timer(const Duration(seconds: 1), () => asyncProfile());
 }
 
 void updateClashConfig({
@@ -144,12 +144,12 @@ Future<void> _openTunDesktop() async {
     return;
   }
   _setTunEnabled(true);
-  await _reloadCoreWithCurrentProfile();
+  await asyncProfile();
 }
 
 Future<void> _closeTunDesktop() async {
   _setTunEnabled(false);
-  await _reloadCoreWithCurrentProfile();
+  await asyncProfile();
 }
 
 void _setTunEnabled(bool enable) {
@@ -162,23 +162,6 @@ void _setTunEnabled(bool enable) {
     tun: TunConfig(enable: enable),
   );
   _saveSync();
-}
-
-Future<void> _reloadCoreWithCurrentProfile() async {
-  final file = selectedFile.value;
-  if (file == null) return;
-
-  final path = _resolveProfilePath(file);
-  if (!File(path).existsSync()) return;
-
-  try {
-    final yamlContent = await File(path).readAsString();
-    final merged = mergeProfileConfig(yamlContent);
-    await LibCore.instance.startCoreWithContent(
-      merged,
-      ruleSetProxy: ruleSetProxy.value,
-    );
-  } catch (_) {}
 }
 
 // --- Mobile TUN ---
