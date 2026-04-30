@@ -109,6 +109,7 @@ Future<bool> _activateProfile(String yamlPath) async {
           prepareMobileConfig(merged),
           ruleSetProxy: ruleSetProxy.value,
         );
+        vpnConnected.value = true;
       } else {
         // 核心已运行（VPN 或代理模式），直接重启核心
         // VPN 模式下 TUN fd 保存在 native 单例中，重启核心不会重建隧道

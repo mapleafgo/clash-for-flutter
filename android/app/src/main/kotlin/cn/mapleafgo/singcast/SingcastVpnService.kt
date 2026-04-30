@@ -60,8 +60,8 @@ class SingcastVpnService : VpnService() {
                 Mobile.setVpnService(this@SingcastVpnService)
                 val fd = establishTun()
                 Mobile.setTunFd(fd)
-                Mobile.startWithContent(configContent, ruleSetProxy)
                 showNotification()
+                Mobile.startWithContent(configContent, ruleSetProxy)
             } catch (e: Throwable) {
                 disconnect()
             }
