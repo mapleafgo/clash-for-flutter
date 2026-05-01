@@ -101,6 +101,7 @@ class MainActivity : FlutterFragmentActivity() {
                     val homeDir = args?.str("homeDir") ?: ""
                     AppLog.i(tag, "handleMethodCall: initCore homeDir=$homeDir")
                     Mobile.initCore(homeDir)
+                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: initCore failed", e)

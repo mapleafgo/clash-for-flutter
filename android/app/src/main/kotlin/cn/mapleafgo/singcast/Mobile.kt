@@ -1,5 +1,7 @@
 package cn.mapleafgo.singcast
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Handler
 import android.os.Looper
 import cn.mapleafgo.ffi.EventHandler
@@ -128,5 +130,36 @@ object Mobile {
         val sink = eventSink ?: return
         val data = mapOf("type" to 5, "data" to """{"connected":$connected}""")
         mainHandler.post { sink.success(data) }
+    }
+
+    fun detectAndReportDefaultInterface(context: Context) {
+        try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork
+            if (network == null) {
+                AppLog.w(TAG, "detectDefaultInterface: no active network")
+                singcast.updateDefaultInterface("", -1, false)
+                return
+            }
+            val lp = cm.getLinkProperties(network)
+            if (lp == null || lp.interfaceName == null) {
+                AppLog.w(TAG, "detectDefaultInterface: no LinkProperties")
+                singcast.updateDefaultInterface("", -1, false)
+                return
+            }
+            val ifaceName = lp.interfaceName!!
+            val ni = java.net.NetworkInterface.getByName(ifaceName)
+            if (ni != null) {
+                val expensive = !cm.getNetworkCapabilities(network)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) ?: true
+                AppLog.i(TAG, "detectDefaultInterface: $ifaceName index=${ni.index} expensive=$expensive")
+                singcast.updateDefaultInterface(ifaceName, ni.index.toLong(), expensive)
+            } else {
+                AppLog.w(TAG, "detectDefaultInterface: NetworkInterface.getByName($ifaceName) returned null")
+                singcast.updateDefaultInterface("", -1, false)
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "detectDefaultInterface: error", e)
+            singcast.updateDefaultInterface("", -1, false)
+        }
     }
 }
