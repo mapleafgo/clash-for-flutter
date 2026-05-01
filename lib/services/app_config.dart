@@ -27,6 +27,7 @@ final initError = signal<String?>(null);
 final coreActivating = signal(false);
 final vpnConnected = signal(false);
 
+bool _activating = false;
 Timer? _saveTimer;
 
 void initAppConfig() {
@@ -97,16 +98,20 @@ void startWatchingSelectedFile() {
 /// Merge the profile YAML with the app's [ClashConfig] overrides,
 /// then start the core with the merged content.
 Future<bool> _activateProfile(String yamlPath) async {
+  if (_activating) return true;
+  _activating = true;
   coreActivating.value = true;
   try {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
     if (Platform.isAndroid || Platform.isIOS) {
+      final useVpn = clashConfig.value.tunEnabled || vpnConnected.value;
+      final mobileConfig = prepareMobileConfig(merged, tunEnabled: useVpn);
       if (clashConfig.value.tunEnabled && !vpnConnected.value) {
         // 首次建立 VPN 隧道
         await LibCore.instance.connectVpn(
-          prepareMobileConfig(merged),
+          mobileConfig,
           ruleSetProxy: ruleSetProxy.value,
         );
         vpnConnected.value = true;
@@ -114,13 +119,13 @@ Future<bool> _activateProfile(String yamlPath) async {
         // VPN 模式下切换配置：先停止内核再重启，TUN fd 由 VPN 服务保持
         await LibCore.instance.stopCore();
         await LibCore.instance.startCoreWithContent(
-          prepareMobileConfig(merged),
+          mobileConfig,
           ruleSetProxy: ruleSetProxy.value,
         );
       } else {
-        // 代理模式：直接重启核心
+        // 代理模式：使用移动端配置（禁用 netlink 等不兼容特性）
         await LibCore.instance.startCoreWithContent(
-          merged,
+          mobileConfig,
           ruleSetProxy: ruleSetProxy.value,
         );
       }
@@ -132,6 +137,7 @@ Future<bool> _activateProfile(String yamlPath) async {
     }
     return true;
   } finally {
+    _activating = false;
     coreActivating.value = false;
   }
 }

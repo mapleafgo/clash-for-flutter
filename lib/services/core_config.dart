@@ -224,7 +224,7 @@ Future<void> _closeTunMobile() async {
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
     await LibCore.instance.startCoreWithContent(
-      merged,
+      prepareMobileConfig(merged, tunEnabled: false),
       ruleSetProxy: ruleSetProxy.value,
     );
   } catch (_) {}
@@ -235,22 +235,27 @@ String _resolveProfilePath(String file) {
   return '${Constants.homeDir.path}${Constants.profilesPath}/$file';
 }
 
-/// Modify TUN config for mobile (Android/iOS).
+/// Modify config for mobile (Android/iOS).
 /// VpnService / Network Extension handles routing, so the core must not
 /// access netlink. Follows community best practice (FlClash, sing-box SFA):
-///   enable: true               — force TUN on for VPN mode
-///   auto-route: false           — VpnService manages routing
-///   strict-route: false         — not supported on mobile
-///   auto-detect-interface: false — prevents netlink socket creation
-String prepareMobileConfig(String yaml) {
+///   auto-detect-interface: false — prevents netlink socket creation (SELinux)
+/// When [tunEnabled] (VPN mode):
+///   enable: true, auto-route: false, strict-route: false
+/// When ![tunEnabled] (proxy mode):
+///   enable: false
+String prepareMobileConfig(String yaml, {bool tunEnabled = true}) {
   final editor = YamlEditor(yaml);
   final doc = loadYaml(editor.toString());
   if (doc is YamlMap && !doc.containsKey('tun')) {
     editor.update(['tun'], {});
   }
-  editor.update(['tun', 'enable'], true);
-  editor.update(['tun', 'auto-route'], false);
-  editor.update(['tun', 'strict-route'], false);
+  if (tunEnabled) {
+    editor.update(['tun', 'enable'], true);
+    editor.update(['tun', 'auto-route'], false);
+    editor.update(['tun', 'strict-route'], false);
+  } else {
+    editor.update(['tun', 'enable'], false);
+  }
   editor.update(['tun', 'auto-detect-interface'], false);
   return editor.toString();
 }
