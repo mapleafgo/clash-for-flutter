@@ -176,8 +176,14 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> selectProxy(String group, String tag) =>
-      _channel.invokeMethod('selectProxy', {'group': group, 'tag': tag});
+  Future<void> selectProxy(String group, String tag) async {
+    await _channel.invokeMethod('selectProxy', {'group': group, 'tag': tag});
+    // 移动端依赖事件推送更新 UI，但 selectProxy 后内核不一定立即推送 proxies 事件
+    // 主动查询一次确保 UI 反映最新选择
+    try {
+      LibCore.instance.proxiesSignal.value = await queryProxies();
+    } catch (_) {}
+  }
 
   @override
   Future<void> testDelay(String name) =>

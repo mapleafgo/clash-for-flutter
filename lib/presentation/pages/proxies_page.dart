@@ -113,7 +113,17 @@ class _ProxiesPageState extends State<ProxiesPage> {
           LibCore.instance.testDelay(item.tag).catchError((_) {});
         }
       }
-      await Future.delayed(const Duration(seconds: 5));
+      // 测速是异步操作，等待期间周期性刷新 proxies 以展示延迟结果
+      const totalWait = Duration(seconds: 5);
+      const interval = Duration(seconds: 1);
+      final endTime = DateTime.now().add(totalWait);
+      while (DateTime.now().isBefore(endTime)) {
+        await Future.delayed(interval);
+        try {
+          LibCore.instance.proxiesSignal.value =
+              await LibCore.instance.queryProxies();
+        } catch (_) {}
+      }
     } finally {
       _loading.value = false;
     }
