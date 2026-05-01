@@ -12,6 +12,7 @@ import '../domain/log.dart';
 import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 import '../utils/constants.dart';
+import '../utils/log_file.dart';
 import 'ffi_bindings.dart';
 import 'lib_core_channel.dart';
 import 'lib_core_exception.dart';
@@ -21,9 +22,7 @@ abstract class LibCorePlatform {
   Future<void> initCore(String homeDir);
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
   Future<void> stopCore();
-  Future<void> closeCore();
-  Future<void> reloadConfig();
-
+  Future<void> destroyCore();
   Future<List<ProxyGroup>> queryProxies();
   Future<TrafficSnapshot> queryTraffic();
   Future<List<LogEntry>> queryLogs();
@@ -66,6 +65,7 @@ class LibCore {
       _platform = LibCoreChannel();
     }
     await _platform.init();
+    await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
   }
 
   Future<void> initCore(String homeDir) async {
@@ -81,9 +81,7 @@ class LibCore {
 
   Future<void> stopCore() => _platform.stopCore();
 
-  Future<void> closeCore() => _platform.closeCore();
-
-  Future<void> reloadConfig() => _platform.reloadConfig();
+  Future<void> destroyCore() => _platform.destroyCore();
 
   Future<List<ProxyGroup>> queryProxies() => _platform.queryProxies();
 
@@ -123,6 +121,7 @@ class LibCore {
       _logBuffer.removeRange(0, _logBuffer.length - _maxLogs);
     }
     logsSignal.value = List.unmodifiable(_logBuffer);
+    LogFileWriter.instance?.writeAll(newLogs);
   }
 
   void clearLogs() {
@@ -312,24 +311,13 @@ class LibCoreFFI implements LibCorePlatform {
   }
 
   @override
-  Future<void> closeCore() async {
+  Future<void> destroyCore() async {
     stopPolling();
     final libPath = _platformLibPath;
     await Isolate.run(() {
       final lib = ffi.DynamicLibrary.open(libPath);
       final bindings = LibCoreBindings(lib);
-      bindings.CoreClose();
-    });
-  }
-
-  @override
-  Future<void> reloadConfig() async {
-    final libPath = _platformLibPath;
-    await Isolate.run(() {
-      final lib = ffi.DynamicLibrary.open(libPath);
-      final bindings = LibCoreBindings(lib);
-      final resultPtr = bindings.CoreReloadConfig();
-      _parseResult(resultPtr, bindings);
+      bindings.CoreDestroy();
     });
   }
 
@@ -414,13 +402,11 @@ class LibCoreFFI implements LibCorePlatform {
       final lib = ffi.DynamicLibrary.open(libPath);
       final bindings = LibCoreBindings(lib);
       final namePtr = name.toNativeUtf8().cast<ffi.Char>();
-      final underscorePtr = ''.toNativeUtf8().cast<ffi.Char>();
       ffi.Pointer<ffi.Char> resultPtr;
       try {
-        resultPtr = bindings.CoreTestDelay(namePtr, underscorePtr);
+        resultPtr = bindings.CoreTestDelay(namePtr);
       } finally {
         calloc.free(namePtr);
-        calloc.free(underscorePtr);
       }
       _parseResult(resultPtr, bindings);
     });

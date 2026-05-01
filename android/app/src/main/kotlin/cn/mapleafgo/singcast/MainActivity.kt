@@ -18,6 +18,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
 
+    private val tag = "SingcastVpn"
     private val channel = "cn.mapleafgo/singcast"
     private val eventChannelName = "cn.mapleafgo/singcast/events"
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -35,8 +36,10 @@ class MainActivity : FlutterFragmentActivity() {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             vpnService = (service as SingcastVpnService.LocalBinder).getService()
             vpnBound = true
+            AppLog.i(tag, "VPN service connected, running=${vpnService?.isRunning()}")
         }
         override fun onServiceDisconnected(name: ComponentName) {
+            AppLog.w(tag, "VPN service disconnected unexpectedly")
             vpnBound = false
             vpnService = null
         }
@@ -48,8 +51,10 @@ class MainActivity : FlutterFragmentActivity() {
         val pending = pendingVpn
         pendingVpn = null
         if (result.resultCode == RESULT_OK && pending != null) {
+            AppLog.i(tag, "VPN permission granted, starting VPN")
             startVpn(pending.configContent, pending.ruleSetProxy, pending.result)
         } else {
+            AppLog.w(tag, "VPN permission denied (resultCode=${result.resultCode})")
             pending?.result?.error("VPN_DENIED", "VPN permission denied", null)
         }
     }
@@ -60,6 +65,11 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Initialize file logging early
+        AppLog.init(filesDir)
+        AppLog.i(tag, "MainActivity: file log initialized")
+
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
         MethodChannel(messenger, channel).setMethodCallHandler { call, result ->
@@ -81,53 +91,61 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
         when (method) {
-            // Heavy core lifecycle — run off main thread to avoid UI jank
             "initCore" -> runOnThread {
                 try {
-                    Mobile.initCore(args?.str("homeDir") ?: "")
+                    val homeDir = args?.str("homeDir") ?: ""
+                    AppLog.i(tag, "handleMethodCall: initCore homeDir=$homeDir")
+                    Mobile.initCore(homeDir)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
+                    AppLog.e(tag, "handleMethodCall: initCore failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
             "startCoreWithContent" -> runOnThread {
                 try {
-                    Mobile.startWithContent(args?.str("content") ?: "", args?.str("ruleSetProxy") ?: "")
+                    val content = args?.str("content") ?: ""
+                    val proxy = args?.str("ruleSetProxy") ?: ""
+                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, proxy='$proxy') [vpnBound=$vpnBound, vpnRunning=${vpnService?.isRunning()}]")
+                    Mobile.startWithContent(content, proxy)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
+                    AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
             "stopCore" -> runOnThread {
                 try {
+                    AppLog.i(tag, "handleMethodCall: stopCore")
                     Mobile.stopCore()
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
+                    AppLog.e(tag, "handleMethodCall: stopCore failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
-            "closeCore" -> runOnThread {
+            "destroyCore" -> runOnThread {
                 try {
-                    Mobile.closeCore()
+                    AppLog.i(tag, "handleMethodCall: destroyCore")
+                    Mobile.destroyCore()
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
+                    AppLog.e(tag, "handleMethodCall: destroyCore failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
-            "reloadConfig" -> runOnThread {
-                try {
-                    Mobile.reloadConfig()
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-
             // TUN / VPN
             "connectVpn" -> {
-                requestVpn(args?.str("configContent") ?: "", args?.str("ruleSetProxy") ?: "", result)
+                val configContent = args?.str("configContent") ?: ""
+                val proxy = args?.str("ruleSetProxy") ?: ""
+                AppLog.i(tag, "handleMethodCall: connectVpn (${configContent.length} chars)")
+                requestVpn(configContent, proxy, result)
             }
-            "disconnectVpn" -> { stopVpn(); result.success(true) }
+            "disconnectVpn" -> {
+                AppLog.i(tag, "handleMethodCall: disconnectVpn")
+                stopVpn()
+                result.success(true)
+            }
 
             // Lightweight queries — safe on main thread
             "queryProxies" -> result.success(Mobile.queryProxies())
@@ -182,7 +200,11 @@ class MainActivity : FlutterFragmentActivity() {
                 requestNotificationPermission()
                 result.success(null)
             }
-            "isVpnRunning" -> result.success(vpnService?.isRunning() ?: false)
+            "isVpnRunning" -> {
+                val running = vpnService?.isRunning() ?: false
+                AppLog.d(tag, "handleMethodCall: isVpnRunning=$running (vpnBound=$vpnBound)")
+                result.success(running)
+            }
             "updateVpnTraffic" -> {
                 vpnService?.updateTraffic(
                     up = args?.getLong("up") ?: 0,
@@ -201,17 +223,21 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val intent = VpnService.prepare(this)
             if (intent != null) {
+                AppLog.i(tag, "requestVpn: VPN permission not yet granted, launching dialog")
                 pendingVpn = VpnRequest(configContent, ruleSetProxy, result)
                 vpnPermissionLauncher.launch(intent)
             } else {
+                AppLog.i(tag, "requestVpn: VPN permission already granted, starting directly")
                 startVpn(configContent, ruleSetProxy, result)
             }
         } catch (e: Exception) {
+            AppLog.e(tag, "requestVpn: prepare() failed", e)
             result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
         }
     }
 
     private fun startVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
+        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars)")
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
@@ -223,13 +249,15 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun stopVpn() {
-        vpnService?.disconnect()
+        AppLog.i(tag, "stopVpn: stopping VPN (vpnBound=$vpnBound)")
+        vpnService?.disconnect("user_disconnect")
         try { unbindService(vpnConnection) } catch (_: Exception) {}
         vpnBound = false
         vpnService = null
     }
 
     override fun onDestroy() {
+        AppLog.i(tag, "MainActivity.onDestroy: vpnBound=$vpnBound")
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }

@@ -34,30 +34,6 @@ class LibCoreBindings {
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       >();
 
-  ffi.Pointer<ffi.Char> CoreStart(
-    ffi.Pointer<ffi.Char> configPath,
-    ffi.Pointer<ffi.Char> ruleSetProxy,
-  ) {
-    return _CoreStart(configPath, ruleSetProxy);
-  }
-
-  late final _CoreStartPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-          )
-        >
-      >('CoreStart');
-  late final _CoreStart =
-      _CoreStartPtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-        )
-      >();
-
   ffi.Pointer<ffi.Char> CoreStop() {
     return _CoreStop();
   }
@@ -67,14 +43,14 @@ class LibCoreBindings {
   late final _CoreStop =
       _CoreStopPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  void CoreClose() {
-    return _CoreClose();
+  void CoreDestroy() {
+    return _CoreDestroy();
   }
 
-  late final _CoreClosePtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>(
-    'CoreClose',
+  late final _CoreDestroyPtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+    'CoreDestroy',
   );
-  late final _CoreClose = _CoreClosePtr.asFunction<void Function()>();
+  late final _CoreDestroy = _CoreDestroyPtr.asFunction<void Function()>();
 
   ffi.Pointer<ffi.Char> CoreCheckConfig(ffi.Pointer<ffi.Char> content) {
     return _CoreCheckConfig(content);
@@ -90,17 +66,6 @@ class LibCoreBindings {
       _CoreCheckConfigPtr.asFunction<
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       >();
-
-  ffi.Pointer<ffi.Char> CoreReloadConfig() {
-    return _CoreReloadConfig();
-  }
-
-  late final _CoreReloadConfigPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'CoreReloadConfig',
-      );
-  late final _CoreReloadConfig =
-      _CoreReloadConfigPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
   ffi.Pointer<ffi.Char> CoreQueryProxies() {
     return _CoreQueryProxies();
@@ -215,9 +180,8 @@ class LibCoreBindings {
 
   ffi.Pointer<ffi.Char> CoreTestDelay(
     ffi.Pointer<ffi.Char> name,
-    ffi.Pointer<ffi.Char> _$,
   ) {
-    return _CoreTestDelay(name, _$);
+    return _CoreTestDelay(name);
   }
 
   late final _CoreTestDelayPtr =
@@ -225,14 +189,12 @@ class LibCoreBindings {
         ffi.NativeFunction<
           ffi.Pointer<ffi.Char> Function(
             ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
           )
         >
       >('CoreTestDelay');
   late final _CoreTestDelay =
       _CoreTestDelayPtr.asFunction<
         ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>,
         )
       >();

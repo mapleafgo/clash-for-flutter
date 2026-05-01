@@ -8,6 +8,7 @@ import cn.mapleafgo.ffi.Singcast
 import io.flutter.plugin.common.EventChannel
 
 object Mobile {
+    private const val TAG = "SingcastVpn"
     private val mainHandler = Handler(Looper.getMainLooper())
     private val singcast = Singcast()
     private var eventSink: EventChannel.EventSink? = null
@@ -15,15 +16,26 @@ object Mobile {
 
     private val socketProtector = object : SocketProtector {
         override fun protect(fd: Int): Boolean {
-            val svc = vpnService ?: return false
-            return svc.protectSocket(fd)
+            val svc = vpnService
+            if (svc == null) {
+                AppLog.w(TAG, "socketProtector: vpnService is null, cannot protect fd=$fd")
+                return false
+            }
+            val ok = svc.protectSocket(fd)
+            if (!ok) {
+                AppLog.w(TAG, "socketProtector: protect($fd) failed via VpnService")
+            }
+            return ok
         }
     }
 
     fun setVpnService(svc: SingcastVpnService?) {
         vpnService = svc
         if (svc != null) {
+            AppLog.d(TAG, "setVpnService: registered socket protector")
             singcast.setSocketProtector(socketProtector)
+        } else {
+            AppLog.d(TAG, "setVpnService: cleared (svc=null)")
         }
     }
 
@@ -44,26 +56,31 @@ object Mobile {
     }
 
     fun initCore(homeDir: String) {
+        AppLog.i(TAG, "initCore: homeDir=$homeDir")
         singcast.init(homeDir)
+        AppLog.i(TAG, "initCore: done")
     }
 
     fun startWithContent(content: String, ruleSetProxy: String) {
+        AppLog.i(TAG, "startWithContent: content=${content.length} chars, proxy='$ruleSetProxy', thread=${Thread.currentThread().name}")
         singcast.startWithContent(content, ruleSetProxy)
+        AppLog.i(TAG, "startWithContent: completed successfully")
     }
 
     fun stopCore() {
+        AppLog.i(TAG, "stopCore: stopping core")
         singcast.stop()
+        AppLog.i(TAG, "stopCore: done")
     }
 
-    fun closeCore() {
-        singcast.close()
-    }
-
-    fun reloadConfig() {
-        singcast.reloadConfig()
+    fun destroyCore() {
+        AppLog.i(TAG, "destroyCore: destroying core")
+        singcast.destroy()
+        AppLog.i(TAG, "destroyCore: done")
     }
 
     fun setTunFd(fd: Int) {
+        AppLog.i(TAG, "setTunFd: fd=$fd")
         singcast.setTunFd(fd)
     }
 
@@ -102,6 +119,7 @@ object Mobile {
     fun getVersion(): String = singcast.version()
 
     fun notifyVpnStateChanged(connected: Boolean) {
+        AppLog.i(TAG, "notifyVpnStateChanged: connected=$connected")
         val sink = eventSink ?: return
         val data = mapOf("type" to 5, "data" to """{"connected":$connected}""")
         mainHandler.post { sink.success(data) }

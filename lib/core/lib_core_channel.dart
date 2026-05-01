@@ -79,6 +79,15 @@ class LibCoreChannel implements LibCorePlatform {
           final m = Map<String, dynamic>.from(rawData);
           core.vpnDisconnectedByUser.value = !(m['connected'] as bool? ?? true);
         }
+      case 6: // core logs (cff-core internal)
+        final list = rawData is String
+            ? jsonDecode(rawData) as List
+            : rawData as List;
+        final logs = list
+            .map((e) => LogEntry.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList();
+        core.appendLogs(logs);
     }
   }
 
@@ -121,10 +130,7 @@ class LibCoreChannel implements LibCorePlatform {
   Future<void> stopCore() => _channel.invokeMethod('stopCore');
 
   @override
-  Future<void> closeCore() => _channel.invokeMethod('closeCore');
-
-  @override
-  Future<void> reloadConfig() => _channel.invokeMethod('reloadConfig');
+  Future<void> destroyCore() => _channel.invokeMethod('destroyCore');
 
   @override
   Future<List<ProxyGroup>> queryProxies() async {

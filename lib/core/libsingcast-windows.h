@@ -94,11 +94,9 @@ extern "C" {
 #endif
 
 extern char* CoreInit(char* homeDir);
-extern char* CoreStart(char* configPath, char* ruleSetProxy);
 extern char* CoreStop(void);
-extern void CoreClose(void);
+extern void CoreDestroy(void);
 extern char* CoreCheckConfig(char* content);
-extern char* CoreReloadConfig(void);
 extern char* CoreQueryProxies(void);
 extern char* CoreQueryTraffic(void);
 extern char* CoreQueryLogs(void);
@@ -107,7 +105,7 @@ extern char* CoreSelectProxy(char* group, char* tag);
 extern char* CoreSetMode(char* mode);
 extern char* CoreCloseConnection(char* id);
 extern char* CoreCloseAllConnections(void);
-extern char* CoreTestDelay(char* name, char* _);
+extern char* CoreTestDelay(char* name);
 extern char* CoreGetVersion(void);
 extern void CoreSetCallback(void* cb);
 extern char* CoreStartWithContent(char* content, char* ruleSetProxy);
