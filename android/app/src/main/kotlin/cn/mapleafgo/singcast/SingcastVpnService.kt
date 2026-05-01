@@ -117,7 +117,7 @@ class SingcastVpnService : VpnService() {
     }
 
     fun disconnect(reason: String = "unknown") {
-        AppLog.i(TAG, "disconnect: reason=$reason, running=$running", Exception("disconnect call stack"))
+        AppLog.i(TAG, "disconnect: reason=$reason, running=$running")
         synchronized(lock) { running = false }
         try { Mobile.stopCore() } catch (e: Throwable) {
             AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
