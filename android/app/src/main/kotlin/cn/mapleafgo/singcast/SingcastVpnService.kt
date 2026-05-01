@@ -101,7 +101,9 @@ class SingcastVpnService : VpnService() {
             .setSession("singcast")
             .setMtu(9000)
             .addAddress("172.18.0.1", 30)
+            .addAddress("fdfe:dcba:9876::1", 128)
             .addRoute("0.0.0.0", 0)
+            .addRoute("::", 0)
             .addDnsServer("8.8.8.8")
             .addDnsServer("8.8.4.4")
 
