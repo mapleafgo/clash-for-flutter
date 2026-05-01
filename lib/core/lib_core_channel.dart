@@ -38,6 +38,7 @@ class LibCoreChannel implements LibCorePlatform {
         }
         _updateVpnNotification(core.trafficSignal.value);
       case 1: // logs
+        if (rawData == null) break;
         final list = rawData is String
             ? jsonDecode(rawData) as List
             : rawData as List;
@@ -56,6 +57,7 @@ class LibCoreChannel implements LibCorePlatform {
                   Map<String, dynamic>.from(rawData)));
         }
       case 3: // proxies
+        if (rawData == null) break;
         final list = rawData is String
             ? jsonDecode(rawData) as List
             : rawData as List;
@@ -80,6 +82,7 @@ class LibCoreChannel implements LibCorePlatform {
           core.vpnDisconnectedByUser.value = !(m['connected'] as bool? ?? true);
         }
       case 6: // core logs (cff-core internal)
+        if (rawData == null) break;
         final list = rawData is String
             ? jsonDecode(rawData) as List
             : rawData as List;
