@@ -10,6 +10,7 @@ import io.flutter.plugin.common.EventChannel
 object Mobile {
     private const val TAG = "SingcastVpn"
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val coreLock = Any()
     private val singcast = Singcast()
     private var eventSink: EventChannel.EventSink? = null
     private var vpnService: SingcastVpnService? = null
@@ -62,15 +63,19 @@ object Mobile {
     }
 
     fun startWithContent(content: String, ruleSetProxy: String) {
-        AppLog.i(TAG, "startWithContent: content=${content.length} chars, proxy='$ruleSetProxy', thread=${Thread.currentThread().name}")
-        singcast.startWithContent(content, ruleSetProxy)
-        AppLog.i(TAG, "startWithContent: completed successfully")
+        synchronized(coreLock) {
+            AppLog.i(TAG, "startWithContent: content=${content.length} chars, proxy='$ruleSetProxy', thread=${Thread.currentThread().name}")
+            singcast.startWithContent(content, ruleSetProxy)
+            AppLog.i(TAG, "startWithContent: completed successfully")
+        }
     }
 
     fun stopCore() {
-        AppLog.i(TAG, "stopCore: stopping core")
-        singcast.stop()
-        AppLog.i(TAG, "stopCore: done")
+        synchronized(coreLock) {
+            AppLog.i(TAG, "stopCore: stopping core")
+            singcast.stop()
+            AppLog.i(TAG, "stopCore: done")
+        }
     }
 
     fun destroyCore() {

@@ -110,9 +110,15 @@ Future<bool> _activateProfile(String yamlPath) async {
           ruleSetProxy: ruleSetProxy.value,
         );
         vpnConnected.value = true;
+      } else if (vpnConnected.value) {
+        // VPN 模式下切换配置：先停止内核再重启，TUN fd 由 VPN 服务保持
+        await LibCore.instance.stopCore();
+        await LibCore.instance.startCoreWithContent(
+          merged,
+          ruleSetProxy: ruleSetProxy.value,
+        );
       } else {
-        // 核心已运行（VPN 或代理模式），直接重启核心
-        // VPN 模式下 TUN fd 保存在 native 单例中，重启核心不会重建隧道
+        // 代理模式：直接重启核心
         await LibCore.instance.startCoreWithContent(
           merged,
           ruleSetProxy: ruleSetProxy.value,
