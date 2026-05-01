@@ -4,10 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Routes', () {
-    test('init is root path', () {
-      expect(Routes.init, '/');
-    });
-
     test('all route paths start with /', () {
       expect(Routes.home, startsWith('/'));
       expect(Routes.proxies, startsWith('/'));
@@ -18,7 +14,6 @@ void main() {
 
     test('route paths are unique', () {
       final paths = [
-        Routes.init,
         Routes.home,
         Routes.proxies,
         Routes.logs,
