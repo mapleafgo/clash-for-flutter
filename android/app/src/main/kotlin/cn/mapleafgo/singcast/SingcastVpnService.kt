@@ -21,6 +21,10 @@ class SingcastVpnService : VpnService() {
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
         private const val TAG = "SingcastVpn"
+
+        @Volatile
+        var isServiceRunning = false
+            private set
     }
 
     private val binder = LocalBinder()
@@ -87,6 +91,7 @@ class SingcastVpnService : VpnService() {
                 val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 val elapsed = System.currentTimeMillis() - startMs
+                isServiceRunning = true
                 AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, VPN thread exiting")
             } catch (e: Throwable) {
                 AppLog.e(TAG, "connect: FAILED - core start threw exception", e)
@@ -121,6 +126,7 @@ class SingcastVpnService : VpnService() {
     fun disconnect(reason: String = "unknown") {
         AppLog.i(TAG, "disconnect: reason=$reason, running=$running")
         synchronized(lock) { running = false }
+        isServiceRunning = false
         try { Mobile.stopCore() } catch (e: Throwable) {
             AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
         }

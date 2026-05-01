@@ -36,7 +36,12 @@ class MainActivity : FlutterFragmentActivity() {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             vpnService = (service as SingcastVpnService.LocalBinder).getService()
             vpnBound = true
-            AppLog.i(tag, "VPN service connected, running=${vpnService?.isRunning()}")
+            val running = vpnService?.isRunning() ?: false
+            AppLog.i(tag, "VPN service connected, running=$running")
+            if (running) {
+                Mobile.setVpnService(vpnService)
+                Mobile.notifyVpnStateChanged(true)
+            }
         }
         override fun onServiceDisconnected(name: ComponentName) {
             AppLog.w(tag, "VPN service disconnected unexpectedly")
@@ -201,7 +206,7 @@ class MainActivity : FlutterFragmentActivity() {
                 result.success(null)
             }
             "isVpnRunning" -> {
-                val running = vpnService?.isRunning() ?: false
+                val running = SingcastVpnService.isServiceRunning
                 AppLog.d(tag, "handleMethodCall: isVpnRunning=$running (vpnBound=$vpnBound)")
                 result.success(running)
             }
@@ -260,6 +265,19 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.i(tag, "MainActivity.onDestroy: vpnBound=$vpnBound")
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!vpnBound && SingcastVpnService.isServiceRunning) {
+            AppLog.i(tag, "onResume: VPN service running but not bound, re-binding")
+            try {
+                val intent = Intent(this, SingcastVpnService::class.java)
+                bindService(intent, vpnConnection, 0)
+            } catch (e: Exception) {
+                AppLog.w(tag, "onResume: failed to re-bind VPN service: ${e.message}")
+            }
+        }
     }
 
     private fun requestNotificationPermission() {

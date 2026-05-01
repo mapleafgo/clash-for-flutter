@@ -113,8 +113,14 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> initCore(String homeDir) =>
-      _channel.invokeMethod('initCore', {'homeDir': homeDir});
+  Future<void> initCore(String homeDir) async {
+    try {
+      await _channel.invokeMethod('initCore', {'homeDir': homeDir});
+    } on PlatformException catch (e) {
+      if ((e.message ?? '').contains('already initialized')) return;
+      rethrow;
+    }
+  }
 
   @override
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {

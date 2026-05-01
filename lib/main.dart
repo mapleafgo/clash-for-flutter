@@ -64,6 +64,16 @@ Future<void> _initApp() async {
   initCoreConfig();
   watchModeFromCore();
   initAppConfig();
+
+  // 恢复 VPN 状态：引擎重建时 VPN 服务可能仍在运行
+  if (!Constants.isDesktop) {
+    try {
+      if (await LibCore.instance.isVpnRunning()) {
+        vpnConnected.value = true;
+      }
+    } catch (_) {}
+  }
+
   startWatchingSelectedFile();
 }
 
