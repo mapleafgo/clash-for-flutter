@@ -236,9 +236,9 @@ String _resolveProfilePath(String file) {
 }
 
 /// Modify config for mobile (Android/iOS).
-/// VpnService / Network Extension handles routing, so the core must not
-/// access netlink. Follows community best practice (FlClash, sing-box SFA):
-///   auto-detect-interface: false — prevents netlink socket creation (SELinux)
+/// VpnService / Network Extension handles routing; the Go platform layer
+/// skips interface detection for mobile (runtime.GOOS check), so
+/// auto-detect-interface can safely remain true (default).
 /// When [tunEnabled] (VPN mode):
 ///   enable: true, auto-route: false, strict-route: false
 /// When ![tunEnabled] (proxy mode):
@@ -256,6 +256,5 @@ String prepareMobileConfig(String yaml, {bool tunEnabled = true}) {
   } else {
     editor.update(['tun', 'enable'], false);
   }
-  editor.update(['tun', 'auto-detect-interface'], false);
   return editor.toString();
 }
