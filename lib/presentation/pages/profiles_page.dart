@@ -407,16 +407,16 @@ class _ProfileCard extends StatelessWidget {
         profilesDir: profilesPath,
         name: profile.name,
       );
-      final oldPath = p.join(profilesPath, profile.file);
-      if (File(oldPath).existsSync()) await File(oldPath).delete();
+      final isActive = selectedFile.value == profile.file;
       final list = profiles.value.map((p) =>
           p.file == profile.file ? updated : p).toList();
       profiles.value = list;
-      final isActive = selectedFile.value == profile.file;
       if (isActive) {
         selectedFile.value = updated.file;
         await _waitForCore();
       }
+      final oldPath = p.join(profilesPath, profile.file);
+      if (File(oldPath).existsSync()) await File(oldPath).delete();
     } catch (e) {
       if (context.mounted) {
         showErrorDialog(context, '更新失败: $e');

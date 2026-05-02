@@ -117,7 +117,9 @@ Future<bool> _activateProfile(String yamlPath) async {
         vpnConnected.value = true;
       } else if (vpnConnected.value) {
         // VPN 模式下切换配置：先停止内核再重启，TUN fd 由 VPN 服务保持
-        await LibCore.instance.stopCore();
+        try {
+          await LibCore.instance.stopCore();
+        } catch (_) {}
         await LibCore.instance.startCoreWithContent(
           mobileConfig,
           ruleSetProxy: ruleSetProxy.value,

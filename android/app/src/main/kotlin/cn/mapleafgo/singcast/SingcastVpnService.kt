@@ -4,9 +4,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Binder
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 
@@ -35,12 +41,33 @@ class SingcastVpnService : VpnService() {
     private var lastDown: Long = 0
     private var lastUpTotal: Long = 0
     private var lastDownTotal: Long = 0
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val networkHandler = Handler(Looper.getMainLooper())
+    private val networkUpdateRunnable = Runnable {
+        AppLog.d(TAG, "NetworkCallback: executing debounced interface update")
+        Mobile.detectAndReportInterfaces(this@SingcastVpnService)
+        Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
+    }
+    private var lastNetworkUpdateMs: Long = 0
+    private const val NETWORK_DEBOUNCE_MS = 500L
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
+
+    override fun onDestroy() {
+        AppLog.i(TAG, "onDestroy: service being destroyed")
+        disconnect("service_destroyed")
+        super.onDestroy()
+    }
+
+    override fun onRevoke() {
+        AppLog.i(TAG, "onRevoke: VPN permission revoked")
+        disconnect("permission_revoked")
+        super.onRevoke()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -74,24 +101,32 @@ class SingcastVpnService : VpnService() {
 
         Thread({
             try {
-                AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile")
+                AppLog.d(TAG, "connect: step 1/6 - setting VpnService on Mobile")
                 Mobile.setVpnService(this@SingcastVpnService)
 
-                AppLog.d(TAG, "connect: step 2/5 - establishing TUN interface")
+                AppLog.d(TAG, "connect: step 2/6 - establishing TUN interface")
                 val fd = establishTun()
                 AppLog.d(TAG, "connect: TUN established, fd=$fd")
 
-                AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core")
+                AppLog.d(TAG, "connect: step 3/6 - setting TUN fd in core")
                 Mobile.setTunFd(fd)
 
-                AppLog.d(TAG, "connect: step 4/5 - showing foreground notification")
+                AppLog.d(TAG, "connect: step 4/6 - waiting for TUN interface to be ready")
+                Thread.sleep(100)
+
+                AppLog.d(TAG, "connect: step 5/6 - detecting network interfaces")
+                Mobile.detectAndReportInterfaces(this@SingcastVpnService)
+                Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
+
                 showNotification()
 
-                AppLog.d(TAG, "connect: step 5/5 - starting core with content (${configContent.length} chars)")
+                AppLog.d(TAG, "connect: step 6/6 - starting core with content (${configContent.length} chars)")
                 val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 val elapsed = System.currentTimeMillis() - startMs
                 isServiceRunning = true
+                registerNetworkCallback()
+
                 AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, VPN thread exiting")
             } catch (e: Throwable) {
                 AppLog.e(TAG, "connect: FAILED - core start threw exception", e)
@@ -127,6 +162,7 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "disconnect: reason=$reason, running=$running")
         synchronized(lock) { running = false }
         isServiceRunning = false
+        unregisterNetworkCallback()
         try { Mobile.stopCore() } catch (e: Throwable) {
             AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
         }
@@ -241,14 +277,52 @@ class SingcastVpnService : VpnService() {
         return "%.2f GB".format(gb)
     }
 
-    override fun onRevoke() {
-        AppLog.w(TAG, "onRevoke: VPN permission revoked by system")
-        disconnect("permission_revoked")
+    private fun registerNetworkCallback() {
+        try {
+            val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+            val callback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    AppLog.i(TAG, "NetworkCallback: onAvailable")
+                    scheduleNetworkUpdate()
+                }
+
+                override fun onLost(network: Network) {
+                    AppLog.i(TAG, "NetworkCallback: onLost")
+                    scheduleNetworkUpdate()
+                }
+
+                override fun onLinkPropertiesChanged(network: Network, linkProperties: android.net.LinkProperties) {
+                    AppLog.d(TAG, "NetworkCallback: onLinkPropertiesChanged")
+                    scheduleNetworkUpdate()
+                }
+            }
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            cm.registerNetworkCallback(request, callback)
+            networkCallback = callback
+            AppLog.i(TAG, "registerNetworkCallback: registered")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "registerNetworkCallback: failed", e)
+        }
     }
 
-    override fun onDestroy() {
-        AppLog.i(TAG, "onDestroy: service being destroyed, running=$running")
-        disconnect("service_destroyed")
-        super.onDestroy()
+    private fun scheduleNetworkUpdate() {
+        networkHandler.removeCallbacks(networkUpdateRunnable)
+        networkHandler.postDelayed(networkUpdateRunnable, NETWORK_DEBOUNCE_MS)
     }
+
+    private fun unregisterNetworkCallback() {
+        networkHandler.removeCallbacks(networkUpdateRunnable)
+        val callback = networkCallback ?: return
+        try {
+            val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+            cm.unregisterNetworkCallback(callback)
+            AppLog.i(TAG, "unregisterNetworkCallback: unregistered")
+        } catch (e: Exception) {
+            AppLog.w(TAG, "unregisterNetworkCallback: ${e.message}")
+        }
+        networkCallback = null
+    }
+
 }

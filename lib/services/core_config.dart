@@ -192,6 +192,11 @@ Future<void> _openTunMobile() async {
   if (!File(path).existsSync()) return;
 
   try {
+    // 先停止代理模式下的内核，避免 VPN 启动时内核冲突
+    try {
+      await LibCore.instance.stopCore();
+    } catch (_) {}
+
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
     await LibCore.instance.connectVpn(

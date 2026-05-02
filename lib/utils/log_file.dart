@@ -45,7 +45,7 @@ class LogFileWriter {
 
   String _formatEntry(LogEntry e) {
     final ts = e.timestamp;
-    final p = (n, w) => n.toString().padLeft(w, '0');
+    String p(n, w) => n.toString().padLeft(w, '0');
     return '${p(ts.month, 2)}-${p(ts.day, 2)} '
         '${p(ts.hour, 2)}:${p(ts.minute, 2)}:${p(ts.second, 2)}.${p(ts.millisecond, 3)} '
         '[${e.type.name.toUpperCase()}] ${e.payload}';
