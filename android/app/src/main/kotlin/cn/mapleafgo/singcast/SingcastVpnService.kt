@@ -31,6 +31,8 @@ class SingcastVpnService : VpnService() {
         @Volatile
         var isServiceRunning = false
             private set
+
+        private const val NETWORK_DEBOUNCE_MS = 500L
     }
 
     private val binder = LocalBinder()
@@ -49,7 +51,6 @@ class SingcastVpnService : VpnService() {
         Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
     }
     private var lastNetworkUpdateMs: Long = 0
-    private const val NETWORK_DEBOUNCE_MS = 500L
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
