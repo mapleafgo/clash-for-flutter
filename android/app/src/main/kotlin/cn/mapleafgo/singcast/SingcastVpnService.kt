@@ -115,17 +115,17 @@ class SingcastVpnService : VpnService() {
                 AppLog.d(TAG, "connect: step 4/6 - waiting for TUN interface to be ready")
                 Thread.sleep(100)
 
-                AppLog.d(TAG, "connect: step 5/6 - detecting network interfaces")
-                Mobile.detectAndReportInterfaces(this@SingcastVpnService)
-                Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
-
                 showNotification()
 
-                AppLog.d(TAG, "connect: step 6/6 - starting core with content (${configContent.length} chars)")
+                AppLog.d(TAG, "connect: step 5/6 - starting core with content (${configContent.length} chars)")
                 val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 val elapsed = System.currentTimeMillis() - startMs
                 isServiceRunning = true
+
+                AppLog.d(TAG, "connect: step 6/6 - detecting and reporting network interfaces")
+                Mobile.detectAndReportInterfaces(this@SingcastVpnService)
+                Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
                 registerNetworkCallback()
 
                 AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, VPN thread exiting")
