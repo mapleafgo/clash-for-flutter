@@ -93,22 +93,38 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* CoreInit(char* homeDir);
+extern char* CoreInit(char* optionsJSON);
+extern char* CoreStartWithContent(char* content, char* ruleSetProxy);
 extern char* CoreStop(void);
 extern void CoreDestroy(void);
 extern char* CoreCheckConfig(char* content);
+extern char* CoreReloadConfig(char* content, char* ruleSetProxy);
+extern char* CoreReloadTUN(void);
+extern char* CoreSetOverridePackages(char* overrideJSON);
+extern void CoreSetLogLevel(int level);
+extern void CoreSetError(char* message);
+extern void CorePause(void);
+extern void CoreWake(void);
+extern void CoreResetNetwork(void);
+extern char* CoreSelectProxy(char* group, char* tag);
+extern char* CoreTestDelay(char* name);
+extern char* CoreSetMode(char* mode);
+extern char* CoreSetGroupExpand(char* group, int expand);
 extern char* CoreQueryProxies(void);
 extern char* CoreQueryTraffic(void);
-extern char* CoreQueryLogs(void);
+extern char* CoreQueryLogs(int clear);
 extern char* CoreQueryConnections(void);
-extern char* CoreSelectProxy(char* group, char* tag);
-extern char* CoreSetMode(char* mode);
 extern char* CoreCloseConnection(char* id);
 extern char* CoreCloseAllConnections(void);
-extern char* CoreTestDelay(char* name);
+extern int CoreNeedFindProcess(void);
+extern void CoreWriteMessage(int level, char* message);
+extern char* CoreQueryTunOptions(void);
+extern void CoreFlushSystemDNS(void);
+extern char* CoreQueryMemoryStats(void);
+extern char* CoreSetMemoryLimit(long long int bytes);
 extern char* CoreGetVersion(void);
 extern void CoreSetCallback(void* cb);
-extern char* CoreStartWithContent(char* content, char* ruleSetProxy);
+extern void CoreSetLocale(char* localeID);
 extern void CoreFreeString(char* s);
 
 #ifdef __cplusplus

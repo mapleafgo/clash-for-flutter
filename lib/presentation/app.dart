@@ -43,6 +43,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       final running = await LibCore.instance.isVpnRunning();
       if (running != vpnConnected.value) {
         vpnConnected.value = running;
+        LibCore.instance.coreConnected.value = running;
         if (!running && clashConfig.value.tunEnabled) {
           await asyncProfile();
         }

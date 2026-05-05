@@ -19,8 +19,8 @@ class LibCoreBindings {
     ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) lookup,
   ) : _lookup = lookup;
 
-  ffi.Pointer<ffi.Char> CoreInit(ffi.Pointer<ffi.Char> homeDir) {
-    return _CoreInit(homeDir);
+  ffi.Pointer<ffi.Char> CoreInit(ffi.Pointer<ffi.Char> optionsJSON) {
+    return _CoreInit(optionsJSON);
   }
 
   late final _CoreInitPtr =
@@ -32,6 +32,30 @@ class LibCoreBindings {
   late final _CoreInit =
       _CoreInitPtr.asFunction<
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      >();
+
+  ffi.Pointer<ffi.Char> CoreStartWithContent(
+    ffi.Pointer<ffi.Char> content,
+    ffi.Pointer<ffi.Char> ruleSetProxy,
+  ) {
+    return _CoreStartWithContent(content, ruleSetProxy);
+  }
+
+  late final _CoreStartWithContentPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('CoreStartWithContent');
+  late final _CoreStartWithContent =
+      _CoreStartWithContentPtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+        )
       >();
 
   ffi.Pointer<ffi.Char> CoreStop() {
@@ -67,49 +91,106 @@ class LibCoreBindings {
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       >();
 
-  ffi.Pointer<ffi.Char> CoreQueryProxies() {
-    return _CoreQueryProxies();
+  ffi.Pointer<ffi.Char> CoreReloadConfig(
+    ffi.Pointer<ffi.Char> content,
+    ffi.Pointer<ffi.Char> ruleSetProxy,
+  ) {
+    return _CoreReloadConfig(content, ruleSetProxy);
   }
 
-  late final _CoreQueryProxiesPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'CoreQueryProxies',
-      );
-  late final _CoreQueryProxies =
-      _CoreQueryProxiesPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+  late final _CoreReloadConfigPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('CoreReloadConfig');
+  late final _CoreReloadConfig =
+      _CoreReloadConfigPtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+        )
+      >();
 
-  ffi.Pointer<ffi.Char> CoreQueryTraffic() {
-    return _CoreQueryTraffic();
+  ffi.Pointer<ffi.Char> CoreReloadTUN() {
+    return _CoreReloadTUN();
   }
 
-  late final _CoreQueryTrafficPtr =
+  late final _CoreReloadTUNPtr =
       _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'CoreQueryTraffic',
+        'CoreReloadTUN',
       );
-  late final _CoreQueryTraffic =
-      _CoreQueryTrafficPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+  late final _CoreReloadTUN =
+      _CoreReloadTUNPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> CoreQueryLogs() {
-    return _CoreQueryLogs();
+  ffi.Pointer<ffi.Char> CoreSetOverridePackages(
+    ffi.Pointer<ffi.Char> overrideJSON,
+  ) {
+    return _CoreSetOverridePackages(overrideJSON);
   }
 
-  late final _CoreQueryLogsPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'CoreQueryLogs',
-      );
-  late final _CoreQueryLogs =
-      _CoreQueryLogsPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+  late final _CoreSetOverridePackagesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+        >
+      >('CoreSetOverridePackages');
+  late final _CoreSetOverridePackages =
+      _CoreSetOverridePackagesPtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      >();
 
-  ffi.Pointer<ffi.Char> CoreQueryConnections() {
-    return _CoreQueryConnections();
+  void CoreSetLogLevel(int level) {
+    return _CoreSetLogLevel(level);
   }
 
-  late final _CoreQueryConnectionsPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'CoreQueryConnections',
+  late final _CoreSetLogLevelPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int)>>(
+        'CoreSetLogLevel',
       );
-  late final _CoreQueryConnections =
-      _CoreQueryConnectionsPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+  late final _CoreSetLogLevel =
+      _CoreSetLogLevelPtr.asFunction<void Function(int)>();
+
+  void CoreSetError(ffi.Pointer<ffi.Char> message) {
+    return _CoreSetError(message);
+  }
+
+  late final _CoreSetErrorPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+        'CoreSetError',
+      );
+  late final _CoreSetError =
+      _CoreSetErrorPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
+
+  void CorePause() {
+    return _CorePause();
+  }
+
+  late final _CorePausePtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+    'CorePause',
+  );
+  late final _CorePause = _CorePausePtr.asFunction<void Function()>();
+
+  void CoreWake() {
+    return _CoreWake();
+  }
+
+  late final _CoreWakePtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+    'CoreWake',
+  );
+  late final _CoreWake = _CoreWakePtr.asFunction<void Function()>();
+
+  void CoreResetNetwork() {
+    return _CoreResetNetwork();
+  }
+
+  late final _CoreResetNetworkPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>('CoreResetNetwork');
+  late final _CoreResetNetwork =
+      _CoreResetNetworkPtr.asFunction<void Function()>();
 
   ffi.Pointer<ffi.Char> CoreSelectProxy(
     ffi.Pointer<ffi.Char> group,
@@ -135,6 +216,21 @@ class LibCoreBindings {
         )
       >();
 
+  ffi.Pointer<ffi.Char> CoreTestDelay(ffi.Pointer<ffi.Char> name) {
+    return _CoreTestDelay(name);
+  }
+
+  late final _CoreTestDelayPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+        >
+      >('CoreTestDelay');
+  late final _CoreTestDelay =
+      _CoreTestDelayPtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      >();
+
   ffi.Pointer<ffi.Char> CoreSetMode(ffi.Pointer<ffi.Char> mode) {
     return _CoreSetMode(mode);
   }
@@ -149,6 +245,68 @@ class LibCoreBindings {
       _CoreSetModePtr.asFunction<
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       >();
+
+  ffi.Pointer<ffi.Char> CoreSetGroupExpand(
+    ffi.Pointer<ffi.Char> group,
+    int expand,
+  ) {
+    return _CoreSetGroupExpand(group, expand);
+  }
+
+  late final _CoreSetGroupExpandPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, ffi.Int)
+        >
+      >('CoreSetGroupExpand');
+  late final _CoreSetGroupExpand =
+      _CoreSetGroupExpandPtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
+      >();
+
+  ffi.Pointer<ffi.Char> CoreQueryProxies() {
+    return _CoreQueryProxies();
+  }
+
+  late final _CoreQueryProxiesPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'CoreQueryProxies',
+      );
+  late final _CoreQueryProxies =
+      _CoreQueryProxiesPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> CoreQueryTraffic() {
+    return _CoreQueryTraffic();
+  }
+
+  late final _CoreQueryTrafficPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'CoreQueryTraffic',
+      );
+  late final _CoreQueryTraffic =
+      _CoreQueryTrafficPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> CoreQueryLogs(int clear) {
+    return _CoreQueryLogs(clear);
+  }
+
+  late final _CoreQueryLogsPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Int)>>(
+        'CoreQueryLogs',
+      );
+  late final _CoreQueryLogs =
+      _CoreQueryLogsPtr.asFunction<ffi.Pointer<ffi.Char> Function(int)>();
+
+  ffi.Pointer<ffi.Char> CoreQueryConnections() {
+    return _CoreQueryConnections();
+  }
+
+  late final _CoreQueryConnectionsPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'CoreQueryConnections',
+      );
+  late final _CoreQueryConnections =
+      _CoreQueryConnectionsPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
   ffi.Pointer<ffi.Char> CoreCloseConnection(ffi.Pointer<ffi.Char> id) {
     return _CoreCloseConnection(id);
@@ -178,26 +336,69 @@ class LibCoreBindings {
         ffi.Pointer<ffi.Char> Function()
       >();
 
-  ffi.Pointer<ffi.Char> CoreTestDelay(
-    ffi.Pointer<ffi.Char> name,
-  ) {
-    return _CoreTestDelay(name);
+  int CoreNeedFindProcess() {
+    return _CoreNeedFindProcess();
   }
 
-  late final _CoreTestDelayPtr =
+  late final _CoreNeedFindProcessPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function()>>('CoreNeedFindProcess');
+  late final _CoreNeedFindProcess =
+      _CoreNeedFindProcessPtr.asFunction<int Function()>();
+
+  void CoreWriteMessage(int level, ffi.Pointer<ffi.Char> message) {
+    return _CoreWriteMessage(level, message);
+  }
+
+  late final _CoreWriteMessagePtr =
       _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-            ffi.Pointer<ffi.Char>,
-          )
-        >
-      >('CoreTestDelay');
-  late final _CoreTestDelay =
-      _CoreTestDelayPtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
-        )
+        ffi.NativeFunction<ffi.Void Function(ffi.Int, ffi.Pointer<ffi.Char>)>
+      >('CoreWriteMessage');
+  late final _CoreWriteMessage =
+      _CoreWriteMessagePtr.asFunction<
+        void Function(int, ffi.Pointer<ffi.Char>)
       >();
+
+  ffi.Pointer<ffi.Char> CoreQueryTunOptions() {
+    return _CoreQueryTunOptions();
+  }
+
+  late final _CoreQueryTunOptionsPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'CoreQueryTunOptions',
+      );
+  late final _CoreQueryTunOptions =
+      _CoreQueryTunOptionsPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  void CoreFlushSystemDNS() {
+    return _CoreFlushSystemDNS();
+  }
+
+  late final _CoreFlushSystemDNSPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>('CoreFlushSystemDNS');
+  late final _CoreFlushSystemDNS =
+      _CoreFlushSystemDNSPtr.asFunction<void Function()>();
+
+  ffi.Pointer<ffi.Char> CoreQueryMemoryStats() {
+    return _CoreQueryMemoryStats();
+  }
+
+  late final _CoreQueryMemoryStatsPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'CoreQueryMemoryStats',
+      );
+  late final _CoreQueryMemoryStats =
+      _CoreQueryMemoryStatsPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> CoreSetMemoryLimit(int bytes) {
+    return _CoreSetMemoryLimit(bytes);
+  }
+
+  late final _CoreSetMemoryLimitPtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.LongLong)>>(
+        'CoreSetMemoryLimit',
+      );
+  late final _CoreSetMemoryLimit =
+      _CoreSetMemoryLimitPtr.asFunction<ffi.Pointer<ffi.Char> Function(int)>();
 
   ffi.Pointer<ffi.Char> CoreGetVersion() {
     return _CoreGetVersion();
@@ -221,29 +422,16 @@ class LibCoreBindings {
   late final _CoreSetCallback =
       _CoreSetCallbackPtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
-  ffi.Pointer<ffi.Char> CoreStartWithContent(
-    ffi.Pointer<ffi.Char> content,
-    ffi.Pointer<ffi.Char> ruleSetProxy,
-  ) {
-    return _CoreStartWithContent(content, ruleSetProxy);
+  void CoreSetLocale(ffi.Pointer<ffi.Char> localeID) {
+    return _CoreSetLocale(localeID);
   }
 
-  late final _CoreStartWithContentPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-          )
-        >
-      >('CoreStartWithContent');
-  late final _CoreStartWithContent =
-      _CoreStartWithContentPtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-        )
-      >();
+  late final _CoreSetLocalePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>(
+        'CoreSetLocale',
+      );
+  late final _CoreSetLocale =
+      _CoreSetLocalePtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 
   void CoreFreeString(ffi.Pointer<ffi.Char> s) {
     return _CoreFreeString(s);

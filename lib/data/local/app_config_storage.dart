@@ -26,7 +26,6 @@ class AppStoredConfig {
   final String delayTestUrl;
   final bool? tunIf;
   final String subUA;
-  final bool coreElevated;
 
   AppStoredConfig({
     this.selectedFile,
@@ -34,7 +33,6 @@ class AppStoredConfig {
     required this.delayTestUrl,
     this.tunIf,
     String? subUA,
-    this.coreElevated = false,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
@@ -47,7 +45,6 @@ class AppStoredConfig {
         delayTestUrl: json['delay-test-url'] as String? ?? Defaults.delayTestUrl,
         tunIf: json['tun-if'] as bool?,
         subUA: json['sub-ua'] as String? ?? Defaults.subUA,
-        coreElevated: json['core-elevated'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -56,7 +53,6 @@ class AppStoredConfig {
         'delay-test-url': delayTestUrl,
         'tun-if': tunIf,
         'sub-ua': subUA,
-        'core-elevated': coreElevated,
       };
 
   factory AppStoredConfig.empty() => AppStoredConfig(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,7 +36,11 @@ void main() async {
 
   timeago.setLocaleMessages('zh_cn', TimeagoZhCnMessages());
 
-  Constants.homeDir = await getApplicationSupportDirectory();
+  // 提权重启时通过 --home-dir 指定用户数据目录，避免 root 使用 /var/root
+  final homeDirOverride = _parseHomeDirArg();
+  Constants.homeDir = homeDirOverride != null
+      ? Directory(homeDirOverride)
+      : await getApplicationSupportDirectory();
   CoreConfigStorage.createDefault();
 
   // 初始化内核和配置
@@ -55,26 +60,37 @@ Future<void> _initApp() async {
     await LibCore.instance
         .initCore(Constants.homeDir.path)
         .timeout(const Duration(seconds: 10));
+    await LibCore.instance.setLocale('zh_CN');
   } on TimeoutException {
     initError.value = '内核初始化超时';
   } catch (e) {
     initError.value = '内核初始化失败: $e';
   }
 
-  initCoreConfig();
+  await initCoreConfig();
   watchModeFromCore();
   initAppConfig();
 
-  // 恢复 VPN 状态：引擎重建时 VPN 服务可能仍在运行
+  // 恢复移动端状态：引擎重建时 VPN 服务和内核可能仍在运行
   if (!Constants.isDesktop) {
     try {
       if (await LibCore.instance.isVpnRunning()) {
         vpnConnected.value = true;
+        LibCore.instance.coreConnected.value = true;
       }
     } catch (_) {}
   }
 
   startWatchingSelectedFile();
+}
+
+/// 解析 --home-dir 命令行参数，提权重启时用于指定用户数据目录。
+String? _parseHomeDirArg() {
+  final args = Platform.executableArguments;
+  for (var i = 0; i < args.length - 1; i++) {
+    if (args[i] == '--home-dir') return args[i + 1];
+  }
+  return null;
 }
 
 class _WindowListener with WindowListener {

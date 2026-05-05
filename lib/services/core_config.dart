@@ -23,32 +23,31 @@ bool? _lastSyncedTun;
 
 final modeChanging = signal(false);
 
-void initCoreConfig() {
+Future<void> initCoreConfig() async {
   if (CoreConfigStorage.exists()) {
     clashConfig.value = CoreConfigStorage.load();
   }
   _lastSyncedMode = clashConfig.value.mode;
   _lastSyncedPort = clashConfig.value.mixedPort;
   _lastSyncedTun = clashConfig.value.tunEnabled;
+  detectElevation();
+  await elevationReady;
   effect(() {
     final config = clashConfig.value;
     _syncTimer?.cancel();
     _syncTimer = Timer(const Duration(seconds: 1), () {
       CoreConfigStorage.save(config);
     });
-    // mode 由 watchModeFromCore 从内核回写更新，不触发重载
     if (config.mode != _lastSyncedMode) {
       _lastSyncedMode = config.mode;
       _saveSync();
     } else if (config.tunEnabled != _lastSyncedTun) {
-      // TUN 状态由 toggleTun 独立管理，不触发重载（避免移动端 VPN 双重连接）
       _lastSyncedTun = config.tunEnabled;
       _saveSync();
     } else {
       _scheduleReload();
     }
   });
-  // 监听通知栏断开 VPN 事件，同步本地状态
   effect(() {
     if (LibCore.instance.vpnDisconnectedByUser.value) {
       _setTunEnabled(false);
@@ -56,7 +55,6 @@ void initCoreConfig() {
       LibCore.instance.vpnDisconnectedByUser.value = false;
     }
   });
-  detectElevation();
 }
 
 void _saveSync() {
@@ -151,20 +149,35 @@ Future<void> closeTun() async {
 
 Future<void> _openTunDesktop() async {
   if (!coreElevated.value) {
+    _setTunEnabled(true);
     if (Platform.isLinux) {
-      // Linux: one-time setcap, then restart normally (no root needed)
+      // Linux: one-time setcap，重启后 capability 持久化，后续无需再提权
       final ok = await setupTunCapability();
       if (!ok) {
+        _setTunEnabled(false);
         throw TunElevationException('授予网络权限失败，请确认 pkexec 可用');
       }
-      _setTunEnabled(true);
-      await relaunchSelf();
+      if (await relaunchSelf()) {
+        exit(0);
+      }
+      // 启动新进程失败，回滚状态
+      _setTunEnabled(false);
+      throw TunElevationException('重启应用失败');
+    } else if (Platform.isMacOS) {
+      // macOS: 以 root 重启，传递 homeDir 避免 root 使用 /var/root 数据目录
+      if (await relaunchElevated(homeDir: Constants.homeDir.path)) {
+        exit(0);
+      }
+      _setTunEnabled(false);
+      throw TunElevationException('提权失败，请重试');
     } else {
-      // macOS/Windows: restart with admin privileges
-      _setTunEnabled(true);
-      await relaunchElevated();
+      // Windows: 以管理员重启，同一用户 %APPDATA% 不变，无需传 homeDir
+      if (await relaunchElevated()) {
+        exit(0);
+      }
+      _setTunEnabled(false);
+      throw TunElevationException('提权失败，请重试');
     }
-    return;
   }
   _setTunEnabled(true);
   await asyncProfile();

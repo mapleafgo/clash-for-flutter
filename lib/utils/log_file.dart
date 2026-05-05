@@ -6,15 +6,14 @@ class LogFileWriter {
   static LogFileWriter? _instance;
 
   IOSink? _sink;
-  final String _path;
   static const _maxSize = 5 * 1024 * 1024;
 
-  LogFileWriter._(this._path);
+  LogFileWriter._();
 
   static LogFileWriter? get instance => _instance;
 
   static Future<void> init(String path) async {
-    final writer = LogFileWriter._(path);
+    final writer = LogFileWriter._();
     final file = File(path);
     try {
       if (await file.exists() && await file.length() > _maxSize) {

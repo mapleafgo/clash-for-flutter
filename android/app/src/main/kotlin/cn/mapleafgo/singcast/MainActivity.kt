@@ -98,11 +98,9 @@ class MainActivity : FlutterFragmentActivity() {
         when (method) {
             "initCore" -> runOnThread {
                 try {
-                    val homeDir = args?.str("homeDir") ?: ""
-                    AppLog.i(tag, "handleMethodCall: initCore homeDir=$homeDir")
-                    Mobile.initCore(homeDir)
-                    Mobile.detectAndReportInterfaces(this@MainActivity)
-                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
+                    val optionsJSON = args?.str("optionsJSON") ?: ""
+                    AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
+                    Mobile.initCore(optionsJSON)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: initCore failed", e)
@@ -118,6 +116,18 @@ class MainActivity : FlutterFragmentActivity() {
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "reloadConfig" -> runOnThread {
+                try {
+                    val content = args?.str("content") ?: ""
+                    val proxy = args?.str("ruleSetProxy") ?: ""
+                    AppLog.i(tag, "handleMethodCall: reloadConfig (${content.length} chars)")
+                    Mobile.reloadConfig(content, proxy)
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) {
+                    AppLog.e(tag, "handleMethodCall: reloadConfig failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
@@ -141,6 +151,18 @@ class MainActivity : FlutterFragmentActivity() {
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
+            "pause" -> runOnThread {
+                try { Mobile.pause(); mainHandler.post { result.success(null) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "wake" -> runOnThread {
+                try { Mobile.wake(); mainHandler.post { result.success(null) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "resetNetwork" -> runOnThread {
+                try { Mobile.resetNetwork(); mainHandler.post { result.success(null) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
             // TUN / VPN
             "connectVpn" -> {
                 val configContent = args?.str("configContent") ?: ""
@@ -157,7 +179,7 @@ class MainActivity : FlutterFragmentActivity() {
             // Lightweight queries — safe on main thread
             "queryProxies" -> result.success(Mobile.queryProxies())
             "queryTraffic" -> result.success(Mobile.queryTraffic())
-            "queryLogs" -> result.success(Mobile.queryLogs())
+            "queryLogs" -> result.success(Mobile.queryLogs(args?.get("clear") as? Boolean ?: false))
             "queryConnections" -> result.success(Mobile.queryConnections())
 
             // Lightweight actions
@@ -201,6 +223,57 @@ class MainActivity : FlutterFragmentActivity() {
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
+            // Config
+            "reloadTUN" -> runOnThread {
+                try { Mobile.reloadTUN(); mainHandler.post { result.success(null) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "setOverridePackages" -> runOnThread {
+                try { Mobile.setOverridePackages(args?.str("overrideJSON") ?: "{}"); mainHandler.post { result.success(null) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "queryTunOptions" -> result.success(Mobile.queryTunOptions())
+            // Proxy
+            "setGroupExpand" -> runOnThread {
+                try {
+                    Mobile.setGroupExpand(args?.str("group") ?: "", args?.get("expand") as? Boolean ?: false)
+                    mainHandler.post { result.success(null) }
+                } catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            // Logging / Memory
+            "setLogLevel" -> {
+                Mobile.setLogLevel((args?.get("level") as? Number)?.toInt() ?: 4)
+                result.success(null)
+            }
+            "setMemoryLimit" -> runOnThread {
+                try {
+                    val r = Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0)
+                    mainHandler.post { result.success(r) }
+                } catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "queryMemoryStats" -> result.success(Mobile.queryMemoryStats())
+            "flushSystemDNS" -> {
+                Mobile.flushSystemDNS()
+                result.success(null)
+            }
+            // Platform
+            "needWIFIState" -> result.success(Mobile.needWIFIState())
+            "needFindProcess" -> result.success(Mobile.needFindProcess())
+            "updateWIFIState" -> { Mobile.updateWIFIState(); result.success(null) }
+            "setIncludeAllNetworks" -> {
+                Mobile.setIncludeAllNetworks(args?.get("v") as? Boolean ?: false)
+                result.success(null)
+            }
+            "setWIFIState" -> {
+                Mobile.setWIFIState(args?.str("ssid") ?: "", args?.str("bssid") ?: "")
+                result.success(null)
+            }
+            "writeMessage" -> {
+                Mobile.writeMessage((args?.get("level") as? Number)?.toInt() ?: 4, args?.str("message") ?: "")
+                result.success(null)
+            }
+            // Utilities
+            "setLocale" -> { Mobile.setLocale(args?.str("localeID") ?: ""); result.success(null) }
             "checkConfig" -> result.success(Mobile.checkConfig(args?.str("content") ?: ""))
             "getVersion" -> result.success(Mobile.getVersion())
             "requestNotificationPermission" -> {

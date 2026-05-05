@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -9,6 +11,15 @@ import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/format.dart';
+
+String _formatUptime(int? startedAt) {
+  if (startedAt == null || startedAt == 0) return '--';
+  final started = DateTime.fromMillisecondsSinceEpoch(startedAt * 1000);
+  final diff = DateTime.now().difference(started);
+  if (diff.inDays > 0) return '${diff.inDays}天${diff.inHours % 24}时';
+  if (diff.inHours > 0) return '${diff.inHours}时${diff.inMinutes % 60}分';
+  return '${diff.inMinutes}分${diff.inSeconds % 60}秒';
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -50,13 +61,15 @@ class _HomePageState extends State<HomePage> {
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   padding: const EdgeInsets.all(16),
-                  itemCount: Constants.isDesktop ? 5 : 4,
+                  itemCount: Constants.isDesktop ? 7 : 6,
                   itemBuilder: (_, index) => switch (index) {
                     0 => const _SpeedCard(),
                     1 => const _TrafficTotalCard(),
-                    2 => const _ModeCard(),
+                    2 => const _RuntimeCard(),
                     3 => const _ConnectionsCard(),
-                    4 when Constants.isDesktop => const _ProxyModeCard(),
+                    4 => const _ConnectionDetailCard(),
+                    5 => const _ModeCard(),
+                    6 when Constants.isDesktop => const _ProxyModeCard(),
                     _ => const SizedBox.shrink(),
                   },
                 );
@@ -299,6 +312,157 @@ class _ConnectionsCard extends StatelessWidget {
               Text('个连接', style: theme.textTheme.bodySmall),
             ],
           ),
+        ),
+      );
+    });
+  }
+}
+
+// --- Runtime Card (Memory + Goroutines + Uptime) ---
+
+class _RuntimeCard extends StatefulWidget {
+  const _RuntimeCard();
+
+  @override
+  State<_RuntimeCard> createState() => _RuntimeCardState();
+}
+
+class _RuntimeCardState extends State<_RuntimeCard> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final traffic = LibCore.instance.trafficSignal.value;
+      final connected = LibCore.instance.coreConnected.value;
+      final memory = traffic?.memory ?? 0;
+      final goroutines = traffic?.goroutines ?? 0;
+      final uptime = _formatUpline(traffic?.startedAt, connected);
+      final cs = Theme.of(context).colorScheme;
+      return _CardShell(
+        icon: Icons.memory,
+        title: '运行状态',
+        height: _mediumH,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _RuntimeRow(
+              icon: Icons.timer_outlined,
+              label: '运行时长',
+              value: uptime,
+              color: connected ? Colors.green : cs.onSurfaceVariant,
+            ),
+            const SizedBox(height: 10),
+            _RuntimeRow(
+              icon: Icons.data_object,
+              label: '协程数',
+              value: '$goroutines',
+              color: Colors.teal,
+            ),
+            const SizedBox(height: 10),
+            _RuntimeRow(
+              icon: Icons.memory_outlined,
+              label: '内存占用',
+              value: formatBytes(memory),
+              color: Colors.purple,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  String _formatUpline(int? startedAt, bool connected) {
+    if (!connected) return '未运行';
+    return _formatUptime(startedAt);
+  }
+}
+
+class _RuntimeRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _RuntimeRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// --- Connection Detail Card (In/Out) ---
+
+class _ConnectionDetailCard extends StatelessWidget {
+  const _ConnectionDetailCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final traffic = LibCore.instance.trafficSignal.value;
+      final connsIn = traffic?.connsIn ?? 0;
+      final connsOut = traffic?.connsOut ?? 0;
+      return _CardShell(
+        icon: Icons.swap_vert,
+        title: '连接详情',
+        height: _smallH,
+        child: Row(
+          children: [
+            Expanded(
+              child: _StatBadge(
+                icon: Icons.arrow_downward,
+                value: '$connsIn 入站',
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatBadge(
+                icon: Icons.arrow_upward,
+                value: '$connsOut 出站',
+                color: Colors.deepOrange,
+              ),
+            ),
+          ],
         ),
       );
     });

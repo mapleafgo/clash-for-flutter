@@ -7,6 +7,7 @@ class TrafficSnapshot {
   final int goroutines;
   final int connsIn;
   final int connsOut;
+  final int? startedAt;
 
   TrafficSnapshot({
     this.up = 0,
@@ -17,6 +18,7 @@ class TrafficSnapshot {
     this.goroutines = 0,
     this.connsIn = 0,
     this.connsOut = 0,
+    this.startedAt,
   });
 
   factory TrafficSnapshot.fromJson(Map<String, dynamic> json) => TrafficSnapshot(
@@ -28,6 +30,7 @@ class TrafficSnapshot {
     goroutines: (json['goroutines'] as num?)?.toInt() ?? 0,
     connsIn: (json['connections_in'] as num?)?.toInt() ?? 0,
     connsOut: (json['connections_out'] as num?)?.toInt() ?? 0,
+    startedAt: (json['started_at'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -39,6 +42,7 @@ class TrafficSnapshot {
     'goroutines': goroutines,
     'connections_in': connsIn,
     'connections_out': connsOut,
+    'started_at': startedAt,
   };
 }
 

@@ -1,16 +1,23 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/domain/connection.dart';
-import 'package:singcast/domain/log.dart';
-import 'package:singcast/domain/net_speed.dart';
-import 'package:singcast/domain/proxy_group.dart';
 import 'package:flutter/services.dart';
+
+import 'ffi_worker.dart';
+import 'lib_core.dart';
+import '../domain/connection.dart';
+import '../domain/log.dart';
+import '../domain/net_speed.dart';
+import '../domain/proxy_group.dart';
 
 class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
   static const _eventChannel = EventChannel('cn.mapleafgo/singcast/events');
+  final _eventController = StreamController<CoreEvent>.broadcast();
+
+  @override
+  Stream<CoreEvent> get events => _eventController.stream;
 
   @override
   Future<void> init() async {
@@ -25,85 +32,14 @@ class LibCoreChannel implements LibCorePlatform {
     final map = Map<String, dynamic>.from(event);
     final eventType = map['type'] as int? ?? -1;
     final rawData = map['data'];
-    final core = LibCore.instance;
 
-    switch (eventType) {
-      case 0: // traffic
-        if (rawData is String) {
-          core.trafficSignal.value = TrafficSnapshot.fromJson(
-              jsonDecode(rawData) as Map<String, dynamic>);
-        } else if (rawData is Map) {
-          core.trafficSignal.value = TrafficSnapshot.fromJson(
-              Map<String, dynamic>.from(rawData));
-        }
-        _updateVpnNotification(core.trafficSignal.value);
-      case 1: // logs
-        if (rawData == null) break;
-        final list = rawData is String
-            ? jsonDecode(rawData) as List
-            : rawData as List;
-        final logs = list
-            .map((e) => LogEntry.fromJson(
-                Map<String, dynamic>.from(e as Map)))
-            .toList();
-        core.appendLogs(logs);
-      case 2: // connections (incremental)
-        if (rawData is String) {
-          final json = jsonDecode(rawData) as Map<String, dynamic>;
-          core.handleConnectionEvents(ConnectionEventsPayload.fromJson(json));
-        } else if (rawData is Map) {
-          core.handleConnectionEvents(
-              ConnectionEventsPayload.fromJson(
-                  Map<String, dynamic>.from(rawData)));
-        }
-      case 3: // proxies
-        if (rawData == null) break;
-        final list = rawData is String
-            ? jsonDecode(rawData) as List
-            : rawData as List;
-        core.proxiesSignal.value = list
-            .map((e) =>
-                ProxyGroup.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-      case 4: // mode
-        if (rawData is String) {
-          final json = jsonDecode(rawData) as Map<String, dynamic>;
-          core.modeSignal.value = json['current_mode'] as String? ?? 'rule';
-        } else if (rawData is Map) {
-          final m = Map<String, dynamic>.from(rawData);
-          core.modeSignal.value = m['current_mode'] as String? ?? 'rule';
-        }
-      case 5: // vpn state changed (from notification disconnect)
-        if (rawData is String) {
-          final json = jsonDecode(rawData) as Map<String, dynamic>;
-          core.vpnDisconnectedByUser.value = !(json['connected'] as bool? ?? true);
-        } else if (rawData is Map) {
-          final m = Map<String, dynamic>.from(rawData);
-          core.vpnDisconnectedByUser.value = !(m['connected'] as bool? ?? true);
-        }
-      case 6: // core logs (cff-core internal)
-        if (rawData == null) break;
-        final list = rawData is String
-            ? jsonDecode(rawData) as List
-            : rawData as List;
-        final logs = list
-            .map((e) => LogEntry.fromJson(
-                Map<String, dynamic>.from(e as Map)))
-            .toList();
-        core.appendLogs(logs);
-    }
-  }
+    final payload = rawData is String
+        ? rawData
+        : rawData != null
+            ? jsonEncode(rawData)
+            : '';
 
-  void _updateVpnNotification(TrafficSnapshot? traffic) {
-    if (!Platform.isAndroid || traffic == null) return;
-    try {
-      _channel.invokeMethod('updateVpnTraffic', {
-        'up': traffic.up,
-        'down': traffic.down,
-        'upTotal': traffic.upTotal,
-        'downTotal': traffic.downTotal,
-      });
-    } catch (_) {}
+    _eventController.add(CoreEvent(eventType, payload));
   }
 
   Future<dynamic> _invokeJson(String method, [Map<String, dynamic>? args]) async {
@@ -112,10 +48,13 @@ class LibCoreChannel implements LibCorePlatform {
     return jsonDecode(raw);
   }
 
+  // --- Lifecycle ---
+
   @override
   Future<void> initCore(String homeDir) async {
+    final optionsJSON = jsonEncode({'home_dir': homeDir, 'log_max_lines': 500});
     try {
-      await _channel.invokeMethod('initCore', {'homeDir': homeDir});
+      await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
     } on PlatformException catch (e) {
       if ((e.message ?? '').contains('already initialized')) return;
       rethrow;
@@ -123,23 +62,50 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
-    await _channel.invokeMethod('startCoreWithContent', {
-      'content': content,
-      'ruleSetProxy': ruleSetProxy ?? '',
-    });
-    // 移动端依赖事件推送更新 UI，但内核启动后不一定立即推送代理数据
-    // 主动查询一次确保代理列表可用
-    try {
-      LibCore.instance.proxiesSignal.value = await queryProxies();
-    } catch (_) {}
-  }
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
+      _channel.invokeMethod('startCoreWithContent', {
+        'content': content,
+        'ruleSetProxy': ruleSetProxy ?? '',
+      });
 
   @override
   Future<void> stopCore() => _channel.invokeMethod('stopCore');
 
   @override
   Future<void> destroyCore() => _channel.invokeMethod('destroyCore');
+
+  @override
+  Future<void> pause() => _channel.invokeMethod('pause');
+
+  @override
+  Future<void> wake() => _channel.invokeMethod('wake');
+
+  @override
+  Future<void> resetNetwork() => _channel.invokeMethod('resetNetwork');
+
+  // --- Config ---
+
+  @override
+  Future<void> reloadConfig(String content, {String? ruleSetProxy}) =>
+      _channel.invokeMethod('reloadConfig', {
+        'content': content,
+        'ruleSetProxy': ruleSetProxy ?? '',
+      });
+
+  @override
+  Future<void> reloadTUN() => _channel.invokeMethod('reloadTUN');
+
+  @override
+  Future<void> setOverridePackages(String overrideJSON) =>
+      _channel.invokeMethod('setOverridePackages', {'overrideJSON': overrideJSON});
+
+  @override
+  Future<String> queryTunOptions() async {
+    final result = await _channel.invokeMethod<String>('queryTunOptions');
+    return result ?? '';
+  }
+
+  // --- Queries ---
 
   @override
   Future<List<ProxyGroup>> queryProxies() async {
@@ -158,8 +124,8 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<List<LogEntry>> queryLogs() async {
-    final json = await _invokeJson('queryLogs');
+  Future<List<LogEntry>> queryLogs({bool clear = false}) async {
+    final json = await _invokeJson('queryLogs', {'clear': clear});
     if (json is! List) return [];
     return json
         .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
@@ -175,15 +141,11 @@ class LibCoreChannel implements LibCorePlatform {
     return ConnectionEventsPayload.fromJson(json);
   }
 
+  // --- Proxy Control ---
+
   @override
-  Future<void> selectProxy(String group, String tag) async {
-    await _channel.invokeMethod('selectProxy', {'group': group, 'tag': tag});
-    // 移动端依赖事件推送更新 UI，但 selectProxy 后内核不一定立即推送 proxies 事件
-    // 主动查询一次确保 UI 反映最新选择
-    try {
-      LibCore.instance.proxiesSignal.value = await queryProxies();
-    } catch (_) {}
-  }
+  Future<void> selectProxy(String group, String tag) =>
+      _channel.invokeMethod('selectProxy', {'group': group, 'tag': tag});
 
   @override
   Future<void> testDelay(String name) =>
@@ -194,12 +156,51 @@ class LibCoreChannel implements LibCorePlatform {
       _channel.invokeMethod('setMode', {'mode': mode});
 
   @override
+  Future<void> setGroupExpand(String group, bool expand) =>
+      _channel.invokeMethod('setGroupExpand', {'group': group, 'expand': expand});
+
+  // --- Connection Management ---
+
+  @override
   Future<void> closeConnection(String id) =>
       _channel.invokeMethod('closeConnection', {'id': id});
 
   @override
   Future<void> closeAllConnections() =>
       _channel.invokeMethod('closeAllConnections');
+
+  // --- Logging / Memory ---
+
+  @override
+  Future<void> setLogLevel(int level) =>
+      _channel.invokeMethod('setLogLevel', {'level': level});
+
+  @override
+  Future<void> setMemoryLimit(int bytes) =>
+      _channel.invokeMethod('setMemoryLimit', {'bytes': bytes});
+
+  @override
+  Future<String> queryMemoryStats() async {
+    final result = await _channel.invokeMethod<String>('queryMemoryStats');
+    return result ?? '';
+  }
+
+  @override
+  Future<void> flushSystemDNS() => _channel.invokeMethod('flushSystemDNS');
+
+  // --- Platform ---
+
+  @override
+  Future<bool> needFindProcess() async {
+    final result = await _channel.invokeMethod<bool>('needFindProcess');
+    return result ?? false;
+  }
+
+  @override
+  Future<void> writeMessage(int level, String message) =>
+      _channel.invokeMethod('writeMessage', {'level': level, 'message': message});
+
+  // --- Utilities ---
 
   @override
   Future<String> checkConfig(String content) async {
@@ -213,6 +214,12 @@ class LibCoreChannel implements LibCorePlatform {
     final result = await _channel.invokeMethod<String>('getVersion');
     return result ?? '';
   }
+
+  @override
+  Future<void> setLocale(String localeID) =>
+      _channel.invokeMethod('setLocale', {'localeID': localeID});
+
+  // --- VPN ---
 
   @override
   Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
@@ -232,5 +239,17 @@ class LibCoreChannel implements LibCorePlatform {
     } catch (_) {
       return false;
     }
+  }
+
+  @override
+  void updateVpnTraffic(TrafficSnapshot traffic) {
+    try {
+      _channel.invokeMethod('updateVpnTraffic', {
+        'up': traffic.up,
+        'down': traffic.down,
+        'upTotal': traffic.upTotal,
+        'downTotal': traffic.downTotal,
+      });
+    } catch (_) {}
   }
 }

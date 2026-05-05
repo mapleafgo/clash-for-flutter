@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/core/tun_elevation.dart';
 import 'package:singcast/data/local/app_config_storage.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/services/core_config.dart';
@@ -29,6 +28,7 @@ final vpnConnected = signal(false);
 
 bool _activating = false;
 Timer? _saveTimer;
+String? _lastWorkingConfig; // 用于回滚到最后可用配置
 
 void initAppConfig() {
   final config = AppConfigStorage.load();
@@ -38,7 +38,7 @@ void initAppConfig() {
   delayTestUrl.value = config.delayTestUrl;
   tunIf.value = config.tunIf ?? !Constants.isDesktop;
   subUA.value = config.subUA;
-  coreElevated.value = config.coreElevated;
+  // coreElevated 由 detectElevation() 实时检测，不从存储恢复
   _startAutoSave();
 }
 
@@ -74,7 +74,6 @@ void _save() {
     delayTestUrl: delayTestUrl.value,
     tunIf: tunIf.value,
     subUA: subUA.value,
-    coreElevated: coreElevated.value,
   ));
 }
 
@@ -97,50 +96,84 @@ void startWatchingSelectedFile() {
 
 /// Merge the profile YAML with the app's [ClashConfig] overrides,
 /// then start the core with the merged content.
+///
+/// 使用社区最佳实践：
+/// 1. 配置预验证 - 在断开 VPN 前验证新配置
+/// 2. 原子性操作 - 失败时回滚到上次工作配置
+/// 3. 状态一致性 - 确保 VPN 状态正确同步
 Future<bool> _activateProfile(String yamlPath) async {
   if (_activating) return true;
   _activating = true;
   coreActivating.value = true;
+
+  // 保存当前配置用于回滚
+  final previousConfig = _lastWorkingConfig;
+
   try {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final useVpn = clashConfig.value.tunEnabled || vpnConnected.value;
-      final mobileConfig = prepareMobileConfig(merged, tunEnabled: useVpn);
-      if (clashConfig.value.tunEnabled && !vpnConnected.value) {
-        // 首次建立 VPN 隧道
-        await LibCore.instance.connectVpn(
-          mobileConfig,
-          ruleSetProxy: ruleSetProxy.value,
-        );
-        vpnConnected.value = true;
-      } else if (vpnConnected.value) {
-        // VPN 模式下切换配置：先停止内核再重启，TUN fd 由 VPN 服务保持
-        try {
-          await LibCore.instance.stopCore();
-        } catch (_) {}
-        await LibCore.instance.startCoreWithContent(
-          mobileConfig,
-          ruleSetProxy: ruleSetProxy.value,
-        );
-      } else {
-        // 代理模式：使用移动端配置（禁用 netlink 等不兼容特性）
-        await LibCore.instance.startCoreWithContent(
-          mobileConfig,
-          ruleSetProxy: ruleSetProxy.value,
-        );
+    // 步骤 1: 预验证新配置（在断开连接前）
+    try {
+      final validationResult = await LibCore.instance.checkConfig(merged);
+      if (validationResult.isNotEmpty && validationResult.contains('error')) {
+        profileError.value = '配置验证失败: $validationResult';
+        return false;
       }
+    } catch (e) {
+      // 验证失败不阻止尝试，但记录警告
+      // 某些配置问题只有在实际运行时才会发现
+    }
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      final mobileConfig = prepareMobileConfig(merged);
+      final ok = await _hotReload(mobileConfig, previousConfig);
+      if (!ok) return false;
     } else {
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,
       );
     }
+
+    // 配置成功，保存为最后工作配置
+    _lastWorkingConfig = merged;
+    profileError.value = null;
     return true;
+  } catch (e) {
+    profileError.value = '配置激活失败: ${e.toString()}';
+    return false;
   } finally {
     _activating = false;
     coreActivating.value = false;
+  }
+}
+
+/// 热重载配置，失败时回滚到上次可用配置
+Future<bool> _hotReload(String newConfig, String? previousConfig) async {
+  try {
+    await LibCore.instance.reloadConfig(
+      newConfig,
+      ruleSetProxy: ruleSetProxy.value,
+    );
+    await LibCore.instance.queryProxies();
+    return true;
+  } catch (e) {
+    if (previousConfig != null) {
+      try {
+        profileError.value = '新配置失败，正在回滚...';
+        await LibCore.instance.reloadConfig(
+          previousConfig,
+          ruleSetProxy: ruleSetProxy.value,
+        );
+        profileError.value = '配置已回滚到上次可用状态';
+      } catch (_) {
+        profileError.value = '配置失败且回滚失败: $e';
+      }
+    } else {
+      profileError.value = '配置加载失败: $e';
+    }
+    return false;
   }
 }
 

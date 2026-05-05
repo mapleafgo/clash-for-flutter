@@ -1,7 +1,7 @@
 name: singcast
 description: A multi-platform Clash client.
 publish_to: "none"
-version: 1.13.11-rc10
+version: 1.13.11-rc12
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -71,23 +71,55 @@ ffigen:
     - "-I/usr/lib/clang/22/include"
   functions:
     include:
+      # Lifecycle
       - CoreInit
-      - CoreStart
+      - CoreStartWithContent
       - CoreStop
-      - CoreClose
+      - CoreDestroy
+      - CorePause
+      - CoreWake
+      - CoreResetNetwork
+      # Config
       - CoreCheckConfig
       - CoreReloadConfig
+      - CoreReloadTUN
+      - CoreSetOverridePackages
+      - CoreQueryTunOptions
+      # Proxy
+      - CoreSelectProxy
+      - CoreSetMode
+      - CoreSetGroupExpand
+      - CoreTestDelay
+      # Queries
       - CoreQueryProxies
       - CoreQueryTraffic
       - CoreQueryLogs
       - CoreQueryConnections
-      - CoreSelectProxy
-      - CoreSetMode
+      - CoreClearLogs
+      - CoreGetStartedAt
+      # Connections
       - CoreCloseConnection
       - CoreCloseAllConnections
-      - CoreTestDelay
+      # Platform
+      - CoreNeedWIFIState
+      - CoreNeedFindProcess
+      - CoreUpdateWIFIState
+      - CoreSetIncludeAllNetworks
+      - CoreSetWIFIState
+      - CoreWriteMessage
+      # Logging / Memory
+      - CoreSetLogLevel
+      - CoreSetError
+      - CoreSetMemoryLimit
+      - CoreQueryMemoryStats
+      - CoreFlushSystemDNS
+      # Version / Events
       - CoreGetVersion
       - CoreSetCallback
+      # Utilities
+      - CoreFormatBytes
+      - CoreFormatDuration
+      - CoreAvailablePort
+      - CoreSetLocale
+      # Memory Management
       - CoreFreeString
-      - CoreSetTunFd
-      - CoreStartWithContent
