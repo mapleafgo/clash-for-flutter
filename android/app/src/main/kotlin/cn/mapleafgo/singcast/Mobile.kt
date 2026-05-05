@@ -41,7 +41,7 @@ object Mobile {
     }
 
     private val eventHandler = object : EventHandler {
-        override fun onEvent(eventType: Long, jsonPayload: String) {
+        override fun onEvent(eventType: Int, jsonPayload: String) {
             val sink = eventSink ?: return
             val data = mapOf("type" to eventType.toInt(), "data" to jsonPayload)
             mainHandler.post { sink.success(data) }
@@ -172,7 +172,15 @@ object Mobile {
         singcast.setLogLevel(level)
     }
 
-    fun setMemoryLimit(bytes: Long): String = singcast.setMemoryLimit(bytes)
+    fun setMemoryLimit(bytes: Long): String {
+        return try {
+            singcast.setMemoryLimit(bytes)
+            ""
+        } catch (e: Exception) {
+            AppLog.e(TAG, "setMemoryLimit: ${e.message}")
+            e.message ?: "error"
+        }
+    }
 
     fun queryMemoryStats(): String = singcast.queryMemoryStats()
 
@@ -204,15 +212,70 @@ object Mobile {
 
     // --- Utilities ---
 
-    fun checkConfig(content: String): String = singcast.checkConfig(content)
+    fun checkConfig(content: String): String {
+        return try {
+            singcast.checkConfig(content)
+            ""
+        } catch (e: Exception) {
+            AppLog.e(TAG, "checkConfig: ${e.message}")
+            e.message ?: "error"
+        }
+    }
 
     fun getVersion(): String = singcast.version()
 
     fun setLocale(localeID: String) {
-        singcast.setLocale(localeID)
+        // Locale setting not supported by current kernel
+        AppLog.d(TAG, "setLocale: $localeID (no-op)")
     }
 
     // --- VPN Notification ---
+
+    fun detectAndReportInterfaces(context: android.content.Context) {
+        try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+            val json = StringBuilder("[")
+            var first = true
+            while (interfaces.hasMoreElements()) {
+                val intf = interfaces.nextElement()
+                if (!first) json.append(",")
+                first = false
+                val addresses = intf.inetAddresses
+                val addrList = StringBuilder("[")
+                var addrFirst = true
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (!addrFirst) addrList.append(",")
+                    addrFirst = false
+                    addrList.append("\"${addr.hostAddress}\"")
+                }
+                addrList.append("]")
+                json.append("{\"name\":\"${intf.name}\",\"mtu\":${intf.mtu},\"addresses\":$addrList}")
+            }
+            json.append("]")
+            singcast.setInterfacesJSON(json.toString())
+            AppLog.d(TAG, "detectAndReportInterfaces: reported ${json.length} chars")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "detectAndReportInterfaces: failed", e)
+        }
+    }
+
+    fun detectAndReportDefaultInterface(context: android.content.Context) {
+        try {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val activeNetwork = cm.activeNetwork
+            val linkProperties = if (activeNetwork != null) cm.getLinkProperties(activeNetwork) else null
+            val ifaceName = linkProperties?.interfaceName ?: ""
+            if (ifaceName.isNotEmpty()) {
+                val intf = java.net.NetworkInterface.getByName(ifaceName)
+                val mtu = intf?.mtu?.toLong() ?: 0L
+                singcast.updateDefaultInterface(ifaceName, mtu, true)
+                AppLog.d(TAG, "detectAndReportDefaultInterface: $ifaceName mtu=$mtu")
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "detectAndReportDefaultInterface: failed", e)
+        }
+    }
 
     fun notifyVpnStateChanged(connected: Boolean) {
         AppLog.i(TAG, "notifyVpnStateChanged: connected=$connected")
