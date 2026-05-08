@@ -1,21 +1,18 @@
-/// cff-core returns: {"tag": string, "type": string, "delay": int32}
+/// cff-core returns: {"tag": string, "type": string}
 class ProxyGroupItem {
   final String tag;
   final String type;
-  final int delay;
 
-  ProxyGroupItem({required this.tag, this.type = '', this.delay = 0});
+  ProxyGroupItem({required this.tag, this.type = ''});
 
   factory ProxyGroupItem.fromJson(Map<String, dynamic> json) => ProxyGroupItem(
     tag: json['tag'] as String? ?? '',
     type: json['type'] as String? ?? '',
-    delay: (json['delay'] as num?)?.toInt() ?? 0,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'tag': tag,
     'type': type,
-    'delay': delay,
   };
 }
 
