@@ -42,6 +42,8 @@ Future<void> initCoreConfig() async {
     } else if (config.tunEnabled != _lastSyncedTun) {
       _lastSyncedTun = config.tunEnabled;
       _saveSync();
+      // 移动端 VPN 状态由 service 管理，不触发重载
+      if (Constants.isDesktop) _scheduleReload();
     } else {
       _scheduleReload();
     }
@@ -142,6 +144,7 @@ Future<void> openTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
+      _setTunEnabled(true);
     } catch (e) {
       rethrow;
     }
