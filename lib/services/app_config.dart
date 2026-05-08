@@ -202,10 +202,6 @@ String mergeProfileConfig(String yamlContent) {
       editor.update(['tun'], {});
     }
     editor.update(['tun', 'enable'], config.tun!.enable ?? false);
-    if (config.tun!.enable == true) {
-      editor.update(['tun', 'auto-route'], false);
-      editor.update(['tun', 'strict-route'], false);
-    }
   }
 
   editor.update(['external-controller'], '127.0.0.1:9090');
