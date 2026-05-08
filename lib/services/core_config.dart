@@ -41,6 +41,8 @@ Future<void> initCoreConfig() async {
   });
   effect(() {
     if (LibCore.instance.vpnDisconnectedByUser.value) {
+      // 重置标记，避免 _setTunEnabled 触发的 effect 再次进入此分支
+      LibCore.instance.vpnDisconnectedByUser.value = false;
       _setTunEnabled(false);
       vpnConnected.value = false;
     }
