@@ -78,6 +78,8 @@ class LibCore {
 
   /// VPN 断开回调，由 type 5 事件触发
   void Function()? onVpnDisconnected;
+  /// 模式变更回调，由 type 4 事件触发
+  void Function(String mode)? onModeChanged;
 
   static const _maxLogs = 1000;
   final _logBuffer = <LogEntry>[];
@@ -168,7 +170,9 @@ class LibCore {
           }
         case 4: // mode
           if (decoded is Map<String, dynamic>) {
-            modeSignal.value = decoded['current_mode'] as String? ?? 'rule';
+            final modeStr = decoded['current_mode'] as String? ?? 'rule';
+            modeSignal.value = modeStr;
+            onModeChanged?.call(modeStr);
           }
         case 5: // vpn state changed
           if (decoded is Map<String, dynamic>) {

@@ -104,13 +104,12 @@ void updateClashConfig({
 }
 
 void watchModeFromCore() {
-  effect(() {
-    final modeStr = LibCore.instance.modeSignal.value;
+  LibCore.instance.onModeChanged = (String modeStr) {
     final mode = Mode.values.where((m) => m.name == modeStr).firstOrNull;
     if (mode != null && clashConfig.value.mode != mode) {
       _updateConfig((c) => c.copyWith(mode: mode));
     }
-  });
+  };
 }
 
 Future<void> toggleTun(bool enable) async {
