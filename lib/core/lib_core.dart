@@ -72,13 +72,17 @@ class LibCore {
   final logsSignal = signal<List<LogEntry>>([]);
   final activeConnectionsSignal = signal<int>(0);
   final proxiesSignal = signal<List<ProxyGroup>>([]);
+  final proxyDelaysSignal = signal<Map<String, int>>({});
   final modeSignal = signal<String>('rule');
-  final vpnDisconnectedByUser = signal<bool>(false);
   final coreConnected = signal<bool>(false);
+
+  /// VPN 断开回调，由 type 5 事件触发
+  void Function()? onVpnDisconnected;
 
   static const _maxLogs = 1000;
   final _logBuffer = <LogEntry>[];
   final _activeConnectionIds = <String>{};
+  Timer? _proxiesDebounce;
 
   String get _platformLibPath {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
@@ -104,6 +108,38 @@ class LibCore {
 
   // --- Shared event handler for both desktop and mobile ---
 
+  void _updateProxies(List<dynamic> decoded) {
+    final groups = <ProxyGroup>[];
+    final delays = <String, int>{};
+
+    for (final item in decoded) {
+      if (item is! Map<String, dynamic>) continue;
+      final group = ProxyGroup.fromJson(item);
+      groups.add(group);
+
+      // 从原始 JSON 中提取 delay 数据
+      final rawItems = item['items'] as List?;
+      if (rawItems != null) {
+        for (int i = 0; i < rawItems.length && i < group.items.length; i++) {
+          final rawItem = rawItems[i] as Map<String, dynamic>?;
+          if (rawItem != null) {
+            final delay = (rawItem['delay'] as num?)?.toInt();
+            if (delay != null) {
+              delays[group.items[i].tag] = delay;
+            }
+          }
+        }
+      }
+    }
+
+    // 防抖：50ms 内的多次推送只取最后一次
+    _proxiesDebounce?.cancel();
+    _proxiesDebounce = Timer(const Duration(milliseconds: 50), () {
+      proxiesSignal.value = groups;
+      proxyDelaysSignal.value = delays;
+    });
+  }
+
   void handleCoreEvent(CoreEvent event) {
     try {
       final decoded = jsonDecode(event.payload);
@@ -128,9 +164,7 @@ class LibCore {
           }
         case 3: // proxies
           if (decoded is List) {
-            proxiesSignal.value = decoded
-                .map((e) => ProxyGroup.fromJson(e as Map<String, dynamic>))
-                .toList();
+            _updateProxies(decoded);
           }
         case 4: // mode
           if (decoded is Map<String, dynamic>) {
@@ -138,8 +172,8 @@ class LibCore {
           }
         case 5: // vpn state changed
           if (decoded is Map<String, dynamic>) {
-            vpnDisconnectedByUser.value =
-                !(decoded['connected'] as bool? ?? true);
+            final connected = decoded['connected'] as bool? ?? true;
+            if (!connected) onVpnDisconnected?.call();
           }
         case 6: // core logs (internal)
           if (decoded is List) {
@@ -154,6 +188,7 @@ class LibCore {
         case 8: // disconnected
           coreConnected.value = false;
           proxiesSignal.value = [];
+          proxyDelaysSignal.value = {};
       }
     } catch (_) {
       // Defensive: ignore malformed event payloads

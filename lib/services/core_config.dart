@@ -39,14 +39,11 @@ Future<void> initCoreConfig() async {
     });
     _scheduleReload();
   });
-  effect(() {
-    if (LibCore.instance.vpnDisconnectedByUser.value) {
-      // 重置标记，避免 _setTunEnabled 触发的 effect 再次进入此分支
-      LibCore.instance.vpnDisconnectedByUser.value = false;
-      _setTunEnabled(false);
-      vpnConnected.value = false;
-    }
-  });
+  // VPN 断开由内核事件直接回调，避免 effect 循环
+  LibCore.instance.onVpnDisconnected = () {
+    _setTunEnabled(false);
+    vpnConnected.value = false;
+  };
 }
 
 /// 内部修改配置：更新 signal + 立即持久化，effect 跳过重载
