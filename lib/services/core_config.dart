@@ -142,8 +142,6 @@ Future<void> openTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
-      _setTunEnabled(true);
-      vpnConnected.value = true;
     } catch (e) {
       rethrow;
     }
