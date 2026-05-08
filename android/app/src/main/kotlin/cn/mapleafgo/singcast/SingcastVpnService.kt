@@ -222,6 +222,14 @@ class SingcastVpnService : VpnService() {
         }
         AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
         val startMs = System.currentTimeMillis()
+        // 重新设置 TUN fd，因为 startWithContent 会重建内核
+        try {
+            val fd = getTunFd()
+            AppLog.d(TAG, "refreshConfig: re-setting TUN fd=$fd")
+            Mobile.setTunFd(fd)
+        } catch (e: Throwable) {
+            AppLog.e(TAG, "refreshConfig: failed to get TUN fd, falling back to proxy mode", e)
+        }
         Mobile.startWithContent(content, ruleSetProxy)
         val elapsed = System.currentTimeMillis() - startMs
         AppLog.i(TAG, "refreshConfig: core restarted in ${elapsed}ms")
