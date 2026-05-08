@@ -64,6 +64,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
           .firstOrNull;
       if (group == null) return;
 
+      final delays = LibCore.instance.proxyDelaysSignal.value;
       final completed = <String>[];
       for (final tag in testing) {
         final initial = _initialDelays[tag];
@@ -71,8 +72,8 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
           completed.add(tag);
           continue;
         }
-        final item = group.items.where((i) => i.tag == tag).firstOrNull;
-        if (item != null && item.delay > 0 && item.delay != initial) {
+        final currentDelay = delays[tag];
+        if (currentDelay != null && currentDelay > 0 && currentDelay != initial) {
           completed.add(tag);
         }
       }
@@ -182,7 +183,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
     for (final item in group.items) {
       if (!isUsedProxy(item.tag) && !_testingTags.value.contains(item.tag)) {
         tags.add(item.tag);
-        _initialDelays[item.tag] = item.delay;
+        _initialDelays[item.tag] = LibCore.instance.proxyDelaysSignal.peek()[item.tag] ?? 0;
         LibCore.instance.testDelay(item.tag).catchError((_) {});
       }
     }
@@ -321,11 +322,13 @@ class _ProxyList extends StatelessWidget {
 
   List<ProxyGroupItem> _sortedItems(List<ProxyGroupItem> items) {
     items = items.where((item) => !isUsedProxy(item.tag)).toList();
+    final delays = LibCore.instance.proxyDelaysSignal.peek();
     switch (_sortType.value) {
       case SortType.name:
         items.sort((a, b) => a.tag.compareTo(b.tag));
       case SortType.delay:
-        items.sort((a, b) => a.delay.compareTo(b.delay));
+        items.sort((a, b) =>
+            (delays[a.tag] ?? 99999).compareTo(delays[b.tag] ?? 99999));
       case SortType.defaults:
         break;
     }
@@ -373,7 +376,10 @@ class _ProxyTile extends StatelessWidget {
           )),
       subtitle:
           Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
-      trailing: _delayWidget(item.delay, testing, context),
+      trailing: Watch((context) {
+        final delay = LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
+        return _delayWidget(delay, testing, context);
+      }),
       onTap: () async {
         await LibCore.instance.selectProxy(groupName, item.tag);
       },
