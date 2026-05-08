@@ -90,22 +90,11 @@ void startWatchingSelectedFile() {
     // 首次触发：内核已在运行则仅同步数据
     if (!_profileAutoActivated) {
       _profileAutoActivated = true;
-      if (LibCore.instance.coreConnected.value) {
-        _syncRunningCoreData();
-        return;
-      }
+      if (LibCore.instance.coreConnected.value) return;
     }
     profileError.value = null;
     _activateProfile(path);
   });
-}
-
-/// 引擎重建恢复：同步运行中内核的代理数据
-Future<void> _syncRunningCoreData() async {
-  try {
-    final proxies = await LibCore.instance.queryProxies();
-    LibCore.instance.proxiesSignal.value = proxies;
-  } catch (_) {}
 }
 
 /// Merge the profile YAML with the app's [ClashConfig] overrides,

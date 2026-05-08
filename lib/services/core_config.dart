@@ -43,7 +43,6 @@ Future<void> initCoreConfig() async {
     if (LibCore.instance.vpnDisconnectedByUser.value) {
       _setTunEnabled(false);
       vpnConnected.value = false;
-      LibCore.instance.vpnDisconnectedByUser.value = false;
     }
   });
 }
@@ -60,7 +59,6 @@ Future<void> _syncModeToCore(Mode? mode) async {
   if (mode == null) return;
   try {
     await LibCore.instance.setMode(mode.name);
-    LibCore.instance.modeSignal.value = mode.name;
   } catch (e) {
     log('[core_config] setMode(${mode.name}) failed: $e');
   }
