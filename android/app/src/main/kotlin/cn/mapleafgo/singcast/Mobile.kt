@@ -248,23 +248,14 @@ object Mobile {
     fun detectAndReportInterfaces(context: android.content.Context) {
         try {
             val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
-            val json = StringBuilder("[")
-            var first = true
+            val arr = org.json.JSONArray()
             while (interfaces.hasMoreElements()) {
                 val intf = interfaces.nextElement()
-                if (!first) json.append(",")
-                first = false
-                // Use InterfaceAddress to get prefix lengths in CIDR format
-                val addrList = StringBuilder("[")
-                var addrFirst = true
+                val addrs = org.json.JSONArray()
                 for (ia in intf.interfaceAddresses) {
                     val host = ia.address.hostAddress?.substringBefore('%') ?: continue
-                    val prefix = "${host}/${ia.networkPrefixLength}"
-                    if (!addrFirst) addrList.append(",")
-                    addrFirst = false
-                    addrList.append("\"$prefix\"")
+                    addrs.put("${host}/${ia.networkPrefixLength}")
                 }
-                addrList.append("]")
                 val index = try { Os.if_nametoindex(intf.name) } catch (_: Exception) { 0 }
                 var flags = 0
                 if (intf.isUp) flags = flags or 0x1
@@ -276,11 +267,17 @@ object Mobile {
                     intf.name.startsWith("rmnet") || intf.name.startsWith("ccmni") -> 3
                     else -> 1
                 }
-                json.append("{\"name\":\"${intf.name}\",\"index\":$index,\"mtu\":${intf.mtu},\"addresses\":$addrList,\"flags\":$flags,\"type\":$type}")
+                arr.put(org.json.JSONObject().apply {
+                    put("name", intf.name)
+                    put("index", index)
+                    put("mtu", intf.mtu)
+                    put("addresses", addrs)
+                    put("flags", flags)
+                    put("type", type)
+                })
             }
-            json.append("]")
-            singcast.setInterfacesJSON(json.toString())
-            AppLog.d(TAG, "detectAndReportInterfaces: reported ${json.length} chars")
+            singcast.setInterfacesJSON(arr.toString())
+            AppLog.d(TAG, "detectAndReportInterfaces: reported ${arr.length()} interfaces")
         } catch (e: Exception) {
             AppLog.e(TAG, "detectAndReportInterfaces: failed", e)
         }
