@@ -65,11 +65,13 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
-      _channel.invokeMethod('startCoreWithContent', {
-        'content': _prepareMobileConfig(content, tunEnabled: false),
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+    final vpnRunning = await isVpnRunning();
+    _channel.invokeMethod('startCoreWithContent', {
+      'content': _prepareMobileConfig(content, tunEnabled: vpnRunning),
+      'ruleSetProxy': ruleSetProxy ?? '',
+    });
+  }
 
   @override
   Future<void> stopCore() => _channel.invokeMethod('stopCore');
@@ -280,9 +282,6 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   bool get isVpnStarting => _vpnStarting;
-
-  @override
-  bool shouldSkipReload() => _vpnStarting;
 
   String _prepareMobileConfig(String yaml, {bool tunEnabled = true, bool? ipv6}) {
     final editor = YamlEditor(yaml);

@@ -82,10 +82,8 @@ Future<void> changeMode(Mode mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
-  if (LibCore.instance.platform.shouldSkipReload()) return;
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
-    if (LibCore.instance.platform.shouldSkipReload()) return;
     await asyncProfile();
     if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
       _lastSyncedPort = clashConfig.value.mixedPort;

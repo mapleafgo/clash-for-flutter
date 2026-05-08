@@ -53,7 +53,6 @@ abstract class LibCorePlatform {
   Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6});
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy});
   bool get isVpnStarting;
-  bool shouldSkipReload();
 }
 
 class LibCore {
@@ -203,7 +202,6 @@ class LibCore {
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) =>
       _platform.closeTun(mergedContent, ruleSetProxy: ruleSetProxy);
   bool get isVpnStarting => _platform.isVpnStarting;
-  bool shouldSkipReload() => _platform.shouldSkipReload();
 
   // --- Log buffer management ---
 
@@ -421,7 +419,4 @@ class _FfiWorkerBackend implements LibCorePlatform {
 
   @override
   bool get isVpnStarting => false;
-
-  @override
-  bool shouldSkipReload() => false;
 }
