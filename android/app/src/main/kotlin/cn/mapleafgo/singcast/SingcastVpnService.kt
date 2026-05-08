@@ -37,9 +37,9 @@ class SingcastVpnService : VpnService() {
     }
 
     private val binder = LocalBinder()
-    private val lock = Any()
+    private val lock = Any()  // protects pfd (fd read/close must be atomic)
     private var pfd: ParcelFileDescriptor? = null
-    private var running = false
+    @Volatile private var running = false
     @Volatile private var disconnected = false
     private var ipv6Enabled = true
     private var lastUp: Long = 0
@@ -95,23 +95,19 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun connect(configContent: String, ruleSetProxy: String, enableIpv6: Boolean = true) {
-        synchronized(lock) {
-            if (running) {
-                AppLog.w(TAG, "connect: already running, ignoring duplicate start")
-                return
-            }
-            running = true
-            disconnected = false
+        if (running) {
+            AppLog.w(TAG, "connect: already running, ignoring duplicate start")
+            return
         }
+        running = true
+        disconnected = false
         AppLog.i(TAG, "connect: starting VPN connection thread")
         ipv6Enabled = enableIpv6
 
         Thread({
-            synchronized(lock) {
-                if (disconnected) {
-                    AppLog.w(TAG, "connect: disconnected before thread started, aborting")
-                    return@Thread
-                }
+            if (disconnected) {
+                AppLog.w(TAG, "connect: disconnected before thread started, aborting")
+                return@Thread
             }
             try {
                 AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile")
@@ -198,9 +194,7 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "disconnect: VPN fully disconnected")
     }
 
-    fun isRunning(): Boolean {
-        synchronized(lock) { return running }
-    }
+    fun isRunning(): Boolean = running
 
     fun getTunFd(): Int = synchronized(lock) {
         pfd?.fd ?: throw IllegalStateException("TUN not established")
@@ -217,13 +211,10 @@ class SingcastVpnService : VpnService() {
      * The existing TUN fd is reused — only the core is restarted with new config content.
      */
     fun refreshConfig(content: String, ruleSetProxy: String) {
-        synchronized(lock) {
-            if (!running || disconnected) {
-                AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring")
-                return
-            }
+        if (!running || disconnected) {
+            AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring")
+            return
         }
-        // Call outside lock to avoid nested lock (lock -> coreLock) deadlock risk
         AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
         val startMs = System.currentTimeMillis()
         Mobile.startWithContent(content, ruleSetProxy)

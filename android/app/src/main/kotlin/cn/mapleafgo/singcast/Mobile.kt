@@ -330,12 +330,9 @@ object Mobile {
     }
 
     fun unregisterDefaultNetworkCallback(context: android.content.Context) {
-        val callback = synchronized(this) {
-            val cb = defaultNetworkCallback ?: return
-            defaultNetworkCallback = null
-            defaultNetwork = null
-            cb
-        }
+        val callback = defaultNetworkCallback ?: return
+        defaultNetworkCallback = null
+        defaultNetwork = null
         try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
             cm.unregisterNetworkCallback(callback)
