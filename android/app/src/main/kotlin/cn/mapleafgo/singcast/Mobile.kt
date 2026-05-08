@@ -247,7 +247,7 @@ object Mobile {
 
     fun detectAndReportInterfaces(context: android.content.Context) {
         try {
-            val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return
             val arr = org.json.JSONArray()
             while (interfaces.hasMoreElements()) {
                 val intf = interfaces.nextElement()

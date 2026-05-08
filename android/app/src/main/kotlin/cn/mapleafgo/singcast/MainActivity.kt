@@ -244,7 +244,10 @@ class MainActivity : FlutterFragmentActivity() {
                 try { Mobile.setOverridePackages(args?.str("overrideJSON") ?: "{}"); mainHandler.post { result.success(null) } }
                 catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
             }
-            "queryTunOptions" -> result.success(Mobile.queryTunOptions())
+            "queryTunOptions" -> runOnThread {
+                try { val r = Mobile.queryTunOptions(); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
             // Proxy
             "setGroupExpand" -> runOnThread {
                 try {
@@ -263,7 +266,10 @@ class MainActivity : FlutterFragmentActivity() {
                     mainHandler.post { result.success(r) }
                 } catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
             }
-            "queryMemoryStats" -> result.success(Mobile.queryMemoryStats())
+            "queryMemoryStats" -> runOnThread {
+                try { val r = Mobile.queryMemoryStats(); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
             "flushSystemDNS" -> {
                 Mobile.flushSystemDNS()
                 result.success(null)
@@ -351,7 +357,9 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra(SingcastVpnService.EXTRA_IPV6, ipv6)
         }
         startService(intent)
-        bindService(intent, vpnConnection, BIND_AUTO_CREATE)
+        if (!vpnBound) {
+            bindService(intent, vpnConnection, BIND_AUTO_CREATE)
+        }
         result.success(true)
     }
 

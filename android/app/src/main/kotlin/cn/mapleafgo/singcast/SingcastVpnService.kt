@@ -120,6 +120,11 @@ class SingcastVpnService : VpnService() {
                 AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core")
                 Mobile.setTunFd(fd)
 
+                if (disconnected) {
+                    AppLog.w(TAG, "connect: disconnected after setTunFd, aborting")
+                    return@Thread
+                }
+
                 showNotification()
 
                 AppLog.d(TAG, "connect: step 4/5 - starting core with content (${configContent.length} chars)")
@@ -200,10 +205,10 @@ class SingcastVpnService : VpnService() {
         pfd?.fd ?: throw IllegalStateException("TUN not established")
     }
 
-    fun reloadWithNewTun(): Int = synchronized(lock) {
+    fun reloadWithNewTun(): Int {
         val fd = establishTun(ipv6Enabled)
         AppLog.i(TAG, "reloadWithNewTun: new TUN established, fd=$fd")
-        fd
+        return fd
     }
 
     /**
