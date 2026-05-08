@@ -13,6 +13,9 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.BinaryMessenger
+import java.nio.ByteBuffer
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -74,14 +77,13 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.i(tag, "MainActivity: file log initialized")
 
         // 所有 MethodChannel/EventChannel 回调在后台线程执行，JNI 调用不阻塞主线程
-        val bgQueue = flutterEngine.dartExecutor.binaryMessenger.makeBackgroundTaskQueue()
-        val messenger = flutterEngine.dartExecutor.binaryMessenger
+        val messenger = BackgroundTaskMessenger(flutterEngine.dartExecutor.binaryMessenger)
 
-        MethodChannel(messenger, channel, bgQueue).setMethodCallHandler { call, result ->
+        MethodChannel(messenger, channel).setMethodCallHandler { call, result ->
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
-        EventChannel(messenger, eventChannelName, bgQueue).setStreamHandler(object : EventChannel.StreamHandler {
+        EventChannel(messenger, eventChannelName).setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(args: Any?, sink: EventChannel.EventSink) {
                 Mobile.setEventSink(sink)
                 Mobile.setupEventHandler()
@@ -325,4 +327,27 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun Map<String, Any>.str(key: String) = this[key] as? String
     private fun Map<String, Any>.getLong(key: String): Long = (this[key] as? Number)?.toLong() ?: 0
+}
+
+/**
+ * BinaryMessenger 包装器：将 setMessageHandler 注册的回调分发到后台线程池执行。
+ * MethodChannel/EventChannel 通过此 messenger 注册 handler 时，handler 自动在后台线程运行，
+ * JNI 调用不阻塞主线程。send 调用直接委托给底层 messenger（线程安全）。
+ */
+private class BackgroundTaskMessenger(
+    private val delegate: BinaryMessenger,
+    private val executor: java.util.concurrent.ExecutorService = Executors.newCachedThreadPool()
+) : BinaryMessenger {
+    override fun send(channel: String, message: ByteBuffer?) = delegate.send(channel, message)
+    override fun send(channel: String, message: ByteBuffer?, callback: BinaryMessenger.BinaryReply?) =
+        delegate.send(channel, message, callback)
+    override fun setMessageHandler(channel: String, handler: BinaryMessenger.BinaryMessageHandler?) {
+        if (handler == null) {
+            delegate.setMessageHandler(channel, null)
+        } else {
+            delegate.setMessageHandler(channel) { message, reply ->
+                executor.execute { handler.onMessage(message, reply) }
+            }
+        }
+    }
 }
