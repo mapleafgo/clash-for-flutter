@@ -46,11 +46,19 @@ abstract class LibCorePlatform {
   Future<String> checkConfig(String content);
   Future<String> getVersion();
   Future<void> setLocale(String localeID);
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6});
+  Future<void> connectVpn(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  });
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
   void updateVpnTraffic(TrafficSnapshot traffic);
-  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6});
+  Future<void> openTun(
+    String mergedContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  });
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy});
 }
 
@@ -59,7 +67,6 @@ class LibCore {
   LibCore._();
 
   late final LibCorePlatform _platform;
-  StreamSubscription<CoreEvent>? _eventSub;
 
   final trafficSignal = signal<TrafficSnapshot?>(null);
   final logsSignal = signal<List<LogEntry>>([]);
@@ -76,7 +83,9 @@ class LibCore {
   String get _platformLibPath {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     if (Platform.isLinux) return '$exeDir/lib/libsingcast-linux.so';
-    if (Platform.isMacOS) return '$exeDir/../Frameworks/libsingcast-darwin.dylib';
+    if (Platform.isMacOS) {
+      return '$exeDir/../Frameworks/libsingcast-darwin.dylib';
+    }
     if (Platform.isWindows) return '$exeDir/libsingcast-windows.dll';
     throw UnsupportedError('Unsupported platform');
   }
@@ -90,7 +99,6 @@ class LibCore {
       _platform = LibCoreChannel();
       await _platform.init();
     }
-    _eventSub = _platform.events.listen(handleCoreEvent);
     await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
   }
 
@@ -108,9 +116,11 @@ class LibCore {
           }
         case 1: // logs
           if (decoded is List) {
-            appendLogs(decoded
-                .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-                .toList());
+            appendLogs(
+              decoded
+                  .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+                  .toList(),
+            );
           }
         case 2: // connections
           if (decoded is Map<String, dynamic>) {
@@ -133,9 +143,11 @@ class LibCore {
           }
         case 6: // core logs (internal)
           if (decoded is List) {
-            appendLogs(decoded
-                .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-                .toList());
+            appendLogs(
+              decoded
+                  .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+                  .toList(),
+            );
           }
         case 7: // connected
           coreConnected.value = true;
@@ -188,19 +200,28 @@ class LibCore {
   Future<bool> needFindProcess() => _platform.needFindProcess();
   Future<void> writeMessage(int level, String message) =>
       _platform.writeMessage(level, message);
-  Future<String> checkConfig(String content) =>
-      _platform.checkConfig(content);
+  Future<String> checkConfig(String content) => _platform.checkConfig(content);
   Future<String> getVersion() => _platform.getVersion();
   Future<void> setLocale(String localeID) => _platform.setLocale(localeID);
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
-      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
+  Future<void> connectVpn(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) => _platform.connectVpn(
+    configContent,
+    ruleSetProxy: ruleSetProxy,
+    ipv6: ipv6,
+  );
   Future<void> disconnectVpn() => _platform.disconnectVpn();
   Future<bool> isVpnRunning() => _platform.isVpnRunning();
-  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) =>
+  Future<void> openTun(
+    String mergedContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) =>
       _platform.openTun(mergedContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) =>
       _platform.closeTun(mergedContent, ruleSetProxy: ruleSetProxy);
-
 
   // --- Log buffer management ---
 
@@ -251,11 +272,9 @@ class _FfiWorkerBackend implements LibCorePlatform {
   Future<void> init() async {}
 
   @override
-  Future<void> initCore(String homeDir) =>
-      _worker.invoke('CoreInit', {
-        'optionsJSON':
-            jsonEncode({'home_dir': homeDir, 'log_max_lines': 500}),
-      });
+  Future<void> initCore(String homeDir) => _worker.invoke('CoreInit', {
+    'optionsJSON': jsonEncode({'home_dir': homeDir, 'log_max_lines': 500}),
+  });
 
   @override
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
@@ -279,15 +298,12 @@ class _FfiWorkerBackend implements LibCorePlatform {
   @override
   Future<void> resetNetwork() => _worker.invoke('CoreResetNetwork');
 
-
   @override
   Future<void> reloadTUN() => _worker.invoke('CoreReloadTUN');
 
   @override
   Future<void> setOverridePackages(String overrideJSON) =>
-      _worker.invoke('CoreSetOverridePackages', {
-        'overrideJSON': overrideJSON,
-      });
+      _worker.invoke('CoreSetOverridePackages', {'overrideJSON': overrideJSON});
 
   @override
   Future<String> queryTunOptions() =>
@@ -328,10 +344,7 @@ class _FfiWorkerBackend implements LibCorePlatform {
 
   @override
   Future<void> selectProxy(String group, String tag) =>
-      _worker.invoke('CoreSelectProxy', {
-        'group': group,
-        'tag': tag,
-      });
+      _worker.invoke('CoreSelectProxy', {'group': group, 'tag': tag});
 
   @override
   Future<void> testDelay(String name) =>
@@ -343,10 +356,7 @@ class _FfiWorkerBackend implements LibCorePlatform {
 
   @override
   Future<void> setGroupExpand(String group, bool expand) =>
-      _worker.invoke('CoreSetGroupExpand', {
-        'group': group,
-        'expand': expand,
-      });
+      _worker.invoke('CoreSetGroupExpand', {'group': group, 'expand': expand});
 
   @override
   Future<void> closeConnection(String id) =>
@@ -372,36 +382,37 @@ class _FfiWorkerBackend implements LibCorePlatform {
   Future<void> flushSystemDNS() => _worker.invoke('CoreFlushSystemDNS');
 
   @override
-  Future<bool> needFindProcess() =>
-      _worker.invoke<bool>('CoreNeedFindProcess');
+  Future<bool> needFindProcess() => _worker.invoke<bool>('CoreNeedFindProcess');
 
   @override
   Future<void> writeMessage(int level, String message) =>
-      _worker.invoke('CoreWriteMessage', {
-        'level': level,
-        'message': message,
-      });
+      _worker.invoke('CoreWriteMessage', {'level': level, 'message': message});
 
   @override
   Future<String> checkConfig(String content) =>
       _worker.invoke<String>('CoreCheckConfig', {'content': content});
 
   @override
-  Future<String> getVersion() =>
-      _worker.invoke<String>('CoreGetVersion');
+  Future<String> getVersion() => _worker.invoke<String>('CoreGetVersion');
 
   @override
   Future<void> setLocale(String localeID) =>
       _worker.invoke('CoreSetLocale', {'localeID': localeID});
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) {
+  Future<void> connectVpn(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) {
     throw UnsupportedError('connectVpn is only available on mobile platforms');
   }
 
   @override
   Future<void> disconnectVpn() {
-    throw UnsupportedError('disconnectVpn is only available on mobile platforms');
+    throw UnsupportedError(
+      'disconnectVpn is only available on mobile platforms',
+    );
   }
 
   @override
@@ -411,9 +422,12 @@ class _FfiWorkerBackend implements LibCorePlatform {
   void updateVpnTraffic(TrafficSnapshot traffic) {}
 
   @override
-  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) async {}
+  Future<void> openTun(
+    String mergedContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) async {}
 
   @override
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {}
-
 }

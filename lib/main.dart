@@ -57,6 +57,9 @@ void main() async {
 Future<void> _initApp() async {
   await LibCore.instance.init();
 
+  // 订阅内核事件流，驱动 UI 信号更新
+  LibCore.instance.platform.events.listen(LibCore.instance.handleCoreEvent);
+
   // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
     await LibCore.instance
