@@ -87,14 +87,13 @@ void startWatchingSelectedFile() {
         ? file
         : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
     if (!File(path).existsSync()) return;
-    // 首次触发：内核已在运行则仅同步数据，移动端 VPN 未开则跳过
+    // 首次触发：内核已在运行则仅同步数据
     if (!_profileAutoActivated) {
       _profileAutoActivated = true;
       if (LibCore.instance.coreConnected.value) {
         _syncRunningCoreData();
         return;
       }
-      if (!Constants.isDesktop && !vpnConnected.value) return;
     }
     profileError.value = null;
     _activateProfile(path);
