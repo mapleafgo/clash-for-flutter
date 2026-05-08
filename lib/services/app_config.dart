@@ -145,8 +145,6 @@ Future<bool> _activateProfile(String yamlPath) async {
         merged,
         ruleSetProxy: ruleSetProxy.value,
       );
-      // startWithContent 重建内核后不会重发 connected 事件，主动标记
-      LibCore.instance.coreConnected.value = true;
     } catch (e) {
       // 回滚到上次工作配置
       if (previousConfig != null) {
@@ -232,8 +230,6 @@ Profile? get activeProfile {
 Future<bool> asyncProfile() async {
   final file = selectedFile.value;
   if (file == null) return true;
-  // 移动端 VPN 未开且内核未运行，跳过
-  if (!Constants.isDesktop && !vpnConnected.value && !LibCore.instance.coreConnected.value) return true;
   final path = p.isAbsolute(file)
       ? file
       : '${Constants.homeDir.path}${Constants.profilesPath}/$file';

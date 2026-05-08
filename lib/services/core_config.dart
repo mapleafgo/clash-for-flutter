@@ -80,8 +80,6 @@ Future<void> changeMode(Mode mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
-  // 移动端 VPN 未开且内核未运行，跳过
-  if (!Constants.isDesktop && !vpnConnected.value && !LibCore.instance.coreConnected.value) return;
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
     await asyncProfile();
