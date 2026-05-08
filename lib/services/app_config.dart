@@ -27,7 +27,6 @@ final coreActivating = signal(false);
 final vpnConnected = signal(false);
 
 bool _activating = false;
-bool vpnStarting = false;
 Timer? _saveTimer;
 String? _lastWorkingConfig; // 用于回滚到最后可用配置
 
@@ -119,8 +118,8 @@ Future<void> _syncRunningCoreData() async {
 Future<bool> _activateProfile(String yamlPath) async {
   if (_activating) return true;
 
-  // 移动端 VPN 启动中或已连接时，由 VPN 服务管理内核，跳过
-  if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) {
+  // VPN 启动中或已连接时，由 VPN 服务管理内核，跳过
+  if (LibCore.instance.platform.shouldSkipReload() || vpnConnected.value) {
     if (vpnConnected.value) await _syncRunningCoreData();
     return true;
   }
@@ -147,13 +146,9 @@ Future<bool> _activateProfile(String yamlPath) async {
       // 某些配置问题只有在实际运行时才会发现
     }
 
-    final config = Platform.isAndroid || Platform.isIOS
-        ? prepareMobileConfig(merged, tunEnabled: vpnConnected.value)
-        : merged;
-
     try {
       await LibCore.instance.startCoreWithContent(
-        config,
+        merged,
         ruleSetProxy: ruleSetProxy.value,
       );
     } catch (e) {

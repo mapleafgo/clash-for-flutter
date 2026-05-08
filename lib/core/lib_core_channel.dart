@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 import 'ffi_worker.dart';
 import 'lib_core.dart';
@@ -15,6 +17,7 @@ class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
   static const _eventChannel = EventChannel('cn.mapleafgo/singcast/events');
   final _eventController = StreamController<CoreEvent>.broadcast();
+  bool _vpnStarting = false;
 
   @override
   Stream<CoreEvent> get events => _eventController.stream;
@@ -64,7 +67,7 @@ class LibCoreChannel implements LibCorePlatform {
   @override
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
       _channel.invokeMethod('startCoreWithContent', {
-        'content': content,
+        'content': _prepareMobileConfig(content, tunEnabled: false),
         'ruleSetProxy': ruleSetProxy ?? '',
       });
 
@@ -246,5 +249,57 @@ class LibCoreChannel implements LibCorePlatform {
         'downTotal': traffic.downTotal,
       });
     } catch (_) {}
+  }
+
+  // --- TUN / VPN ---
+
+  @override
+  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) async {
+    _vpnStarting = true;
+    try {
+      try {
+        await stopCore();
+      } catch (_) {}
+      await connectVpn(
+        _prepareMobileConfig(mergedContent, ipv6: ipv6),
+        ruleSetProxy: ruleSetProxy,
+        ipv6: ipv6,
+      );
+    } finally {
+      _vpnStarting = false;
+    }
+  }
+
+  @override
+  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {
+    try {
+      await disconnectVpn();
+    } catch (_) {}
+    await startCoreWithContent(mergedContent, ruleSetProxy: ruleSetProxy);
+  }
+
+  @override
+  bool get isVpnStarting => _vpnStarting;
+
+  @override
+  bool shouldSkipReload() => _vpnStarting;
+
+  String _prepareMobileConfig(String yaml, {bool tunEnabled = true, bool? ipv6}) {
+    final editor = YamlEditor(yaml);
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && !doc.containsKey('tun')) {
+      editor.update(['tun'], {});
+    }
+    if (tunEnabled) {
+      editor.update(['tun', 'enable'], true);
+      editor.update(['tun', 'auto-route'], false);
+      editor.update(['tun', 'strict-route'], false);
+    } else {
+      editor.update(['tun', 'enable'], false);
+    }
+    if (ipv6 != null) {
+      editor.update(['ipv6'], ipv6);
+    }
+    return editor.toString();
   }
 }

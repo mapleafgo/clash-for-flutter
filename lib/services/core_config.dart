@@ -10,8 +10,6 @@ import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
@@ -84,10 +82,10 @@ Future<void> changeMode(Mode mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
-  if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) return;
+  if (LibCore.instance.platform.shouldSkipReload()) return;
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
-    if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) return;
+    if (LibCore.instance.platform.shouldSkipReload()) return;
     await asyncProfile();
     if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
       _lastSyncedPort = clashConfig.value.mixedPort;
@@ -132,19 +130,48 @@ Future<void> toggleTun(bool enable) async {
 }
 
 Future<void> openTun() async {
-  if (Platform.isAndroid || Platform.isIOS) {
-    await _openTunMobile();
-  } else {
-    await _openTunDesktop();
+  if (!Constants.isDesktop) {
+    final file = selectedFile.value;
+    if (file == null) return;
+    final path = _resolveProfilePath(file);
+    if (!File(path).existsSync()) return;
+
+    try {
+      final yamlContent = await File(path).readAsString();
+      final merged = mergeProfileConfig(yamlContent);
+      await LibCore.instance.openTun(
+        merged,
+        ruleSetProxy: ruleSetProxy.value,
+        ipv6: clashConfig.value.ipv6,
+      );
+      _setTunEnabled(true);
+      vpnConnected.value = true;
+    } catch (e) {
+      rethrow;
+    }
+    return;
   }
+  await _openTunDesktop();
 }
 
 Future<void> closeTun() async {
-  if (Platform.isAndroid || Platform.isIOS) {
-    await _closeTunMobile();
-  } else {
-    await _closeTunDesktop();
+  if (!Constants.isDesktop) {
+    _setTunEnabled(false);
+    vpnConnected.value = false;
+
+    final file = selectedFile.value;
+    if (file == null) return;
+    final path = _resolveProfilePath(file);
+    if (!File(path).existsSync()) return;
+
+    try {
+      final yamlContent = await File(path).readAsString();
+      final merged = mergeProfileConfig(yamlContent);
+      await LibCore.instance.closeTun(merged, ruleSetProxy: ruleSetProxy.value);
+    } catch (_) {}
+    return;
   }
+  await _closeTunDesktop();
 }
 
 // --- Desktop TUN ---
@@ -208,92 +235,8 @@ void ensureTunEnabled(bool enabled) {
   }
 }
 
-// --- Mobile TUN ---
-
-Future<void> _openTunMobile() async {
-  final file = selectedFile.value;
-  if (file == null) return;
-
-  final path = _resolveProfilePath(file);
-  if (!File(path).existsSync()) return;
-
-  vpnStarting = true;
-  try {
-    // 先停止代理模式下的内核，避免 VPN 启动时内核冲突
-    try {
-      await LibCore.instance.stopCore();
-    } catch (_) {}
-
-    final yamlContent = await File(path).readAsString();
-    final merged = mergeProfileConfig(yamlContent);
-    final ipv6 = clashConfig.value.ipv6;
-    await LibCore.instance.connectVpn(
-      prepareMobileConfig(merged, ipv6: ipv6),
-      ruleSetProxy: ruleSetProxy.value,
-      ipv6: ipv6,
-    );
-
-    _setTunEnabled(true);
-    vpnConnected.value = true;
-  } catch (e) {
-    vpnStarting = false;
-    rethrow;
-  }
-  vpnStarting = false;
-}
-
-Future<void> _closeTunMobile() async {
-  try {
-    await LibCore.instance.disconnectVpn();
-  } catch (_) {}
-
-  _setTunEnabled(false);
-  vpnConnected.value = false;
-
-  // 关闭 TUN 后重新以代理模式启动内核，保持 API 可用
-  final file = selectedFile.value;
-  if (file == null) return;
-  final path = _resolveProfilePath(file);
-  if (!File(path).existsSync()) return;
-
-  try {
-    final yamlContent = await File(path).readAsString();
-    final merged = mergeProfileConfig(yamlContent);
-    await LibCore.instance.startCoreWithContent(
-      prepareMobileConfig(merged, tunEnabled: false),
-      ruleSetProxy: ruleSetProxy.value,
-    );
-  } catch (_) {}
-}
 
 String _resolveProfilePath(String file) {
   if (file.startsWith('/')) return file;
   return '${Constants.homeDir.path}${Constants.profilesPath}/$file';
-}
-
-/// Modify config for mobile (Android/iOS).
-/// VpnService / Network Extension handles routing; the Go platform layer
-/// skips interface detection for mobile (runtime.GOOS check), so
-/// auto-detect-interface can safely remain true (default).
-/// When [tunEnabled] (VPN mode):
-///   enable: true, auto-route: false, strict-route: false
-/// When ![tunEnabled] (proxy mode):
-///   enable: false
-String prepareMobileConfig(String yaml, {bool tunEnabled = true, bool? ipv6}) {
-  final editor = YamlEditor(yaml);
-  final doc = loadYaml(editor.toString());
-  if (doc is YamlMap && !doc.containsKey('tun')) {
-    editor.update(['tun'], {});
-  }
-  if (tunEnabled) {
-    editor.update(['tun', 'enable'], true);
-    editor.update(['tun', 'auto-route'], false);
-    editor.update(['tun', 'strict-route'], false);
-  } else {
-    editor.update(['tun', 'enable'], false);
-  }
-  if (ipv6 != null) {
-    editor.update(['ipv6'], ipv6);
-  }
-  return editor.toString();
 }

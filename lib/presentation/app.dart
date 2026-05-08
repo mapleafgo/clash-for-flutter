@@ -37,7 +37,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   bool _syncing = false;
 
   Future<void> _syncVpnState() async {
-    if (Constants.isDesktop || _syncing || vpnStarting) return;
+    if (Constants.isDesktop || _syncing || LibCore.instance.platform.isVpnStarting) return;
     _syncing = true;
     try {
       final running = await LibCore.instance.isVpnRunning();

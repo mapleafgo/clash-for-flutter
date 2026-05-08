@@ -50,6 +50,10 @@ abstract class LibCorePlatform {
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
   void updateVpnTraffic(TrafficSnapshot traffic);
+  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6});
+  Future<void> closeTun(String mergedContent, {String? ruleSetProxy});
+  bool get isVpnStarting;
+  bool shouldSkipReload();
 }
 
 class LibCore {
@@ -194,6 +198,12 @@ class LibCore {
       _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
   Future<void> disconnectVpn() => _platform.disconnectVpn();
   Future<bool> isVpnRunning() => _platform.isVpnRunning();
+  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) =>
+      _platform.openTun(mergedContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
+  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) =>
+      _platform.closeTun(mergedContent, ruleSetProxy: ruleSetProxy);
+  bool get isVpnStarting => _platform.isVpnStarting;
+  bool shouldSkipReload() => _platform.shouldSkipReload();
 
   // --- Log buffer management ---
 
@@ -402,4 +412,16 @@ class _FfiWorkerBackend implements LibCorePlatform {
 
   @override
   void updateVpnTraffic(TrafficSnapshot traffic) {}
+
+  @override
+  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) async {}
+
+  @override
+  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {}
+
+  @override
+  bool get isVpnStarting => false;
+
+  @override
+  bool shouldSkipReload() => false;
 }
