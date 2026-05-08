@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -8,18 +6,9 @@ import 'package:singcast/domain/enums.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
-import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/format.dart';
-
-String _formatUptime(int? startedAt) {
-  if (startedAt == null || startedAt == 0) return '--';
-  final started = DateTime.fromMillisecondsSinceEpoch(startedAt * 1000);
-  final diff = DateTime.now().difference(started);
-  if (diff.inDays > 0) return '${diff.inDays}天${diff.inHours % 24}时';
-  if (diff.inHours > 0) return '${diff.inHours}时${diff.inMinutes % 60}分';
-  return '${diff.inMinutes}分${diff.inSeconds % 60}秒';
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -53,25 +42,23 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: LayoutBuilder(
               builder: (_, constraints) {
-                final cols = constraints.maxWidth > 600
-                    ? 3
-                    : (constraints.maxWidth > 350 ? 2 : 1);
+                final cols = constraints.maxWidth > 600 ? 3 : (constraints.maxWidth > 350 ? 2 : 1);
+                final cards = <Widget>[
+                  const _SpeedCard(),
+                  const _TrafficTotalCard(),
+                  const _ModeCard(),
+                  if (Constants.isDesktop) const _ProxyModeCard(),
+                  const _RuntimeCard(),
+                  const _ConnectionsCard(),
+                  const _ConnectionDetailCard(),
+                ];
                 return MasonryGridView.count(
                   crossAxisCount: cols,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   padding: const EdgeInsets.all(16),
-                  itemCount: Constants.isDesktop ? 7 : 6,
-                  itemBuilder: (_, index) => switch (index) {
-                    0 => const _SpeedCard(),
-                    1 => const _TrafficTotalCard(),
-                    2 => const _RuntimeCard(),
-                    3 => const _ConnectionsCard(),
-                    4 => const _ConnectionDetailCard(),
-                    5 => const _ModeCard(),
-                    6 when Constants.isDesktop => const _ProxyModeCard(),
-                    _ => const SizedBox.shrink(),
-                  },
+                  itemCount: cards.length,
+                  itemBuilder: (_, index) => cards[index],
                 );
               },
             ),
@@ -93,12 +80,7 @@ class _CardShell extends StatelessWidget {
   final double height;
   final Widget child;
 
-  const _CardShell({
-    required this.icon,
-    required this.title,
-    required this.height,
-    required this.child,
-  });
+  const _CardShell({required this.icon, required this.title, required this.height, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -121,10 +103,9 @@ class _CardShell extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -145,20 +126,13 @@ class _StatBadge extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatBadge({
-    required this.icon,
-    required this.value,
-    required this.color,
-  });
+  const _StatBadge({required this.icon, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -168,10 +142,7 @@ class _StatBadge extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -186,34 +157,23 @@ class _StatRow extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatRow({
-    required this.icon,
-    required this.value,
-    required this.color,
-  });
+  const _StatRow({required this.icon, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 10),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -239,22 +199,14 @@ class _SpeedCard extends StatelessWidget {
           return _CardShell(
             icon: Icons.speed,
             title: '网速',
-            height: narrow ? _mediumH : _smallH,
+            height: _smallH,
             child: narrow
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _StatRow(
-                        icon: Icons.arrow_upward,
-                        value: '${formatBytes(up)}/s',
-                        color: Colors.deepOrange,
-                      ),
-                      const SizedBox(height: 16),
-                      _StatRow(
-                        icon: Icons.arrow_downward,
-                        value: '${formatBytes(down)}/s',
-                        color: Colors.blue,
-                      ),
+                      _StatRow(icon: Icons.arrow_upward, value: '${formatBytes(up)}/s', color: Colors.deepOrange),
+                      const SizedBox(height: 6),
+                      _StatRow(icon: Icons.arrow_downward, value: '${formatBytes(down)}/s', color: Colors.blue),
                     ],
                   )
                 : Row(
@@ -318,115 +270,52 @@ class _ConnectionsCard extends StatelessWidget {
   }
 }
 
-// --- Runtime Card (Memory + Goroutines + Uptime) ---
+// --- Runtime Card (Memory + Goroutines) ---
 
-class _RuntimeCard extends StatefulWidget {
+class _RuntimeCard extends StatelessWidget {
   const _RuntimeCard();
-
-  @override
-  State<_RuntimeCard> createState() => _RuntimeCardState();
-}
-
-class _RuntimeCardState extends State<_RuntimeCard> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final traffic = LibCore.instance.trafficSignal.value;
-      final connected = LibCore.instance.coreConnected.value;
       final memory = traffic?.memory ?? 0;
       final goroutines = traffic?.goroutines ?? 0;
-      final uptime = _formatUpline(traffic?.startedAt, connected);
-      final cs = Theme.of(context).colorScheme;
-      return _CardShell(
-        icon: Icons.memory,
-        title: '运行状态',
-        height: _mediumH,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _RuntimeRow(
-              icon: Icons.timer_outlined,
-              label: '运行时长',
-              value: uptime,
-              color: connected ? Colors.green : cs.onSurfaceVariant,
-            ),
-            const SizedBox(height: 10),
-            _RuntimeRow(
-              icon: Icons.data_object,
-              label: '协程数',
-              value: '$goroutines',
-              color: Colors.teal,
-            ),
-            const SizedBox(height: 10),
-            _RuntimeRow(
-              icon: Icons.memory_outlined,
-              label: '内存占用',
-              value: formatBytes(memory),
-              color: Colors.purple,
-            ),
-          ],
-        ),
+      return LayoutBuilder(
+        builder: (_, constraints) {
+          final narrow = constraints.maxWidth < 200;
+          return _CardShell(
+            icon: Icons.memory,
+            title: '运行状态',
+            height: _smallH,
+            child: narrow
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatRow(icon: Icons.data_object, value: '$goroutines 协程', color: Colors.teal),
+                      const SizedBox(height: 6),
+                      _StatRow(icon: Icons.memory_outlined, value: formatBytes(memory), color: Colors.purple),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _StatBadge(icon: Icons.data_object, value: '$goroutines 协程', color: Colors.teal),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatBadge(
+                          icon: Icons.memory_outlined,
+                          value: formatBytes(memory),
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
       );
     });
-  }
-
-  String _formatUpline(int? startedAt, bool connected) {
-    if (!connected) return '未运行';
-    return _formatUptime(startedAt);
-  }
-}
-
-class _RuntimeRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _RuntimeRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -441,29 +330,35 @@ class _ConnectionDetailCard extends StatelessWidget {
       final traffic = LibCore.instance.trafficSignal.value;
       final connsIn = traffic?.connsIn ?? 0;
       final connsOut = traffic?.connsOut ?? 0;
-      return _CardShell(
-        icon: Icons.swap_vert,
-        title: '连接详情',
-        height: _smallH,
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_downward,
-                value: '$connsIn 入站',
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatBadge(
-                icon: Icons.arrow_upward,
-                value: '$connsOut 出站',
-                color: Colors.deepOrange,
-              ),
-            ),
-          ],
-        ),
+      return LayoutBuilder(
+        builder: (_, constraints) {
+          final narrow = constraints.maxWidth < 200;
+          return _CardShell(
+            icon: Icons.swap_vert,
+            title: '连接详情',
+            height: _smallH,
+            child: narrow
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatRow(icon: Icons.arrow_downward, value: '$connsIn 入站', color: Colors.blue),
+                      const SizedBox(height: 6),
+                      _StatRow(icon: Icons.arrow_upward, value: '$connsOut 出站', color: Colors.deepOrange),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _StatBadge(icon: Icons.arrow_downward, value: '$connsIn 入站', color: Colors.blue),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatBadge(icon: Icons.arrow_upward, value: '$connsOut 出站', color: Colors.deepOrange),
+                      ),
+                    ],
+                  ),
+          );
+        },
       );
     });
   }
@@ -496,10 +391,7 @@ class _ToggleFabState extends State<_ToggleFab> {
             ? SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: on ? Colors.white : cs.onPrimaryContainer,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
               )
             : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
         label: Text(_loading ? '切换中...' : (on ? '关闭' : '开启')),
@@ -543,22 +435,14 @@ class _TrafficTotalCard extends StatelessWidget {
           return _CardShell(
             icon: Icons.data_usage,
             title: '累计流量',
-            height: narrow ? _mediumH : _smallH,
+            height: _smallH,
             child: narrow
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _StatRow(
-                        icon: Icons.arrow_upward,
-                        value: formatBytes(upTotal),
-                        color: Colors.deepOrange,
-                      ),
-                      const SizedBox(height: 16),
-                      _StatRow(
-                        icon: Icons.arrow_downward,
-                        value: formatBytes(downTotal),
-                        color: Colors.blue,
-                      ),
+                      _StatRow(icon: Icons.arrow_upward, value: formatBytes(upTotal), color: Colors.deepOrange),
+                      const SizedBox(height: 6),
+                      _StatRow(icon: Icons.arrow_downward, value: formatBytes(downTotal), color: Colors.blue),
                     ],
                   )
                 : Row(
@@ -591,11 +475,7 @@ class _TrafficTotalCard extends StatelessWidget {
 
 const _modeLabels = {Mode.rule: '规则', Mode.global: '全局', Mode.direct: '直连'};
 
-const _modeIcons = {
-  Mode.rule: Icons.rule,
-  Mode.global: Icons.public,
-  Mode.direct: Icons.phonelink,
-};
+const _modeIcons = {Mode.rule: Icons.rule, Mode.global: Icons.public, Mode.direct: Icons.phonelink};
 
 class _ModeCard extends StatelessWidget {
   const _ModeCard();
@@ -614,9 +494,7 @@ class _ModeCard extends StatelessWidget {
             for (final mode in Mode.values)
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: mode == Mode.values.last ? 0 : 8,
-                  ),
+                  padding: EdgeInsets.only(bottom: mode == Mode.values.last ? 0 : 8),
                   child: _ModeOption(
                     icon: _modeIcons[mode]!,
                     label: _modeLabels[mode]!,
@@ -638,12 +516,7 @@ class _ModeOption extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  const _ModeOption({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
+  const _ModeOption({required this.icon, required this.label, required this.selected, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -652,20 +525,14 @@ class _ModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected
-            ? cs.primaryContainer.withValues(alpha: 0.3)
-            : Colors.transparent,
+        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.3) : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 14),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: selected ? cs.primary : cs.onSurfaceVariant,
-          ),
+          Icon(icon, size: 24, color: selected ? cs.primary : cs.onSurfaceVariant),
           const SizedBox(width: 12),
           Text(
             label,
@@ -727,12 +594,7 @@ class _ProxyModeOption extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ProxyModeOption({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ProxyModeOption({required this.icon, required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -741,9 +603,7 @@ class _ProxyModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected
-            ? cs.primaryContainer.withValues(alpha: 0.3)
-            : Colors.transparent,
+        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.3) : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -751,11 +611,7 @@ class _ProxyModeOption extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 28,
-            color: selected ? cs.primary : cs.onSurfaceVariant,
-          ),
+          Icon(icon, size: 28, color: selected ? cs.primary : cs.onSurfaceVariant),
           const SizedBox(height: 6),
           Text(
             label,
@@ -790,12 +646,7 @@ class _InitErrorCard extends StatelessWidget {
               Icon(Icons.error_outline, color: cs.error),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  err,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer),
-                ),
+                child: Text(err, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer)),
               ),
               IconButton(
                 icon: Icon(Icons.close, size: 18, color: cs.onErrorContainer),

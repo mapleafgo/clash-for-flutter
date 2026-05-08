@@ -8,6 +8,7 @@ class AppDelegate: FlutterAppDelegate {
 
     private let singcast = FfiSingcast()
     private var eventSink: FlutterEventSink?
+    private var vpnConnected = false
     private let bgQueue = DispatchQueue(label: "cn.mapleafgo.singcast.core", qos: .userInitiated)
 
     private lazy var eventHandler = SingcastEventHandler { [weak self] eventType, jsonPayload in
@@ -52,8 +53,14 @@ class AppDelegate: FlutterAppDelegate {
                 try self.singcast.init_(args["homeDir"] as? String ?? "")
             }
         case "startCoreWithContent":
-            runAsync(result: result) {
-                try self.singcast.startWithContent(args["content"] as? String ?? "", ruleSetProxy: args["ruleSetProxy"] as? String ?? "")
+            let content = args["content"] as? String ?? ""
+            let proxy = args["ruleSetProxy"] as? String ?? ""
+            if vpnConnected {
+                reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
+            } else {
+                runAsync(result: result) {
+                    try self.singcast.startWithContent(content, ruleSetProxy: proxy)
+                }
             }
         case "stopCore":
             runAsync(result: result) {
@@ -62,10 +69,6 @@ class AppDelegate: FlutterAppDelegate {
         case "closeCore":
             runAsync(result: result) {
                 self.singcast.close()
-            }
-        case "reloadConfig":
-            runAsync(result: result) {
-                try self.singcast.reloadConfig()
             }
 
         // TUN / VPN
@@ -175,6 +178,7 @@ class AppDelegate: FlutterAppDelegate {
                         "configContent": configContent as NSObject,
                         "ruleSetProxy": ruleSetProxy as NSObject,
                     ])
+                    self.vpnConnected = true
                     result(true)
                 } catch {
                     result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
@@ -186,7 +190,28 @@ class AppDelegate: FlutterAppDelegate {
     private func stopTunnel(result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, _ in
             (managers?.first?.connection as? NETunnelProviderSession)?.stopVPNTunnel()
+            self.vpnConnected = false
             result(true)
+        }
+    }
+
+    private func reloadTunnel(configContent: String, ruleSetProxy: String, result: @escaping FlutterResult) {
+        NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+            guard let session = managers?.first?.connection as? NETunnelProviderSession else {
+                result(FlutterError(code: "TUNNEL_ERROR", message: "No active tunnel session", details: nil))
+                return
+            }
+            let payload: [String: String] = [
+                "configContent": configContent,
+                "ruleSetProxy": ruleSetProxy,
+            ]
+            guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+                result(FlutterError(code: "TUNNEL_ERROR", message: "Failed to serialize config", details: nil))
+                return
+            }
+            session.sendProviderMessage(data) { _ in
+                result(nil)
+            }
         }
     }
 }

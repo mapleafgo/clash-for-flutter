@@ -84,8 +84,10 @@ Future<void> changeMode(Mode mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
+  if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) return;
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
+    if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) return;
     await asyncProfile();
     if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
       _lastSyncedPort = clashConfig.value.mixedPort;
@@ -195,6 +197,17 @@ void _setTunEnabled(bool enable) {
   _saveSync();
 }
 
+/// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
+void ensureTunEnabled(bool enabled) {
+  if (clashConfig.value.tunEnabled != enabled) {
+    _lastSyncedTun = enabled;
+    clashConfig.value = clashConfig.value.copyWith(
+      tun: TunConfig(enable: enabled),
+    );
+    _saveSync();
+  }
+}
+
 // --- Mobile TUN ---
 
 Future<void> _openTunMobile() async {
@@ -204,6 +217,7 @@ Future<void> _openTunMobile() async {
   final path = _resolveProfilePath(file);
   if (!File(path).existsSync()) return;
 
+  vpnStarting = true;
   try {
     // 先停止代理模式下的内核，避免 VPN 启动时内核冲突
     try {
@@ -212,16 +226,20 @@ Future<void> _openTunMobile() async {
 
     final yamlContent = await File(path).readAsString();
     final merged = mergeProfileConfig(yamlContent);
+    final ipv6 = clashConfig.value.ipv6;
     await LibCore.instance.connectVpn(
-      prepareMobileConfig(merged),
+      prepareMobileConfig(merged, ipv6: ipv6),
       ruleSetProxy: ruleSetProxy.value,
+      ipv6: ipv6,
     );
 
     _setTunEnabled(true);
     vpnConnected.value = true;
   } catch (e) {
+    vpnStarting = false;
     rethrow;
   }
+  vpnStarting = false;
 }
 
 Future<void> _closeTunMobile() async {
@@ -261,7 +279,7 @@ String _resolveProfilePath(String file) {
 ///   enable: true, auto-route: false, strict-route: false
 /// When ![tunEnabled] (proxy mode):
 ///   enable: false
-String prepareMobileConfig(String yaml, {bool tunEnabled = true}) {
+String prepareMobileConfig(String yaml, {bool tunEnabled = true, bool? ipv6}) {
   final editor = YamlEditor(yaml);
   final doc = loadYaml(editor.toString());
   if (doc is YamlMap && !doc.containsKey('tun')) {
@@ -273,6 +291,9 @@ String prepareMobileConfig(String yaml, {bool tunEnabled = true}) {
     editor.update(['tun', 'strict-route'], false);
   } else {
     editor.update(['tun', 'enable'], false);
+  }
+  if (ipv6 != null) {
+    editor.update(['ipv6'], ipv6);
   }
   return editor.toString();
 }

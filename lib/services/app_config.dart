@@ -27,6 +27,7 @@ final coreActivating = signal(false);
 final vpnConnected = signal(false);
 
 bool _activating = false;
+bool vpnStarting = false;
 Timer? _saveTimer;
 String? _lastWorkingConfig; // 用于回滚到最后可用配置
 
@@ -77,6 +78,8 @@ void _save() {
   ));
 }
 
+bool _profileAutoActivated = false;
+
 void startWatchingSelectedFile() {
   effect(() {
     final file = selectedFile.value;
@@ -85,13 +88,25 @@ void startWatchingSelectedFile() {
         ? file
         : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
     if (!File(path).existsSync()) return;
+    // 首次触发时内核已在运行（引擎重建恢复），仅同步数据
+    if (!_profileAutoActivated) {
+      _profileAutoActivated = true;
+      if (LibCore.instance.coreConnected.value) {
+        _syncRunningCoreData();
+        return;
+      }
+    }
     profileError.value = null;
-    _activateProfile(path).then((ok) {
-      if (!ok) profileError.value = '配置激活失败';
-    }).catchError((e) {
-      profileError.value = e.toString();
-    });
+    _activateProfile(path);
   });
+}
+
+/// 引擎重建恢复：同步运行中内核的代理数据
+Future<void> _syncRunningCoreData() async {
+  try {
+    final proxies = await LibCore.instance.queryProxies();
+    LibCore.instance.proxiesSignal.value = proxies;
+  } catch (_) {}
 }
 
 /// Merge the profile YAML with the app's [ClashConfig] overrides,
@@ -103,6 +118,13 @@ void startWatchingSelectedFile() {
 /// 3. 状态一致性 - 确保 VPN 状态正确同步
 Future<bool> _activateProfile(String yamlPath) async {
   if (_activating) return true;
+
+  // 移动端 VPN 启动中或已连接时，由 VPN 服务管理内核，跳过
+  if (!Constants.isDesktop && (vpnStarting || vpnConnected.value)) {
+    if (vpnConnected.value) await _syncRunningCoreData();
+    return true;
+  }
+
   _activating = true;
   coreActivating.value = true;
 
@@ -125,15 +147,31 @@ Future<bool> _activateProfile(String yamlPath) async {
       // 某些配置问题只有在实际运行时才会发现
     }
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final mobileConfig = prepareMobileConfig(merged);
-      final ok = await _hotReload(mobileConfig, previousConfig);
-      if (!ok) return false;
-    } else {
+    final config = Platform.isAndroid || Platform.isIOS
+        ? prepareMobileConfig(merged, tunEnabled: vpnConnected.value)
+        : merged;
+
+    try {
       await LibCore.instance.startCoreWithContent(
-        merged,
+        config,
         ruleSetProxy: ruleSetProxy.value,
       );
+    } catch (e) {
+      // 回滚到上次工作配置
+      if (previousConfig != null) {
+        try {
+          await LibCore.instance.startCoreWithContent(
+            previousConfig,
+            ruleSetProxy: ruleSetProxy.value,
+          );
+          profileError.value = '新配置失败，已回滚: $e';
+        } catch (_) {
+          profileError.value = '配置失败且回滚失败: $e';
+        }
+      } else {
+        profileError.value = '内核启动失败: ${e.toString()}';
+      }
+      return false;
     }
 
     // 配置成功，保存为最后工作配置
@@ -146,34 +184,6 @@ Future<bool> _activateProfile(String yamlPath) async {
   } finally {
     _activating = false;
     coreActivating.value = false;
-  }
-}
-
-/// 热重载配置，失败时回滚到上次可用配置
-Future<bool> _hotReload(String newConfig, String? previousConfig) async {
-  try {
-    await LibCore.instance.reloadConfig(
-      newConfig,
-      ruleSetProxy: ruleSetProxy.value,
-    );
-    await LibCore.instance.queryProxies();
-    return true;
-  } catch (e) {
-    if (previousConfig != null) {
-      try {
-        profileError.value = '新配置失败，正在回滚...';
-        await LibCore.instance.reloadConfig(
-          previousConfig,
-          ruleSetProxy: ruleSetProxy.value,
-        );
-        profileError.value = '配置已回滚到上次可用状态';
-      } catch (_) {
-        profileError.value = '配置失败且回滚失败: $e';
-      }
-    } else {
-      profileError.value = '配置加载失败: $e';
-    }
-    return false;
   }
 }
 

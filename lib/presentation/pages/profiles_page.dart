@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/subscription.dart';
 import 'package:singcast/utils/format.dart';
@@ -29,7 +30,6 @@ class _ProfilesPageState extends State<ProfilesPage> {
   final _scrollController = ScrollController();
   final _fabVisible = ValueNotifier<bool>(true);
   double _lastOffset = 0;
-  bool _showingLoading = false;
 
   @override
   void initState() {
@@ -143,6 +143,17 @@ class _ProfilesPageState extends State<ProfilesPage> {
     final destPath = p.join(profilesPath, fileName);
     await File(sourcePath).copy(destPath);
 
+    final validation = await LibCore.instance.checkConfig(
+      await File(destPath).readAsString(),
+    );
+    if (validation.isNotEmpty) {
+      await File(destPath).delete();
+      if (context.mounted) {
+        showErrorDialog(context, '配置校验失败: $validation');
+      }
+      return;
+    }
+
     final profile = Profile(
       file: fileName,
       name: fileName,
@@ -151,7 +162,6 @@ class _ProfilesPageState extends State<ProfilesPage> {
     );
     profiles.value = [...profiles.value, profile];
     if (!context.mounted) return;
-    _showLoadingDialog(context);
     selectedFile.value = fileName;
   }
 
@@ -162,44 +172,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
     );
   }
 
-  void _showLoadingDialog(BuildContext context) {
-    if (_showingLoading) return;
-    _showingLoading = true;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Watch((_) {
-        if (!coreActivating.value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_showingLoading) {
-              _showingLoading = false;
-              Navigator.of(context, rootNavigator: true).pop();
-            }
-          });
-        }
-        return const PopScope(
-          canPop: false,
-          child: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
-      }),
-    );
-  }
-
   // _showInputDialog with initial value is in _ProfileCard below
-}
-
-Future<void> _waitForCore() async {
-  if (!coreActivating.value) return;
-  final completer = Completer<void>();
-  final dispose = effect(() {
-    if (!coreActivating.value && !completer.isCompleted) {
-      completer.complete();
-    }
-  });
-  await completer.future;
-  dispose();
 }
 
 class _ProfileCard extends StatelessWidget {
@@ -225,10 +198,6 @@ class _ProfileCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          final state = context.findAncestorStateOfType<_ProfilesPageState>();
-          if (state != null && !state._showingLoading) {
-            state._showLoadingDialog(context);
-          }
           selectedFile.value = profile.file;
         },
         borderRadius: BorderRadius.circular(16),
@@ -407,13 +376,24 @@ class _ProfileCard extends StatelessWidget {
         profilesDir: profilesPath,
         name: profile.name,
       );
+
+      final validation = await LibCore.instance.checkConfig(
+        await File(p.join(profilesPath, updated.file)).readAsString(),
+      );
+      if (validation.isNotEmpty) {
+        await File(p.join(profilesPath, updated.file)).delete();
+        if (context.mounted) {
+          showErrorDialog(context, '配置校验失败: $validation');
+        }
+        return;
+      }
+
       final isActive = selectedFile.value == profile.file;
       final list = profiles.value.map((p) =>
           p.file == profile.file ? updated : p).toList();
       profiles.value = list;
       if (isActive) {
         selectedFile.value = updated.file;
-        await _waitForCore();
       }
       final oldPath = p.join(profilesPath, profile.file);
       if (File(oldPath).existsSync()) await File(oldPath).delete();
@@ -454,12 +434,21 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
         url: url,
         profilesDir: profilesPath,
       );
+
+      final validation = await LibCore.instance.checkConfig(
+        await File(p.join(profilesPath, profile.file)).readAsString(),
+      );
+      if (validation.isNotEmpty) {
+        await File(p.join(profilesPath, profile.file)).delete();
+        if (mounted) {
+          setState(() => _loading = false);
+          showErrorDialog(context, '配置校验失败: $validation');
+        }
+        return;
+      }
+
       profiles.value = [...profiles.value, profile];
       selectedFile.value = profile.file;
-
-      // 等待内核启动完成
-      if (!mounted) return;
-      await _waitForCore();
 
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

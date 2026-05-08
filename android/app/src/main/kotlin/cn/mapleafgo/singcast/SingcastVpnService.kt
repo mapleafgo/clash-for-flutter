@@ -23,6 +23,7 @@ class SingcastVpnService : VpnService() {
         const val ACTION_DISCONNECT = "cn.mapleafgo.singcast.DISCONNECT"
         const val EXTRA_CONFIG = "configContent"
         const val EXTRA_PROXY = "ruleSetProxy"
+        const val EXTRA_IPV6 = "ipv6"
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
@@ -39,6 +40,7 @@ class SingcastVpnService : VpnService() {
     private val lock = Any()
     private var pfd: ParcelFileDescriptor? = null
     private var running = false
+    private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
     private var lastUpTotal: Long = 0
@@ -75,8 +77,9 @@ class SingcastVpnService : VpnService() {
             ACTION_CONNECT -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG) ?: ""
                 val proxy = intent.getStringExtra(EXTRA_PROXY) ?: ""
-                AppLog.i(TAG, "onStartCommand: CONNECT config=${config.length} chars, proxy='$proxy'")
-                connect(config, proxy)
+                val ipv6 = intent.getBooleanExtra(EXTRA_IPV6, true)
+                AppLog.i(TAG, "onStartCommand: CONNECT config=${config.length} chars, proxy='$proxy', ipv6=$ipv6")
+                connect(config, proxy, ipv6)
             }
             ACTION_DISCONNECT -> {
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (explicit)")
@@ -90,7 +93,7 @@ class SingcastVpnService : VpnService() {
         return START_NOT_STICKY
     }
 
-    private fun connect(configContent: String, ruleSetProxy: String) {
+    private fun connect(configContent: String, ruleSetProxy: String, enableIpv6: Boolean = true) {
         synchronized(lock) {
             if (running) {
                 AppLog.w(TAG, "connect: already running, ignoring duplicate start")
@@ -99,14 +102,15 @@ class SingcastVpnService : VpnService() {
             running = true
         }
         AppLog.i(TAG, "connect: starting VPN connection thread")
+        ipv6Enabled = enableIpv6
 
         Thread({
             try {
                 AppLog.d(TAG, "connect: step 1/6 - setting VpnService on Mobile")
                 Mobile.setVpnService(this@SingcastVpnService)
 
-                AppLog.d(TAG, "connect: step 2/6 - establishing TUN interface")
-                val fd = establishTun()
+                AppLog.d(TAG, "connect: step 2/6 - establishing TUN interface (ipv6=$enableIpv6)")
+                val fd = establishTun(enableIpv6)
                 AppLog.d(TAG, "connect: TUN established, fd=$fd")
 
                 AppLog.d(TAG, "connect: step 3/6 - setting TUN fd in core")
@@ -136,23 +140,26 @@ class SingcastVpnService : VpnService() {
         }, "vpn-connect").start()
     }
 
-    private fun establishTun(): Int {
-        AppLog.d(TAG, "establishTun: creating VPN interface")
+    private fun establishTun(enableIpv6: Boolean = true): Int {
+        AppLog.d(TAG, "establishTun: creating VPN interface (ipv6=$enableIpv6)")
         val builder = Builder()
             .setSession("singcast")
-            .setMtu(9000)
+            .setMtu(1500)
             .addAddress("172.18.0.1", 30)
-            .addAddress("fdfe:dcba:9876::1", 128)
             .addRoute("0.0.0.0", 0)
-            .addRoute("::", 0)
             .addDnsServer("8.8.8.8")
             .addDnsServer("8.8.4.4")
+        if (enableIpv6) {
+            builder.addAddress("fdfe:dcba:9876::1", 128)
+            builder.addRoute("::", 0)
+        }
 
         val result = builder.establish()
         if (result == null) {
             AppLog.e(TAG, "establishTun: builder.establish() returned null - VPN permission may be revoked")
             throw IllegalStateException("VPN establish failed - check VPN permission")
         }
+        try { pfd?.close() } catch (_: Exception) {}
         pfd = result
         val fd = result.fd
         AppLog.i(TAG, "establishTun: TUN interface created, fd=$fd")
@@ -179,6 +186,14 @@ class SingcastVpnService : VpnService() {
 
     fun isRunning(): Boolean {
         synchronized(lock) { return running }
+    }
+
+    fun getTunFd(): Int = pfd?.fd ?: throw IllegalStateException("TUN not established")
+
+    fun reloadWithNewTun(): Int {
+        val fd = establishTun(ipv6Enabled)
+        AppLog.i(TAG, "reloadWithNewTun: new TUN established, fd=$fd")
+        return fd
     }
 
     fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {

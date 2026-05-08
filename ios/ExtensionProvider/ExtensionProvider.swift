@@ -18,11 +18,17 @@ class ExtensionProvider: NEPacketTunnelProvider {
             throw ExtensionError.missingConfig
         }
         let ruleSetProxy = options?["ruleSetProxy"] as? String ?? ""
+        let enableIpv6 = options?["ipv6"] as? Bool ?? true
 
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         let ipv4 = NEIPv4Settings(addresses: ["172.18.0.1"], subnetMasks: ["255.255.255.252"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
         settings.ipv4Settings = ipv4
+        if enableIpv6 {
+            let ipv6 = NEIPv6Settings(addresses: ["fdfe:dcba:9876::1"], prefixLengths: [128])
+            ipv6.includedRoutes = [NEIPv6Route.default()]
+            settings.ipv6Settings = ipv6
+        }
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
         settings.mtu = 9000
         try await setTunnelNetworkSettings(settings)
@@ -40,6 +46,18 @@ class ExtensionProvider: NEPacketTunnelProvider {
     }
 
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
+        guard let payload = try? JSONSerialization.jsonObject(with: messageData) as? [String: String],
+              let configContent = payload["configContent"] else {
+            completionHandler?(nil)
+            return
+        }
+        let ruleSetProxy = payload["ruleSetProxy"] ?? ""
+
+        // StartWithContent destroys old TUN fd, must re-extract a fresh one
+        if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
+            singcast.setTunFd(tunFd)
+        }
+        try? singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         completionHandler?(nil)
     }
 

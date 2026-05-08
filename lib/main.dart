@@ -55,8 +55,10 @@ void main() async {
 }
 
 Future<void> _initApp() async {
+  await LibCore.instance.init();
+
+  // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
-    await LibCore.instance.init();
     await LibCore.instance
         .initCore(Constants.homeDir.path)
         .timeout(const Duration(seconds: 10));
@@ -71,12 +73,13 @@ Future<void> _initApp() async {
   watchModeFromCore();
   initAppConfig();
 
-  // 恢复移动端状态：引擎重建时 VPN 服务和内核可能仍在运行
+  // 移动端：同步 VPN 运行状态（引擎重建恢复时内核可能仍在运行）
   if (!Constants.isDesktop) {
     try {
       if (await LibCore.instance.isVpnRunning()) {
         vpnConnected.value = true;
         LibCore.instance.coreConnected.value = true;
+        ensureTunEnabled(true);
       }
     } catch (_) {}
   }

@@ -56,11 +56,12 @@ final router = GoRouter(
               path: Routes.profiles,
               builder: (context, state) => const ProfilesPage()),
         ]),
-        StatefulShellBranch(routes: [
-          GoRoute(
-              path: Routes.logs,
-              builder: (context, state) => const LogsPage()),
-        ]),
+        if (Constants.isDesktop)
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: Routes.logs,
+                builder: (context, state) => const LogsPage()),
+          ]),
         StatefulShellBranch(routes: [
           GoRoute(
               path: Routes.settings,
@@ -78,10 +79,10 @@ class NavItem {
   const NavItem(this.path, this.label, this.icon);
 }
 
-const navItems = [
+final navItems = [
   NavItem(Routes.home, '首页', Icons.home_outlined),
   NavItem(Routes.proxies, '代理', Icons.cloud_outlined),
   NavItem(Routes.profiles, '订阅', Icons.code_rounded),
-  NavItem(Routes.logs, '日志', Icons.list_alt_outlined),
+  if (Constants.isDesktop) NavItem(Routes.logs, '日志', Icons.list_alt_outlined),
   NavItem(Routes.settings, '设置', Icons.settings_outlined),
 ];

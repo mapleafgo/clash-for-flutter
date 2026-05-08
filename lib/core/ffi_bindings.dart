@@ -91,30 +91,6 @@ class LibCoreBindings {
         ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       >();
 
-  ffi.Pointer<ffi.Char> CoreReloadConfig(
-    ffi.Pointer<ffi.Char> content,
-    ffi.Pointer<ffi.Char> ruleSetProxy,
-  ) {
-    return _CoreReloadConfig(content, ruleSetProxy);
-  }
-
-  late final _CoreReloadConfigPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-          )
-        >
-      >('CoreReloadConfig');
-  late final _CoreReloadConfig =
-      _CoreReloadConfigPtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-        )
-      >();
-
   ffi.Pointer<ffi.Char> CoreReloadTUN() {
     return _CoreReloadTUN();
   }

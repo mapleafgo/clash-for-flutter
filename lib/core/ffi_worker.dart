@@ -37,6 +37,18 @@ class _Response {
 /// Callback type matching CoreCallback: void callback(int eventType, const char* jsonPayload)
 typedef _CoreCallbackNative = ffi.Void Function(ffi.Int, ffi.Pointer<ffi.Char>);
 
+typedef _SetListenerNative = ffi.NativeFunction<
+    ffi.Void Function(ffi.Pointer<ffi.NativeFunction<_CoreCallbackNative>>)>;
+typedef _SetListener = void Function(
+    ffi.Pointer<ffi.NativeFunction<_CoreCallbackNative>>);
+
+typedef _GetWrapperFnNative = ffi.NativeFunction<
+    ffi.Pointer<ffi.Void> Function()>;
+typedef _GetWrapperFn = ffi.Pointer<ffi.Void> Function();
+
+/// Stored callback wrapper pointer — set during worker init, applied after CoreInit.
+ffi.Pointer<ffi.Void>? _callbackWrapperPtr;
+
 /// Long-lived FFI worker isolate with event-driven callback support.
 class FfiWorker {
   Isolate? _isolate;
@@ -46,10 +58,12 @@ class FfiWorker {
   final _pending = <int, Completer<dynamic>>{};
   final _eventController = StreamController<CoreEvent>.broadcast();
   bool _disposed = false;
+  Completer<void>? _readyCompleter;
 
   Stream<CoreEvent> get events => _eventController.stream;
 
   Future<void> spawn(String libPath) async {
+    _readyCompleter = Completer<void>();
     _mainPort = ReceivePort();
     _mainPort!.listen(_onMessageFromWorker);
 
@@ -58,11 +72,14 @@ class FfiWorker {
       _WorkerInit(libPath, _mainPort!.sendPort),
       debugName: 'ffi-worker',
     );
+
+    await _readyCompleter!.future;
   }
 
   void _onMessageFromWorker(dynamic message) {
     if (message is SendPort) {
       _workerPort = message;
+      _readyCompleter?.complete();
       return;
     }
     if (message is _Response) {
@@ -111,21 +128,37 @@ class _WorkerInit {
 }
 
 void _workerEntryPoint(_WorkerInit init) {
+  // Immediately clear any stale callback from a previous hot restart.
+  final procLib = ffi.DynamicLibrary.process();
+  final setListener = procLib
+      .lookup<_SetListenerNative>('CallbackWrapperSetListener')
+      .asFunction<_SetListener>();
+  setListener(ffi.Pointer.fromAddress(0));
+
   final receivePort = ReceivePort();
   init.mainPort.send(receivePort.sendPort);
 
   final lib = ffi.DynamicLibrary.open(init.libPath);
   final bindings = LibCoreBindings(lib);
-  final mainPort = init.mainPort;
 
-  final callback = NativeCallable<_CoreCallbackNative>.listener(
+  // Dart listener callback: receives a strdup'd copy from the C wrapper.
+  // The copy was made synchronously before Go freed the original string.
+  final dartListener = NativeCallable<_CoreCallbackNative>.listener(
     (int eventType, ffi.Pointer<ffi.Char> jsonPtr) {
       final payload = jsonPtr.cast<Utf8>().toDartString();
-      bindings.CoreFreeString(jsonPtr);
-      mainPort.send(CoreEvent(eventType, payload));
+      malloc.free(jsonPtr.cast()); // free the strdup'd copy
+      init.mainPort.send(CoreEvent(eventType, payload));
     },
   );
-  bindings.CoreSetCallback(callback.nativeFunction.cast());
+
+  final getWrapperFn = procLib
+      .lookup<_GetWrapperFnNative>('CallbackWrapperGetFn')
+      .asFunction<_GetWrapperFn>();
+
+  setListener(dartListener.nativeFunction);
+  _callbackWrapperPtr = getWrapperFn().cast();
+  // CoreSetCallback is deferred to after CoreInit, because the Go Service
+  // handler is nil at this point and would silently discard the registration.
 
   receivePort.listen((message) {
     if (message is _Command) {
@@ -145,6 +178,10 @@ dynamic _dispatch(LibCoreBindings b, String method, Map<String, dynamic>? args) 
     case 'CoreInit':
       return _withCString(args!['optionsJSON'] as String, (p) {
         _parseResult(b.CoreInit(p), b);
+        // Now that the Go Service is initialized, register the event callback.
+        if (_callbackWrapperPtr != null) {
+          b.CoreSetCallback(_callbackWrapperPtr!);
+        }
       });
     case 'CoreStartWithContent':
       return _withTwoCStrings(
@@ -164,12 +201,6 @@ dynamic _dispatch(LibCoreBindings b, String method, Map<String, dynamic>? args) 
       return b.CoreResetNetwork();
 
     // Config
-    case 'CoreReloadConfig':
-      return _withTwoCStrings(
-        args!['content'] as String,
-        args['ruleSetProxy'] as String,
-        (p1, p2) => _parseResult(b.CoreReloadConfig(p1, p2), b),
-      );
     case 'CoreReloadTUN':
       return _parseResult(b.CoreReloadTUN(), b);
     case 'CoreSetOverridePackages':

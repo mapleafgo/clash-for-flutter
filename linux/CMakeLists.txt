@@ -1,6 +1,6 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.10)
-project(runner LANGUAGES CXX)
+project(runner LANGUAGES C CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
@@ -63,6 +63,7 @@ add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 add_executable(${BINARY_NAME}
   "main.cc"
   "my_application.cc"
+  "callback_wrapper.c"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
 )
 
@@ -73,6 +74,8 @@ apply_standard_settings(${BINARY_NAME})
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
+# Export symbols for FFI callback wrapper (DynamicLibrary.process())
+target_link_options(${BINARY_NAME} PRIVATE -rdynamic)
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)

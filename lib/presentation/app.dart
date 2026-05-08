@@ -37,7 +37,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   bool _syncing = false;
 
   Future<void> _syncVpnState() async {
-    if (Constants.isDesktop || _syncing) return;
+    if (Constants.isDesktop || _syncing || vpnStarting) return;
     _syncing = true;
     try {
       final running = await LibCore.instance.isVpnRunning();
@@ -47,6 +47,12 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         if (!running && clashConfig.value.tunEnabled) {
           await asyncProfile();
         }
+      } else if (running && LibCore.instance.proxiesSignal.value.isEmpty) {
+        // VPN 运行中但代理数据为空（引擎重建后）
+        try {
+          final proxies = await LibCore.instance.queryProxies();
+          LibCore.instance.proxiesSignal.value = proxies;
+        } catch (_) {}
       }
     } finally {
       _syncing = false;

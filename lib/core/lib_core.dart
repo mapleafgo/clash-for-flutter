@@ -24,7 +24,6 @@ abstract class LibCorePlatform {
   Future<void> pause();
   Future<void> wake();
   Future<void> resetNetwork();
-  Future<void> reloadConfig(String content, {String? ruleSetProxy});
   Future<void> reloadTUN();
   Future<void> setOverridePackages(String overrideJSON);
   Future<String> queryTunOptions();
@@ -47,7 +46,7 @@ abstract class LibCorePlatform {
   Future<String> checkConfig(String content);
   Future<String> getVersion();
   Future<void> setLocale(String localeID);
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy});
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6});
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
   void updateVpnTraffic(TrafficSnapshot traffic);
@@ -96,40 +95,54 @@ class LibCore {
   // --- Shared event handler for both desktop and mobile ---
 
   void handleCoreEvent(CoreEvent event) {
-    switch (event.type) {
-      case 0: // traffic
-        final snapshot = TrafficSnapshot.fromJson(
-            jsonDecode(event.payload) as Map<String, dynamic>);
-        trafficSignal.value = snapshot;
-        _updateVpnTraffic(snapshot);
-      case 1: // logs
-        final list = jsonDecode(event.payload) as List;
-        appendLogs(list
-            .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-            .toList());
-      case 2: // connections
-        handleConnectionEvents(ConnectionEventsPayload.fromJson(
-            jsonDecode(event.payload) as Map<String, dynamic>));
-      case 3: // proxies
-        final list = jsonDecode(event.payload) as List;
-        proxiesSignal.value = list
-            .map((e) => ProxyGroup.fromJson(e as Map<String, dynamic>))
-            .toList();
-      case 4: // mode
-        final json = jsonDecode(event.payload) as Map<String, dynamic>;
-        modeSignal.value = json['current_mode'] as String? ?? 'rule';
-      case 5: // vpn state changed
-        final json = jsonDecode(event.payload) as Map<String, dynamic>;
-        vpnDisconnectedByUser.value = !(json['connected'] as bool? ?? true);
-      case 6: // core logs (internal)
-        final list = jsonDecode(event.payload) as List;
-        appendLogs(list
-            .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-            .toList());
-      case 7: // connected
-        coreConnected.value = true;
-      case 8: // disconnected
-        coreConnected.value = false;
+    try {
+      final decoded = jsonDecode(event.payload);
+      switch (event.type) {
+        case 0: // traffic
+          if (decoded is Map<String, dynamic>) {
+            final snapshot = TrafficSnapshot.fromJson(decoded);
+            trafficSignal.value = snapshot;
+            _updateVpnTraffic(snapshot);
+          }
+        case 1: // logs
+          if (decoded is List) {
+            appendLogs(decoded
+                .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+                .toList());
+          }
+        case 2: // connections
+          if (decoded is Map<String, dynamic>) {
+            handleConnectionEvents(ConnectionEventsPayload.fromJson(decoded));
+          }
+        case 3: // proxies
+          if (decoded is List) {
+            proxiesSignal.value = decoded
+                .map((e) => ProxyGroup.fromJson(e as Map<String, dynamic>))
+                .toList();
+          }
+        case 4: // mode
+          if (decoded is Map<String, dynamic>) {
+            modeSignal.value = decoded['current_mode'] as String? ?? 'rule';
+          }
+        case 5: // vpn state changed
+          if (decoded is Map<String, dynamic>) {
+            vpnDisconnectedByUser.value =
+                !(decoded['connected'] as bool? ?? true);
+          }
+        case 6: // core logs (internal)
+          if (decoded is List) {
+            appendLogs(decoded
+                .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+                .toList());
+          }
+        case 7: // connected
+          coreConnected.value = true;
+        case 8: // disconnected
+          coreConnected.value = false;
+          proxiesSignal.value = [];
+      }
+    } catch (_) {
+      // Defensive: ignore malformed event payloads
     }
   }
 
@@ -143,19 +156,13 @@ class LibCore {
     }
   }
 
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
-    await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
-    _refreshProxies();
-  }
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
+      _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
   Future<void> stopCore() => _platform.stopCore();
   Future<void> destroyCore() => _platform.destroyCore();
   Future<void> pause() => _platform.pause();
   Future<void> wake() => _platform.wake();
   Future<void> resetNetwork() => _platform.resetNetwork();
-  Future<void> reloadConfig(String content, {String? ruleSetProxy}) async {
-    await _platform.reloadConfig(content, ruleSetProxy: ruleSetProxy);
-    _refreshProxies();
-  }
   Future<void> reloadTUN() => _platform.reloadTUN();
   Future<void> setOverridePackages(String overrideJSON) =>
       _platform.setOverridePackages(overrideJSON);
@@ -164,10 +171,8 @@ class LibCore {
   Future<TrafficSnapshot> queryTraffic() => _platform.queryTraffic();
   Future<List<LogEntry>> queryLogs({bool clear = false}) =>
       _platform.queryLogs(clear: clear);
-  Future<void> selectProxy(String group, String tag) async {
-    await _platform.selectProxy(group, tag);
-    _refreshProxies();
-  }
+  Future<void> selectProxy(String group, String tag) =>
+      _platform.selectProxy(group, tag);
   Future<void> testDelay(String name) => _platform.testDelay(name);
   Future<void> setMode(String mode) => _platform.setMode(mode);
   Future<void> setGroupExpand(String group, bool expand) =>
@@ -185,20 +190,12 @@ class LibCore {
       _platform.checkConfig(content);
   Future<String> getVersion() => _platform.getVersion();
   Future<void> setLocale(String localeID) => _platform.setLocale(localeID);
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
-      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy);
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
+      _platform.connectVpn(configContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
   Future<void> disconnectVpn() => _platform.disconnectVpn();
   Future<bool> isVpnRunning() => _platform.isVpnRunning();
 
   // --- Log buffer management ---
-
-  void _refreshProxies() {
-    if (!Constants.isDesktop) {
-      _platform.queryProxies().then((list) {
-        proxiesSignal.value = list;
-      }).catchError((_) {});
-    }
-  }
 
   void _updateVpnTraffic(TrafficSnapshot traffic) {
     if (Constants.isDesktop) return;
@@ -275,12 +272,6 @@ class _FfiWorkerBackend implements LibCorePlatform {
   @override
   Future<void> resetNetwork() => _worker.invoke('CoreResetNetwork');
 
-  @override
-  Future<void> reloadConfig(String content, {String? ruleSetProxy}) =>
-      _worker.invoke('CoreReloadConfig', {
-        'content': content,
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
 
   @override
   Future<void> reloadTUN() => _worker.invoke('CoreReloadTUN');
@@ -397,7 +388,7 @@ class _FfiWorkerBackend implements LibCorePlatform {
       _worker.invoke('CoreSetLocale', {'localeID': localeID});
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) {
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) {
     throw UnsupportedError('connectVpn is only available on mobile platforms');
   }
 

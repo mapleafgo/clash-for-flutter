@@ -85,12 +85,6 @@ class LibCoreChannel implements LibCorePlatform {
 
   // --- Config ---
 
-  @override
-  Future<void> reloadConfig(String content, {String? ruleSetProxy}) =>
-      _channel.invokeMethod('reloadConfig', {
-        'content': content,
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
 
   @override
   Future<void> reloadTUN() => _channel.invokeMethod('reloadTUN');
@@ -222,10 +216,11 @@ class LibCoreChannel implements LibCorePlatform {
   // --- VPN ---
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy}) =>
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
       _channel.invokeMethod('connectVpn', {
         'configContent': configContent,
         'ruleSetProxy': ruleSetProxy ?? '',
+        'ipv6': ipv6,
       });
 
   @override

@@ -29,6 +29,7 @@ class MainActivity : FlutterFragmentActivity() {
     private data class VpnRequest(
         val configContent: String,
         val ruleSetProxy: String,
+        val ipv6: Boolean,
         val result: MethodChannel.Result
     )
 
@@ -57,7 +58,7 @@ class MainActivity : FlutterFragmentActivity() {
         pendingVpn = null
         if (result.resultCode == RESULT_OK && pending != null) {
             AppLog.i(tag, "VPN permission granted, starting VPN")
-            startVpn(pending.configContent, pending.ruleSetProxy, pending.result)
+            startVpn(pending.configContent, pending.ruleSetProxy, pending.ipv6, pending.result)
         } else {
             AppLog.w(tag, "VPN permission denied (resultCode=${result.resultCode})")
             pending?.result?.error("VPN_DENIED", "VPN permission denied", null)
@@ -101,6 +102,8 @@ class MainActivity : FlutterFragmentActivity() {
                     val optionsJSON = args?.str("optionsJSON") ?: ""
                     AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
                     Mobile.initCore(optionsJSON)
+                    Mobile.detectAndReportInterfaces(this@MainActivity)
+                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: initCore failed", e)
@@ -111,23 +114,18 @@ class MainActivity : FlutterFragmentActivity() {
                 try {
                     val content = args?.str("content") ?: ""
                     val proxy = args?.str("ruleSetProxy") ?: ""
-                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, proxy='$proxy') [vpnBound=$vpnBound, vpnRunning=${vpnService?.isRunning()}]")
+                    val svc = vpnService
+                    val vpnAvailable = svc != null
+                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=$vpnAvailable)")
+                    if (vpnAvailable) {
+                        Mobile.setVpnService(svc)
+                        val newFd = svc!!.reloadWithNewTun()
+                        Mobile.setTunFd(newFd)
+                    }
                     Mobile.startWithContent(content, proxy)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "reloadConfig" -> runOnThread {
-                try {
-                    val content = args?.str("content") ?: ""
-                    val proxy = args?.str("ruleSetProxy") ?: ""
-                    AppLog.i(tag, "handleMethodCall: reloadConfig (${content.length} chars)")
-                    Mobile.reloadConfig(content, proxy)
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "handleMethodCall: reloadConfig failed", e)
                     mainHandler.post { result.error("CORE_ERROR", e.message, null) }
                 }
             }
@@ -167,8 +165,9 @@ class MainActivity : FlutterFragmentActivity() {
             "connectVpn" -> {
                 val configContent = args?.str("configContent") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
-                AppLog.i(tag, "handleMethodCall: connectVpn (${configContent.length} chars)")
-                requestVpn(configContent, proxy, result)
+                val ipv6 = args?.get("ipv6") as? Boolean ?: true
+                AppLog.i(tag, "handleMethodCall: connectVpn (${configContent.length} chars, ipv6=$ipv6)")
+                requestVpn(configContent, proxy, ipv6, result)
             }
             "disconnectVpn" -> {
                 AppLog.i(tag, "handleMethodCall: disconnectVpn")
@@ -274,8 +273,22 @@ class MainActivity : FlutterFragmentActivity() {
             }
             // Utilities
             "setLocale" -> { Mobile.setLocale(args?.str("localeID") ?: ""); result.success(null) }
-            "checkConfig" -> result.success(Mobile.checkConfig(args?.str("content") ?: ""))
-            "getVersion" -> result.success(Mobile.getVersion())
+            "checkConfig" -> runOnThread {
+                try {
+                    val r = Mobile.checkConfig(args?.str("content") ?: "")
+                    mainHandler.post { result.success(r) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
+            "getVersion" -> runOnThread {
+                try {
+                    val r = Mobile.getVersion()
+                    mainHandler.post { result.success(r) }
+                } catch (e: Throwable) {
+                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+                }
+            }
             "requestNotificationPermission" -> {
                 requestNotificationPermission()
                 result.success(null)
@@ -299,16 +312,16 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun requestVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
+    private fun requestVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
         try {
             val intent = VpnService.prepare(this)
             if (intent != null) {
                 AppLog.i(tag, "requestVpn: VPN permission not yet granted, launching dialog")
-                pendingVpn = VpnRequest(configContent, ruleSetProxy, result)
+                pendingVpn = VpnRequest(configContent, ruleSetProxy, ipv6, result)
                 vpnPermissionLauncher.launch(intent)
             } else {
                 AppLog.i(tag, "requestVpn: VPN permission already granted, starting directly")
-                startVpn(configContent, ruleSetProxy, result)
+                startVpn(configContent, ruleSetProxy, ipv6, result)
             }
         } catch (e: Exception) {
             AppLog.e(tag, "requestVpn: prepare() failed", e)
@@ -316,12 +329,13 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun startVpn(configContent: String, ruleSetProxy: String, result: MethodChannel.Result) {
-        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars)")
+    private fun startVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
+        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars, ipv6=$ipv6)")
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
             putExtra(SingcastVpnService.EXTRA_PROXY, ruleSetProxy)
+            putExtra(SingcastVpnService.EXTRA_IPV6, ipv6)
         }
         startService(intent)
         bindService(intent, vpnConnection, BIND_AUTO_CREATE)

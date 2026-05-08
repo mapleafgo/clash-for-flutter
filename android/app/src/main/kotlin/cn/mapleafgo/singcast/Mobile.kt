@@ -2,16 +2,18 @@ package cn.mapleafgo.singcast
 
 import android.os.Handler
 import android.os.Looper
+import android.system.Os
 import cn.mapleafgo.ffi.EventHandler
-import cn.mapleafgo.ffi.SocketProtector
+import cn.mapleafgo.ffi.Ffi
 import cn.mapleafgo.ffi.Singcast
+import cn.mapleafgo.ffi.SocketProtector
 import io.flutter.plugin.common.EventChannel
 
 object Mobile {
     private const val TAG = "SingcastVpn"
     private val mainHandler = Handler(Looper.getMainLooper())
     private val coreLock = Any()
-    private val singcast = Singcast()
+    private val singcast = Ffi.create()
     private var eventSink: EventChannel.EventSink? = null
     private var vpnService: SingcastVpnService? = null
 
@@ -42,25 +44,40 @@ object Mobile {
 
     private val eventHandler = object : EventHandler {
         override fun onEvent(eventType: Int, jsonPayload: String) {
-            val sink = eventSink ?: return
+            val sink = eventSink
+            if (sink == null) {
+                AppLog.w(TAG, "onEvent: eventSink is null, dropping eventType=$eventType payload=${jsonPayload.take(200)}")
+                return
+            }
             val data = mapOf("type" to eventType.toInt(), "data" to jsonPayload)
             mainHandler.post { sink.success(data) }
         }
     }
+
+    private var coreInitialized = false
 
     fun setEventSink(sink: EventChannel.EventSink?) {
         eventSink = sink
     }
 
     fun setupEventHandler() {
-        singcast.setOnEvent(eventHandler)
+        if (coreInitialized) {
+            singcast.setOnEvent(eventHandler)
+        }
     }
 
     // --- Lifecycle ---
 
     fun initCore(optionsJSON: String) {
+        if (coreInitialized) {
+            AppLog.i(TAG, "initCore: already initialized, re-registering event handler")
+            singcast.setOnEvent(eventHandler)
+            return
+        }
         AppLog.i(TAG, "initCore: optionsJSON=$optionsJSON")
         singcast.init(optionsJSON)
+        singcast.setOnEvent(eventHandler)
+        coreInitialized = true
         AppLog.i(TAG, "initCore: done")
     }
 
@@ -102,14 +119,6 @@ object Mobile {
     }
 
     // --- Config ---
-
-    fun reloadConfig(content: String, ruleSetProxy: String) {
-        synchronized(coreLock) {
-            AppLog.i(TAG, "reloadConfig: content=${content.length} chars, proxy='$ruleSetProxy'")
-            singcast.reloadConfig(content, ruleSetProxy)
-            AppLog.i(TAG, "reloadConfig: completed successfully")
-        }
-    }
 
     fun reloadTUN() {
         AppLog.i(TAG, "reloadTUN")
@@ -240,17 +249,29 @@ object Mobile {
                 val intf = interfaces.nextElement()
                 if (!first) json.append(",")
                 first = false
-                val addresses = intf.inetAddresses
+                // Use InterfaceAddress to get prefix lengths in CIDR format
                 val addrList = StringBuilder("[")
                 var addrFirst = true
-                while (addresses.hasMoreElements()) {
-                    val addr = addresses.nextElement()
+                for (ia in intf.interfaceAddresses) {
+                    val host = ia.address.hostAddress?.substringBefore('%') ?: continue
+                    val prefix = "${host}/${ia.networkPrefixLength}"
                     if (!addrFirst) addrList.append(",")
                     addrFirst = false
-                    addrList.append("\"${addr.hostAddress}\"")
+                    addrList.append("\"$prefix\"")
                 }
                 addrList.append("]")
-                json.append("{\"name\":\"${intf.name}\",\"mtu\":${intf.mtu},\"addresses\":$addrList}")
+                val index = try { Os.if_nametoindex(intf.name) } catch (_: Exception) { 0 }
+                var flags = 0
+                if (intf.isUp) flags = flags or 0x1
+                if (intf.isLoopback) flags = flags or 0x8
+                if (intf.supportsMulticast()) flags = flags or 0x1000
+                val type = when {
+                    intf.isLoopback -> 0
+                    intf.name.startsWith("wlan") || intf.name.startsWith("wifi") -> 2
+                    intf.name.startsWith("rmnet") || intf.name.startsWith("ccmni") -> 3
+                    else -> 1
+                }
+                json.append("{\"name\":\"${intf.name}\",\"index\":$index,\"mtu\":${intf.mtu},\"addresses\":$addrList,\"flags\":$flags,\"type\":$type}")
             }
             json.append("]")
             singcast.setInterfacesJSON(json.toString())
@@ -260,20 +281,62 @@ object Mobile {
         }
     }
 
+    // sing-box approach: registerBestMatchingNetworkCallback returns the actual default
+    // transport network, bypassing VPN. registerDefaultNetworkCallback returns VPN since Android P.
+    private val defaultNetworkRequest = android.net.NetworkRequest.Builder()
+        .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+        .build()
+
+    private var defaultNetworkCallback: android.net.ConnectivityManager.NetworkCallback? = null
+    private var defaultNetwork: android.net.Network? = null
+
+    @android.annotation.TargetApi(31)
     fun detectAndReportDefaultInterface(context: android.content.Context) {
         try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val activeNetwork = cm.activeNetwork
-            val linkProperties = if (activeNetwork != null) cm.getLinkProperties(activeNetwork) else null
-            val ifaceName = linkProperties?.interfaceName ?: ""
-            if (ifaceName.isNotEmpty()) {
-                val intf = java.net.NetworkInterface.getByName(ifaceName)
-                val mtu = intf?.mtu?.toLong() ?: 0L
-                singcast.updateDefaultInterface(ifaceName, mtu, true)
-                AppLog.d(TAG, "detectAndReportDefaultInterface: $ifaceName mtu=$mtu")
+
+            if (defaultNetworkCallback == null) {
+                val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: android.net.Network) {
+                        defaultNetwork = network
+                        _reportDefaultInterface(context, network)
+                    }
+                    override fun onLost(network: android.net.Network) {
+                        if (defaultNetwork == network) {
+                            defaultNetwork = null
+                            AppLog.w(TAG, "detectAndReportDefaultInterface: default network lost")
+                        }
+                    }
+                }
+                cm.registerBestMatchingNetworkCallback(defaultNetworkRequest, callback, android.os.Handler(android.os.Looper.getMainLooper()))
+                defaultNetworkCallback = callback
+                AppLog.i(TAG, "detectAndReportDefaultInterface: registered network callback")
+            }
+
+            // Report immediately with current default if available
+            val currentNetwork = defaultNetwork
+            if (currentNetwork != null) {
+                _reportDefaultInterface(context, currentNetwork)
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "detectAndReportDefaultInterface: failed", e)
+        }
+    }
+
+    private fun _reportDefaultInterface(context: android.content.Context, network: android.net.Network) {
+        try {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val lp = cm.getLinkProperties(network) ?: return
+            val ifaceName = lp.interfaceName ?: return
+            if (ifaceName.isEmpty()) return
+            val caps = cm.getNetworkCapabilities(network)
+            val metered = if (caps != null) !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) else false
+            val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
+            singcast.updateDefaultInterface(ifaceName, index, metered)
+            AppLog.d(TAG, "detectAndReportDefaultInterface: $ifaceName index=$index metered=$metered")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "_reportDefaultInterface: failed", e)
         }
     }
 
