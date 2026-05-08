@@ -263,7 +263,7 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {
+  Future<void> closeTun() async {
     await disconnectVpn();
   }
 

@@ -59,7 +59,7 @@ abstract class LibCorePlatform {
     String? ruleSetProxy,
     bool? ipv6,
   });
-  Future<void> closeTun(String mergedContent, {String? ruleSetProxy});
+  Future<void> closeTun();
 }
 
 class LibCore {
@@ -220,8 +220,7 @@ class LibCore {
     bool? ipv6,
   }) =>
       _platform.openTun(mergedContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
-  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) =>
-      _platform.closeTun(mergedContent, ruleSetProxy: ruleSetProxy);
+  Future<void> closeTun() => _platform.closeTun();
 
   // --- Log buffer management ---
 
@@ -429,5 +428,5 @@ class _FfiWorkerBackend implements LibCorePlatform {
   }) async {}
 
   @override
-  Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {}
+  Future<void> closeTun() async {}
 }

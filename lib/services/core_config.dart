@@ -155,7 +155,8 @@ Future<void> closeTun() async {
   if (!Constants.isDesktop) {
     _setTunEnabled(false);
     vpnConnected.value = false;
-    await LibCore.instance.closeTun('', ruleSetProxy: ruleSetProxy.value);
+    await LibCore.instance.closeTun();
+    await asyncProfile();
     return;
   }
   await _closeTunDesktop();
