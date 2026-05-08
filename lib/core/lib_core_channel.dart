@@ -15,7 +15,6 @@ class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
   static const _eventChannel = EventChannel('cn.mapleafgo/singcast/events');
   final _eventController = StreamController<CoreEvent>.broadcast();
-  bool _vpnStarting = false;
 
   @override
   Stream<CoreEvent> get events => _eventController.stream;
@@ -253,19 +252,14 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) async {
-    _vpnStarting = true;
     try {
-      try {
-        await stopCore();
-      } catch (_) {}
-      await connectVpn(
-        mergedContent,
-        ruleSetProxy: ruleSetProxy,
-        ipv6: ipv6,
-      );
-    } finally {
-      _vpnStarting = false;
-    }
+      await stopCore();
+    } catch (_) {}
+    await connectVpn(
+      mergedContent,
+      ruleSetProxy: ruleSetProxy,
+      ipv6: ipv6,
+    );
   }
 
   @override
@@ -276,6 +270,4 @@ class LibCoreChannel implements LibCorePlatform {
     await startCoreWithContent(mergedContent, ruleSetProxy: ruleSetProxy);
   }
 
-  @override
-  bool get isVpnStarting => _vpnStarting;
 }

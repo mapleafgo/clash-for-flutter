@@ -52,7 +52,6 @@ abstract class LibCorePlatform {
   void updateVpnTraffic(TrafficSnapshot traffic);
   Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6});
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy});
-  bool get isVpnStarting;
 }
 
 class LibCore {
@@ -201,7 +200,7 @@ class LibCore {
       _platform.openTun(mergedContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) =>
       _platform.closeTun(mergedContent, ruleSetProxy: ruleSetProxy);
-  bool get isVpnStarting => _platform.isVpnStarting;
+
 
   // --- Log buffer management ---
 
@@ -417,6 +416,4 @@ class _FfiWorkerBackend implements LibCorePlatform {
   @override
   Future<void> closeTun(String mergedContent, {String? ruleSetProxy}) async {}
 
-  @override
-  bool get isVpnStarting => false;
 }

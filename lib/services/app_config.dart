@@ -118,9 +118,6 @@ Future<void> _syncRunningCoreData() async {
 Future<bool> _activateProfile(String yamlPath) async {
   if (_activating) return true;
 
-  // VPN 启动中，跳过配置重载避免打断连接
-  if (LibCore.instance.isVpnStarting) return true;
-
   _activating = true;
   coreActivating.value = true;
 
