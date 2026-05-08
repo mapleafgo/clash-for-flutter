@@ -346,7 +346,14 @@ private class BackgroundTaskMessenger(
             delegate.setMessageHandler(channel, null)
         } else {
             delegate.setMessageHandler(channel) { message, reply ->
-                executor.execute { handler.onMessage(message, reply) }
+                // ByteBuffer 不可跨线程共享，需要复制后分发到后台线程
+                val copy = if (message != null) {
+                    val buf = ByteBuffer.allocate(message.remaining())
+                    buf.put(message)
+                    buf.flip()
+                    buf
+                } else null
+                executor.execute { handler.onMessage(copy, reply) }
             }
         }
     }
