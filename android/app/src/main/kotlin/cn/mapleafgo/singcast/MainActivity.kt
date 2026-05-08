@@ -22,7 +22,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val channel = "cn.mapleafgo/singcast"
     private val eventChannelName = "cn.mapleafgo/singcast/events"
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var vpnService: SingcastVpnService? = null
+    @Volatile private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
     private var pendingVpn: VpnRequest? = null
 
@@ -115,14 +115,14 @@ class MainActivity : FlutterFragmentActivity() {
                     val content = args?.str("content") ?: ""
                     val proxy = args?.str("ruleSetProxy") ?: ""
                     val svc = vpnService
-                    val vpnAvailable = svc != null
-                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=$vpnAvailable)")
-                    if (vpnAvailable) {
-                        Mobile.setVpnService(svc)
-                        val newFd = svc!!.reloadWithNewTun()
-                        Mobile.setTunFd(newFd)
+                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=${svc != null})")
+                    if (svc != null && svc.isRunning()) {
+                        // VPN active: hot-reload config through service (reuses existing TUN)
+                        svc.refreshConfig(content, proxy)
+                    } else {
+                        // No VPN: plain core start
+                        Mobile.startWithContent(content, proxy)
                     }
-                    Mobile.startWithContent(content, proxy)
                     mainHandler.post { result.success(null) }
                 } catch (e: Throwable) {
                     AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
@@ -346,6 +346,7 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.i(tag, "stopVpn: stopping VPN (vpnBound=$vpnBound)")
         vpnService?.disconnect("user_disconnect")
         try { unbindService(vpnConnection) } catch (_: Exception) {}
+        stopService(Intent(this, SingcastVpnService::class.java))
         vpnBound = false
         vpnService = null
     }
@@ -362,7 +363,7 @@ class MainActivity : FlutterFragmentActivity() {
             AppLog.i(tag, "onResume: VPN service running but not bound, re-binding")
             try {
                 val intent = Intent(this, SingcastVpnService::class.java)
-                bindService(intent, vpnConnection, 0)
+                bindService(intent, vpnConnection, BIND_AUTO_CREATE)
             } catch (e: Exception) {
                 AppLog.w(tag, "onResume: failed to re-bind VPN service: ${e.message}")
             }

@@ -14,8 +14,8 @@ object Mobile {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val coreLock = Any()
     private val singcast = Ffi.create()
-    private var eventSink: EventChannel.EventSink? = null
-    private var vpnService: SingcastVpnService? = null
+    @Volatile private var eventSink: EventChannel.EventSink? = null
+    @Volatile private var vpnService: SingcastVpnService? = null
 
     private val socketProtector = object : SocketProtector {
         override fun protect(fd: Int): Boolean {
@@ -98,9 +98,12 @@ object Mobile {
     }
 
     fun destroyCore() {
-        AppLog.i(TAG, "destroyCore: destroying core")
-        singcast.destroy()
-        AppLog.i(TAG, "destroyCore: done")
+        synchronized(coreLock) {
+            AppLog.i(TAG, "destroyCore: destroying core")
+            singcast.destroy()
+            coreInitialized = false
+            AppLog.i(TAG, "destroyCore: done")
+        }
     }
 
     fun pause() {
@@ -322,6 +325,19 @@ object Mobile {
         } catch (e: Exception) {
             AppLog.e(TAG, "detectAndReportDefaultInterface: failed", e)
         }
+    }
+
+    fun unregisterDefaultNetworkCallback(context: android.content.Context) {
+        val callback = defaultNetworkCallback ?: return
+        try {
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            cm.unregisterNetworkCallback(callback)
+            AppLog.i(TAG, "unregisterDefaultNetworkCallback: unregistered")
+        } catch (e: Exception) {
+            AppLog.w(TAG, "unregisterDefaultNetworkCallback: ${e.message}")
+        }
+        defaultNetworkCallback = null
+        defaultNetwork = null
     }
 
     private fun _reportDefaultInterface(context: android.content.Context, network: android.net.Network) {

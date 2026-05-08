@@ -40,6 +40,7 @@ class SingcastVpnService : VpnService() {
     private val lock = Any()
     private var pfd: ParcelFileDescriptor? = null
     private var running = false
+    @Volatile private var disconnected = false
     private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
@@ -100,34 +101,38 @@ class SingcastVpnService : VpnService() {
                 return
             }
             running = true
+            disconnected = false
         }
         AppLog.i(TAG, "connect: starting VPN connection thread")
         ipv6Enabled = enableIpv6
 
         Thread({
+            synchronized(lock) {
+                if (disconnected) {
+                    AppLog.w(TAG, "connect: disconnected before thread started, aborting")
+                    return@Thread
+                }
+            }
             try {
-                AppLog.d(TAG, "connect: step 1/6 - setting VpnService on Mobile")
+                AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile")
                 Mobile.setVpnService(this@SingcastVpnService)
 
-                AppLog.d(TAG, "connect: step 2/6 - establishing TUN interface (ipv6=$enableIpv6)")
+                AppLog.d(TAG, "connect: step 2/5 - establishing TUN interface (ipv6=$enableIpv6)")
                 val fd = establishTun(enableIpv6)
                 AppLog.d(TAG, "connect: TUN established, fd=$fd")
 
-                AppLog.d(TAG, "connect: step 3/6 - setting TUN fd in core")
+                AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core")
                 Mobile.setTunFd(fd)
-
-                AppLog.d(TAG, "connect: step 4/6 - waiting for TUN interface to be ready")
-                Thread.sleep(100)
 
                 showNotification()
 
-                AppLog.d(TAG, "connect: step 5/6 - starting core with content (${configContent.length} chars)")
+                AppLog.d(TAG, "connect: step 4/5 - starting core with content (${configContent.length} chars)")
                 val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 val elapsed = System.currentTimeMillis() - startMs
                 isServiceRunning = true
 
-                AppLog.d(TAG, "connect: step 6/6 - detecting and reporting network interfaces")
+                AppLog.d(TAG, "connect: step 5/5 - detecting and reporting network interfaces")
                 Mobile.detectAndReportInterfaces(this@SingcastVpnService)
                 Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
                 registerNetworkCallback()
@@ -159,25 +164,34 @@ class SingcastVpnService : VpnService() {
             AppLog.e(TAG, "establishTun: builder.establish() returned null - VPN permission may be revoked")
             throw IllegalStateException("VPN establish failed - check VPN permission")
         }
-        try { pfd?.close() } catch (_: Exception) {}
-        pfd = result
+        synchronized(lock) {
+            try { pfd?.close() } catch (_: Exception) {}
+            pfd = result
+        }
         val fd = result.fd
         AppLog.i(TAG, "establishTun: TUN interface created, fd=$fd")
         return fd
     }
 
     fun disconnect(reason: String = "unknown") {
-        AppLog.i(TAG, "disconnect: reason=$reason, running=$running")
-        synchronized(lock) { running = false }
+        synchronized(lock) {
+            if (disconnected) return
+            disconnected = true
+            running = false
+        }
+        AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
         unregisterNetworkCallback()
+        Mobile.unregisterDefaultNetworkCallback(this)
         try { Mobile.stopCore() } catch (e: Throwable) {
             AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
         }
-        try { pfd?.close() } catch (e: Throwable) {
-            AppLog.w(TAG, "disconnect: pfd.close error: ${e.message}")
+        synchronized(lock) {
+            try { pfd?.close() } catch (e: Throwable) {
+                AppLog.w(TAG, "disconnect: pfd.close error: ${e.message}")
+            }
+            pfd = null
         }
-        pfd = null
         Mobile.setVpnService(null)
         Mobile.notifyVpnStateChanged(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -188,12 +202,32 @@ class SingcastVpnService : VpnService() {
         synchronized(lock) { return running }
     }
 
-    fun getTunFd(): Int = pfd?.fd ?: throw IllegalStateException("TUN not established")
+    fun getTunFd(): Int = synchronized(lock) {
+        pfd?.fd ?: throw IllegalStateException("TUN not established")
+    }
 
-    fun reloadWithNewTun(): Int {
+    fun reloadWithNewTun(): Int = synchronized(lock) {
         val fd = establishTun(ipv6Enabled)
         AppLog.i(TAG, "reloadWithNewTun: new TUN established, fd=$fd")
-        return fd
+        fd
+    }
+
+    /**
+     * Hot-reload config without rebuilding TUN. Used when profile changes while VPN is active.
+     * The existing TUN fd is reused — only the core is restarted with new config content.
+     */
+    fun refreshConfig(content: String, ruleSetProxy: String) {
+        synchronized(lock) {
+            if (!running || disconnected) {
+                AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring")
+                return
+            }
+            AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
+            val startMs = System.currentTimeMillis()
+            Mobile.startWithContent(content, ruleSetProxy)
+            val elapsed = System.currentTimeMillis() - startMs
+            AppLog.i(TAG, "refreshConfig: core restarted in ${elapsed}ms")
+        }
     }
 
     fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {
