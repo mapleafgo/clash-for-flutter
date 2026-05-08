@@ -15,9 +15,8 @@ final clashConfig = signal(ClashConfig.defaults());
 
 Timer? _syncTimer;
 Timer? _reloadTimer;
-Mode? _lastSyncedMode;
 int? _lastSyncedPort;
-bool? _lastSyncedTun;
+bool _internalUpdate = false;
 
 final modeChanging = signal(false);
 
@@ -25,28 +24,20 @@ Future<void> initCoreConfig() async {
   if (CoreConfigStorage.exists()) {
     clashConfig.value = CoreConfigStorage.load();
   }
-  _lastSyncedMode = clashConfig.value.mode;
   _lastSyncedPort = clashConfig.value.mixedPort;
-  _lastSyncedTun = clashConfig.value.tunEnabled;
   detectElevation();
   await elevationReady;
   effect(() {
-    final config = clashConfig.value;
+    clashConfig.value; // 订阅变化
+    if (_internalUpdate) {
+      _internalUpdate = false;
+      return;
+    }
     _syncTimer?.cancel();
     _syncTimer = Timer(const Duration(seconds: 1), () {
-      CoreConfigStorage.save(config);
+      CoreConfigStorage.save(clashConfig.value);
     });
-    if (config.mode != _lastSyncedMode) {
-      _lastSyncedMode = config.mode;
-      _saveSync();
-    } else if (config.tunEnabled != _lastSyncedTun) {
-      _lastSyncedTun = config.tunEnabled;
-      _saveSync();
-      // 移动端 VPN 状态由 service 管理，不触发重载
-      if (Constants.isDesktop) _scheduleReload();
-    } else {
-      _scheduleReload();
-    }
+    _scheduleReload();
   });
   effect(() {
     if (LibCore.instance.vpnDisconnectedByUser.value) {
@@ -57,7 +48,11 @@ Future<void> initCoreConfig() async {
   });
 }
 
-void _saveSync() {
+/// 内部修改配置：更新 signal + 立即持久化，effect 跳过重载
+void _updateConfig(ClashConfig Function(ClashConfig) updater) {
+  _internalUpdate = true;
+  clashConfig.value = updater(clashConfig.value);
+  _internalUpdate = false;
   CoreConfigStorage.save(clashConfig.value);
 }
 
@@ -74,6 +69,7 @@ Future<void> _syncModeToCore(Mode? mode) async {
 /// 通知内核切换模式，UI 状态由 [watchModeFromCore] 从内核事件回写更新。
 Future<void> changeMode(Mode mode) async {
   if (modeChanging.value) return;
+  if (!LibCore.instance.coreConnected.value) return;
   modeChanging.value = true;
   try {
     await _syncModeToCore(mode);
@@ -84,6 +80,9 @@ Future<void> changeMode(Mode mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
+  // 内核未运行时无需重载
+  if (!Constants.isDesktop && !vpnConnected.value && !LibCore.instance.coreConnected.value) return;
+  if (Constants.isDesktop && !LibCore.instance.coreConnected.value) return;
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
     await asyncProfile();
@@ -115,8 +114,7 @@ void watchModeFromCore() {
     final modeStr = LibCore.instance.modeSignal.value;
     final mode = Mode.values.where((m) => m.name == modeStr).firstOrNull;
     if (mode != null && clashConfig.value.mode != mode) {
-      _lastSyncedMode = mode;
-      clashConfig.value = clashConfig.value.copyWith(mode: mode);
+      _updateConfig((c) => c.copyWith(mode: mode));
     }
   });
 }
@@ -137,6 +135,7 @@ Future<void> openTun() async {
     if (!File(path).existsSync()) return;
 
     try {
+      _setTunEnabled(true);
       final yamlContent = await File(path).readAsString();
       final merged = mergeProfileConfig(yamlContent);
       await LibCore.instance.openTun(
@@ -144,8 +143,8 @@ Future<void> openTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
-      _setTunEnabled(true);
     } catch (e) {
+      _setTunEnabled(false);
       rethrow;
     }
     return;
@@ -157,17 +156,7 @@ Future<void> closeTun() async {
   if (!Constants.isDesktop) {
     _setTunEnabled(false);
     vpnConnected.value = false;
-
-    final file = selectedFile.value;
-    if (file == null) return;
-    final path = _resolveProfilePath(file);
-    if (!File(path).existsSync()) return;
-
-    try {
-      final yamlContent = await File(path).readAsString();
-      final merged = mergeProfileConfig(yamlContent);
-      await LibCore.instance.closeTun(merged, ruleSetProxy: ruleSetProxy.value);
-    } catch (_) {}
+    await LibCore.instance.closeTun('', ruleSetProxy: ruleSetProxy.value);
     return;
   }
   await _closeTunDesktop();
@@ -213,24 +202,18 @@ Future<void> _openTunDesktop() async {
 
 Future<void> _closeTunDesktop() async {
   _setTunEnabled(false);
+  if (!LibCore.instance.coreConnected.value) return;
   await asyncProfile();
 }
 
 void _setTunEnabled(bool enable) {
-  clashConfig.value = clashConfig.value.copyWith(
-    tun: TunConfig(enable: enable),
-  );
-  _saveSync();
+  _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enable)));
 }
 
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
 void ensureTunEnabled(bool enabled) {
   if (clashConfig.value.tunEnabled != enabled) {
-    _lastSyncedTun = enabled;
-    clashConfig.value = clashConfig.value.copyWith(
-      tun: TunConfig(enable: enabled),
-    );
-    _saveSync();
+    _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enabled)));
   }
 }
 

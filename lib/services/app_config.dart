@@ -87,13 +87,14 @@ void startWatchingSelectedFile() {
         ? file
         : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
     if (!File(path).existsSync()) return;
-    // 首次触发时内核已在运行（引擎重建恢复），仅同步数据
+    // 首次触发：内核已在运行则仅同步数据，移动端 VPN 未开则跳过
     if (!_profileAutoActivated) {
       _profileAutoActivated = true;
       if (LibCore.instance.coreConnected.value) {
         _syncRunningCoreData();
         return;
       }
+      if (!Constants.isDesktop && !vpnConnected.value) return;
     }
     profileError.value = null;
     _activateProfile(path);
@@ -197,11 +198,19 @@ String mergeProfileConfig(String yamlContent) {
     editor.update(['ipv6'], config.ipv6);
   }
   if (config.tun != null) {
-    final doc = loadYaml(editor.toString());
-    if (doc is YamlMap && !doc.containsKey('tun')) {
-      editor.update(['tun'], {});
+    if (config.tun!.enable == true) {
+      final doc = loadYaml(editor.toString());
+      if (doc is YamlMap && !doc.containsKey('tun')) {
+        editor.update(['tun'], {});
+      }
+      editor.update(['tun', 'enable'], true);
+    } else {
+      // 完全移除 tun 段，避免内核在无 VPN fd 时尝试配置 TUN
+      final doc = loadYaml(editor.toString());
+      if (doc is YamlMap && doc.containsKey('tun')) {
+        editor.remove(['tun']);
+      }
     }
-    editor.update(['tun', 'enable'], config.tun!.enable ?? false);
   }
 
   editor.update(['external-controller'], '127.0.0.1:9090');
@@ -222,6 +231,8 @@ Profile? get activeProfile {
 Future<bool> asyncProfile() async {
   final file = selectedFile.value;
   if (file == null) return true;
+  // 移动端 VPN 未开且内核未运行，跳过
+  if (!Constants.isDesktop && !vpnConnected.value && !LibCore.instance.coreConnected.value) return true;
   final path = p.isAbsolute(file)
       ? file
       : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
