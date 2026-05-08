@@ -54,7 +54,7 @@ object Mobile {
         }
     }
 
-    private var coreInitialized = false
+    @Volatile private var coreInitialized = false
 
     fun setEventSink(sink: EventChannel.EventSink?) {
         eventSink = sink
@@ -69,16 +69,18 @@ object Mobile {
     // --- Lifecycle ---
 
     fun initCore(optionsJSON: String) {
-        if (coreInitialized) {
-            AppLog.i(TAG, "initCore: already initialized, re-registering event handler")
+        synchronized(coreLock) {
+            if (coreInitialized) {
+                AppLog.i(TAG, "initCore: already initialized, re-registering event handler")
+                singcast.setOnEvent(eventHandler)
+                return
+            }
+            AppLog.i(TAG, "initCore: optionsJSON=$optionsJSON")
+            singcast.init(optionsJSON)
             singcast.setOnEvent(eventHandler)
-            return
+            coreInitialized = true
+            AppLog.i(TAG, "initCore: done")
         }
-        AppLog.i(TAG, "initCore: optionsJSON=$optionsJSON")
-        singcast.init(optionsJSON)
-        singcast.setOnEvent(eventHandler)
-        coreInitialized = true
-        AppLog.i(TAG, "initCore: done")
     }
 
     fun startWithContent(content: String, ruleSetProxy: String) {
@@ -291,8 +293,8 @@ object Mobile {
         .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
         .build()
 
-    private var defaultNetworkCallback: android.net.ConnectivityManager.NetworkCallback? = null
-    private var defaultNetwork: android.net.Network? = null
+    @Volatile private var defaultNetworkCallback: android.net.ConnectivityManager.NetworkCallback? = null
+    @Volatile private var defaultNetwork: android.net.Network? = null
 
     @android.annotation.TargetApi(31)
     fun detectAndReportDefaultInterface(context: android.content.Context) {
@@ -328,7 +330,12 @@ object Mobile {
     }
 
     fun unregisterDefaultNetworkCallback(context: android.content.Context) {
-        val callback = defaultNetworkCallback ?: return
+        val callback = synchronized(this) {
+            val cb = defaultNetworkCallback ?: return
+            defaultNetworkCallback = null
+            defaultNetwork = null
+            cb
+        }
         try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
             cm.unregisterNetworkCallback(callback)
@@ -336,8 +343,6 @@ object Mobile {
         } catch (e: Exception) {
             AppLog.w(TAG, "unregisterDefaultNetworkCallback: ${e.message}")
         }
-        defaultNetworkCallback = null
-        defaultNetwork = null
     }
 
     private fun _reportDefaultInterface(context: android.content.Context, network: android.net.Network) {

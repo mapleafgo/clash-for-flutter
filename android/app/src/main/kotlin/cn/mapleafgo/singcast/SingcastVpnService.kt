@@ -222,12 +222,13 @@ class SingcastVpnService : VpnService() {
                 AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring")
                 return
             }
-            AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
-            val startMs = System.currentTimeMillis()
-            Mobile.startWithContent(content, ruleSetProxy)
-            val elapsed = System.currentTimeMillis() - startMs
-            AppLog.i(TAG, "refreshConfig: core restarted in ${elapsed}ms")
         }
+        // Call outside lock to avoid nested lock (lock -> coreLock) deadlock risk
+        AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
+        val startMs = System.currentTimeMillis()
+        Mobile.startWithContent(content, ruleSetProxy)
+        val elapsed = System.currentTimeMillis() - startMs
+        AppLog.i(TAG, "refreshConfig: core restarted in ${elapsed}ms")
     }
 
     fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {

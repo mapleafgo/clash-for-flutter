@@ -93,7 +93,8 @@ class MainActivity : FlutterFragmentActivity() {
         })
     }
 
-    private fun runOnThread(block: () -> Unit) = Thread(block).start()
+    private val executor = java.util.concurrent.Executors.newCachedThreadPool()
+    private fun runOnThread(block: () -> Unit) = executor.execute(block)
 
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
         when (method) {
@@ -175,11 +176,23 @@ class MainActivity : FlutterFragmentActivity() {
                 result.success(true)
             }
 
-            // Lightweight queries — safe on main thread
-            "queryProxies" -> result.success(Mobile.queryProxies())
-            "queryTraffic" -> result.success(Mobile.queryTraffic())
-            "queryLogs" -> result.success(Mobile.queryLogs(args?.get("clear") as? Boolean ?: false))
-            "queryConnections" -> result.success(Mobile.queryConnections())
+            // Queries — run off main thread to avoid blocking UI on large payloads
+            "queryProxies" -> runOnThread {
+                try { val r = Mobile.queryProxies(); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "queryTraffic" -> runOnThread {
+                try { val r = Mobile.queryTraffic(); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "queryLogs" -> runOnThread {
+                try { val r = Mobile.queryLogs(args?.get("clear") as? Boolean ?: false); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
+            "queryConnections" -> runOnThread {
+                try { val r = Mobile.queryConnections(); mainHandler.post { result.success(r) } }
+                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
+            }
 
             // Lightweight actions
             "selectProxy" -> runOnThread {
