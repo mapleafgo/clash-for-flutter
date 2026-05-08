@@ -270,7 +270,7 @@ class _ConnectionsCard extends StatelessWidget {
   }
 }
 
-// --- Runtime Card (Memory + Goroutines) ---
+// --- Runtime Card (Memory) ---
 
 class _RuntimeCard extends StatelessWidget {
   const _RuntimeCard();
@@ -280,40 +280,20 @@ class _RuntimeCard extends StatelessWidget {
     return Watch((context) {
       final traffic = LibCore.instance.trafficSignal.value;
       final memory = traffic?.memory ?? 0;
-      final goroutines = traffic?.goroutines ?? 0;
-      return LayoutBuilder(
-        builder: (_, constraints) {
-          final narrow = constraints.maxWidth < 200;
-          return _CardShell(
-            icon: Icons.memory,
-            title: '运行状态',
-            height: _smallH,
-            child: narrow
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _StatRow(icon: Icons.data_object, value: '$goroutines 协程', color: Colors.teal),
-                      const SizedBox(height: 6),
-                      _StatRow(icon: Icons.memory_outlined, value: formatBytes(memory), color: Colors.purple),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _StatBadge(icon: Icons.data_object, value: '$goroutines 协程', color: Colors.teal),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatBadge(
-                          icon: Icons.memory_outlined,
-                          value: formatBytes(memory),
-                          color: Colors.purple,
-                        ),
-                      ),
-                    ],
-                  ),
-          );
-        },
+      final theme = Theme.of(context);
+      return _CardShell(
+        icon: Icons.memory,
+        title: '内存占用',
+        height: _smallH,
+        child: Center(
+          child: Text(
+            formatBytes(memory),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Colors.purple,
+            ),
+          ),
+        ),
       );
     });
   }
