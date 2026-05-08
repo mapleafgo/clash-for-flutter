@@ -52,7 +52,8 @@ class AppStoredConfig {
         'profiles': profiles.map((e) => e.toJson()).toList(),
         'delay-test-url': delayTestUrl,
         'tun-if': tunIf,
-        'sub-ua': subUA,
+        // UA 为默认时不持久化，加载时直接用即时版本常量
+        if (subUA != Defaults.subUA) 'sub-ua': subUA,
       };
 
   factory AppStoredConfig.empty() => AppStoredConfig(

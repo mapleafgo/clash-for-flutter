@@ -160,9 +160,10 @@ class _ProfilesPageState extends State<ProfilesPage> {
       type: ProfileType.file,
       time: DateTime.now(),
     );
+    final wasEmpty = profiles.value.isEmpty;
     profiles.value = [...profiles.value, profile];
     if (!context.mounted) return;
-    selectedFile.value = fileName;
+    if (wasEmpty) selectedFile.value = fileName;
   }
 
   Future<void> _addFromUrl(BuildContext context) async {
@@ -447,8 +448,9 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
         return;
       }
 
+      final wasEmpty = profiles.value.isEmpty;
       profiles.value = [...profiles.value, profile];
-      selectedFile.value = profile.file;
+      if (wasEmpty) selectedFile.value = profile.file;
 
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
