@@ -7,9 +7,7 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -21,7 +19,6 @@ class MainActivity : FlutterFragmentActivity() {
     private val tag = "SingcastVpn"
     private val channel = "cn.mapleafgo/singcast"
     private val eventChannelName = "cn.mapleafgo/singcast/events"
-    private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
     private var pendingVpn: VpnRequest? = null
@@ -76,13 +73,15 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.init(filesDir)
         AppLog.i(tag, "MainActivity: file log initialized")
 
+        // 所有 MethodChannel/EventChannel 回调在后台线程执行，JNI 调用不阻塞主线程
+        val bgQueue = flutterEngine.dartExecutor.binaryMessenger.makeBackgroundTaskQueue()
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
-        MethodChannel(messenger, channel).setMethodCallHandler { call, result ->
+        MethodChannel(messenger, channel, bgQueue).setMethodCallHandler { call, result ->
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
-        EventChannel(messenger, eventChannelName).setStreamHandler(object : EventChannel.StreamHandler {
+        EventChannel(messenger, eventChannelName, bgQueue).setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(args: Any?, sink: EventChannel.EventSink) {
                 Mobile.setEventSink(sink)
                 Mobile.setupEventHandler()
@@ -93,75 +92,56 @@ class MainActivity : FlutterFragmentActivity() {
         })
     }
 
-    private val executor = java.util.concurrent.Executors.newCachedThreadPool()
-    private fun runOnThread(block: () -> Unit) = executor.execute(block)
-
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
         when (method) {
-            "initCore" -> runOnThread {
-                try {
-                    val optionsJSON = args?.str("optionsJSON") ?: ""
-                    AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
-                    Mobile.initCore(optionsJSON)
-                    Mobile.detectAndReportInterfaces(this@MainActivity)
-                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "handleMethodCall: initCore failed", e)
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
+            "initCore" -> try {
+                val optionsJSON = args?.str("optionsJSON") ?: ""
+                AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
+                Mobile.initCore(optionsJSON)
+                Mobile.detectAndReportInterfaces(this@MainActivity)
+                Mobile.detectAndReportDefaultInterface(this@MainActivity)
+                result.success(null)
+            } catch (e: Throwable) {
+                AppLog.e(tag, "handleMethodCall: initCore failed", e)
+                result.error("CORE_ERROR", e.message, null)
+            }
+            "startCoreWithContent" -> try {
+                val content = args?.str("content") ?: ""
+                val proxy = args?.str("ruleSetProxy") ?: ""
+                val svc = vpnService
+                AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=${svc != null})")
+                if (svc != null && svc.isRunning()) {
+                    svc.refreshConfig(content, proxy)
+                } else {
+                    Mobile.startWithContent(content, proxy)
                 }
+                result.success(null)
+            } catch (e: Throwable) {
+                AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
+                result.error("CORE_ERROR", e.message, null)
             }
-            "startCoreWithContent" -> runOnThread {
-                try {
-                    val content = args?.str("content") ?: ""
-                    val proxy = args?.str("ruleSetProxy") ?: ""
-                    val svc = vpnService
-                    AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=${svc != null})")
-                    if (svc != null && svc.isRunning()) {
-                        // VPN active: hot-reload config through service (reuses existing TUN)
-                        svc.refreshConfig(content, proxy)
-                    } else {
-                        // No VPN: plain core start
-                        Mobile.startWithContent(content, proxy)
-                    }
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
+            "stopCore" -> try {
+                AppLog.i(tag, "handleMethodCall: stopCore")
+                Mobile.stopCore()
+                result.success(null)
+            } catch (e: Throwable) {
+                AppLog.e(tag, "handleMethodCall: stopCore failed", e)
+                result.error("CORE_ERROR", e.message, null)
             }
-            "stopCore" -> runOnThread {
-                try {
-                    AppLog.i(tag, "handleMethodCall: stopCore")
-                    Mobile.stopCore()
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "handleMethodCall: stopCore failed", e)
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
+            "destroyCore" -> try {
+                AppLog.i(tag, "handleMethodCall: destroyCore")
+                Mobile.destroyCore()
+                result.success(null)
+            } catch (e: Throwable) {
+                AppLog.e(tag, "handleMethodCall: destroyCore failed", e)
+                result.error("CORE_ERROR", e.message, null)
             }
-            "destroyCore" -> runOnThread {
-                try {
-                    AppLog.i(tag, "handleMethodCall: destroyCore")
-                    Mobile.destroyCore()
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "handleMethodCall: destroyCore failed", e)
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "pause" -> runOnThread {
-                try { Mobile.pause(); mainHandler.post { result.success(null) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "wake" -> runOnThread {
-                try { Mobile.wake(); mainHandler.post { result.success(null) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "resetNetwork" -> runOnThread {
-                try { Mobile.resetNetwork(); mainHandler.post { result.success(null) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
+            "pause" -> try { Mobile.pause(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "wake" -> try { Mobile.wake(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "resetNetwork" -> try { Mobile.resetNetwork(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // TUN / VPN
             "connectVpn" -> {
                 val configContent = args?.str("configContent") ?: ""
@@ -175,101 +155,56 @@ class MainActivity : FlutterFragmentActivity() {
                 stopVpn()
                 result.success(true)
             }
-
-            // Queries — run off main thread to avoid blocking UI on large payloads
-            "queryProxies" -> runOnThread {
-                try { val r = Mobile.queryProxies(); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "queryTraffic" -> runOnThread {
-                try { val r = Mobile.queryTraffic(); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "queryLogs" -> runOnThread {
-                try { val r = Mobile.queryLogs(args?.get("clear") as? Boolean ?: false); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "queryConnections" -> runOnThread {
-                try { val r = Mobile.queryConnections(); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-
-            // Lightweight actions
-            "selectProxy" -> runOnThread {
-                try {
-                    Mobile.selectProxy(args?.str("group") ?: "", args?.str("tag") ?: "")
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "testDelay" -> runOnThread {
-                try {
-                    Mobile.testDelay(args?.str("name") ?: "")
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "setMode" -> runOnThread {
-                try {
-                    Mobile.setMode(args?.str("mode") ?: "")
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "closeConnection" -> runOnThread {
-                try {
-                    Mobile.closeConnection(args?.str("id") ?: "")
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "closeAllConnections" -> runOnThread {
-                try {
-                    Mobile.closeAllConnections()
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
+            // Queries
+            "queryProxies" -> try { result.success(Mobile.queryProxies()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryTraffic" -> try { result.success(Mobile.queryTraffic()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryLogs" -> try { result.success(Mobile.queryLogs(args?.get("clear") as? Boolean ?: false)) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryConnections" -> try { result.success(Mobile.queryConnections()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            // Proxy control
+            "selectProxy" -> try {
+                Mobile.selectProxy(args?.str("group") ?: "", args?.str("tag") ?: "")
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "testDelay" -> try {
+                Mobile.testDelay(args?.str("name") ?: "")
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "setMode" -> try {
+                Mobile.setMode(args?.str("mode") ?: "")
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "closeConnection" -> try {
+                Mobile.closeConnection(args?.str("id") ?: "")
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "closeAllConnections" -> try {
+                Mobile.closeAllConnections()
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // Config
-            "reloadTUN" -> runOnThread {
-                try { Mobile.reloadTUN(); mainHandler.post { result.success(null) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "setOverridePackages" -> runOnThread {
-                try { Mobile.setOverridePackages(args?.str("overrideJSON") ?: "{}"); mainHandler.post { result.success(null) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "queryTunOptions" -> runOnThread {
-                try { val r = Mobile.queryTunOptions(); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            // Proxy
-            "setGroupExpand" -> runOnThread {
-                try {
-                    Mobile.setGroupExpand(args?.str("group") ?: "", args?.get("expand") as? Boolean ?: false)
-                    mainHandler.post { result.success(null) }
-                } catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
+            "reloadTUN" -> try { Mobile.reloadTUN(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "setOverridePackages" -> try { Mobile.setOverridePackages(args?.str("overrideJSON") ?: "{}"); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryTunOptions" -> try { result.success(Mobile.queryTunOptions()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "setGroupExpand" -> try {
+                Mobile.setGroupExpand(args?.str("group") ?: "", args?.get("expand") as? Boolean ?: false)
+                result.success(null)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // Logging / Memory
             "setLogLevel" -> {
                 Mobile.setLogLevel((args?.get("level") as? Number)?.toInt() ?: 4)
                 result.success(null)
             }
-            "setMemoryLimit" -> runOnThread {
-                try {
-                    val r = Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0)
-                    mainHandler.post { result.success(r) }
-                } catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
-            "queryMemoryStats" -> runOnThread {
-                try { val r = Mobile.queryMemoryStats(); mainHandler.post { result.success(r) } }
-                catch (e: Throwable) { mainHandler.post { result.error("CORE_ERROR", e.message, null) } }
-            }
+            "setMemoryLimit" -> try { result.success(Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0)) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryMemoryStats" -> try { result.success(Mobile.queryMemoryStats()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "flushSystemDNS" -> {
                 Mobile.flushSystemDNS()
                 result.success(null)
@@ -292,22 +227,10 @@ class MainActivity : FlutterFragmentActivity() {
             }
             // Utilities
             "setLocale" -> { Mobile.setLocale(args?.str("localeID") ?: ""); result.success(null) }
-            "checkConfig" -> runOnThread {
-                try {
-                    val r = Mobile.checkConfig(args?.str("content") ?: "")
-                    mainHandler.post { result.success(r) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
-            "getVersion" -> runOnThread {
-                try {
-                    val r = Mobile.getVersion()
-                    mainHandler.post { result.success(r) }
-                } catch (e: Throwable) {
-                    mainHandler.post { result.error("CORE_ERROR", e.message, null) }
-                }
-            }
+            "checkConfig" -> try { result.success(Mobile.checkConfig(args?.str("content") ?: "")) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "getVersion" -> try { result.success(Mobile.getVersion()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "requestNotificationPermission" -> {
                 requestNotificationPermission()
                 result.success(null)
@@ -326,7 +249,6 @@ class MainActivity : FlutterFragmentActivity() {
                 )
                 result.success(null)
             }
-
             else -> result.notImplemented()
         }
     }

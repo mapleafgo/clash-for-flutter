@@ -293,7 +293,6 @@ object Mobile {
     @Volatile private var defaultNetworkCallback: android.net.ConnectivityManager.NetworkCallback? = null
     @Volatile private var defaultNetwork: android.net.Network? = null
 
-    @android.annotation.TargetApi(31)
     fun detectAndReportDefaultInterface(context: android.content.Context) {
         try {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
