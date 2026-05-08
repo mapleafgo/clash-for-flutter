@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 import 'ffi_worker.dart';
 import 'lib_core.dart';
@@ -65,13 +63,11 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
-    final vpnRunning = await isVpnRunning();
-    _channel.invokeMethod('startCoreWithContent', {
-      'content': _prepareMobileConfig(content, tunEnabled: vpnRunning),
-      'ruleSetProxy': ruleSetProxy ?? '',
-    });
-  }
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
+      _channel.invokeMethod('startCoreWithContent', {
+        'content': content,
+        'ruleSetProxy': ruleSetProxy ?? '',
+      });
 
   @override
   Future<void> stopCore() => _channel.invokeMethod('stopCore');
@@ -263,7 +259,7 @@ class LibCoreChannel implements LibCorePlatform {
         await stopCore();
       } catch (_) {}
       await connectVpn(
-        _prepareMobileConfig(mergedContent, ipv6: ipv6),
+        mergedContent,
         ruleSetProxy: ruleSetProxy,
         ipv6: ipv6,
       );
@@ -282,23 +278,4 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   bool get isVpnStarting => _vpnStarting;
-
-  String _prepareMobileConfig(String yaml, {bool tunEnabled = true, bool? ipv6}) {
-    final editor = YamlEditor(yaml);
-    final doc = loadYaml(editor.toString());
-    if (doc is YamlMap && !doc.containsKey('tun')) {
-      editor.update(['tun'], {});
-    }
-    if (tunEnabled) {
-      editor.update(['tun', 'enable'], true);
-      editor.update(['tun', 'auto-route'], false);
-      editor.update(['tun', 'strict-route'], false);
-    } else {
-      editor.update(['tun', 'enable'], false);
-    }
-    if (ipv6 != null) {
-      editor.update(['ipv6'], ipv6);
-    }
-    return editor.toString();
-  }
 }
