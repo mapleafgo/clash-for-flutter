@@ -294,7 +294,7 @@ jobs:
         run: |
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-arm64.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv libsingcast-arm64.aar android/app/libs/libsingcast.aar
+          mv libsingcast-android-arm64.aar android/app/libs/libsingcast.aar
 
       - name: Build APK
         run: flutter build apk --release --target-platform android-arm64
