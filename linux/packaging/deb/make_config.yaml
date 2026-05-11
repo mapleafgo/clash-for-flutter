@@ -20,5 +20,3 @@ dependencies:
   - liblzma5
   - libayatana-appindicator3-1
   - libnotify4
-postinstall_scripts:
-  - setcap 'cap_net_admin+ep' /opt/singcast/singcast
