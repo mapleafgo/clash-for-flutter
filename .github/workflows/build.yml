@@ -116,8 +116,17 @@ jobs:
           overwrite_files: true
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13
+            arch: amd64
+            core_arch: amd64
+          - runner: macos-latest
+            arch: arm64
+            core_arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -134,9 +143,9 @@ jobs:
       - name: Download core
         run: |
           mkdir -p macos/Frameworks
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz" -o libsingcast.tar.gz
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv libsingcast-darwin-arm64.dylib macos/Frameworks/libsingcast-darwin.dylib
+          mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
 
       - name: Build
         run: flutter build macos --release
@@ -147,7 +156,7 @@ jobs:
       - name: Create DMG
         run: |
           APP_PATH="build/macos/Build/Products/Release/singcast.app"
-          DMG_NAME="singcast-${{ env.VERSION }}-macos-arm64.dmg"
+          DMG_NAME="singcast-${{ env.VERSION }}-macos-${{ matrix.arch }}.dmg"
           hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "$APP_PATH/../$DMG_NAME"
 
       - name: Upload release assets
