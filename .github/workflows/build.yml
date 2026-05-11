@@ -84,7 +84,9 @@ jobs:
           cache: true
 
       - name: Sync version
-        run: sed -i "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
+        run: |
+          v="${VERSION#v}"
+          sed -i "s/^version:.*/version: $v/" pubspec.yaml
 
       - name: Install dependencies
         run: |
@@ -110,17 +112,8 @@ jobs:
           overwrite: true
 
   build-macos:
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-latest
     timeout-minutes: 25
-    strategy:
-      matrix:
-        include:
-          - runner: macos-13
-            arch: amd64
-            core_arch: amd64
-          - runner: macos-latest
-            arch: arm64
-            core_arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -130,13 +123,15 @@ jobs:
           cache: true
 
       - name: Sync version
-        run: sed -i "" "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
+        run: |
+          v="${VERSION#v}"
+          sed -i "" "s/^version:.*/version: $v/" pubspec.yaml
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
+          mv libsingcast-darwin-arm64.dylib macos/Frameworks/libsingcast-darwin.dylib
 
       - name: Build
         run: flutter build macos --release
@@ -147,9 +142,8 @@ jobs:
       - name: Create DMG
         run: |
           APP_PATH="build/macos/Build/Products/Release/singcast.app"
-          DMG_NAME="singcast-${{ env.VERSION }}-macos-${{ matrix.arch }}.dmg"
-          DMG_PATH="$APP_PATH/../$DMG_NAME"
-          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+          DMG_NAME="singcast-${{ env.VERSION }}-macos-arm64.dmg"
+          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "$APP_PATH/../$DMG_NAME"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -183,7 +177,9 @@ jobs:
           cache: true
 
       - name: Sync version
-        run: sed -i "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
+        run: |
+          v="${VERSION#v}"
+          sed -i "s/^version:.*/version: $v/" pubspec.yaml
 
       - name: Setup Android signing
         run: |
