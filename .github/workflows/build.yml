@@ -58,11 +58,11 @@ jobs:
       - name: Rename artifacts
         run: |
           $ver = "${{ env.VERSION }}".TrimStart('v')
-          $distDir = "dist\$ver\windows"
+          $distDir = "dist\$ver"
           $exe = (Get-ChildItem "$distDir\*.exe")[0]
           $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          $newExe = "dist\$ver\windows\singcast-${{ env.VERSION }}-windows-amd64.exe"
-          $newZip = "dist\$ver\windows\singcast-${{ env.VERSION }}-windows-amd64-portable.zip"
+          $newExe = "$distDir\singcast-${{ env.VERSION }}-windows-amd64.exe"
+          $newZip = "$distDir\singcast-${{ env.VERSION }}-windows-amd64-portable.zip"
           Move-Item -Force $exe.FullName $newExe
           Move-Item -Force $zip.FullName $newZip
 
@@ -70,7 +70,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: dist/${{ env.VERSION }}/windows/*
+          files: dist/*/*.exe,dist/*/*.zip
           overwrite: true
 
   build-linux:

@@ -14,6 +14,7 @@ keywords:
   - VPN
   - sing-box
 startup_notify: true
+installed_size: 6604
 dependencies:
   - libgtk-3-0
   - libblkid1
