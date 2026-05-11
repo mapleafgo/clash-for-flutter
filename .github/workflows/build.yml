@@ -19,7 +19,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.41.7"
-  CORE_VERSION: "v1.13.11-rc13"
+  CORE_VERSION: "v1.13.11-beta3"
 
 jobs:
   get-release:
