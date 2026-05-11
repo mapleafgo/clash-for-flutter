@@ -74,15 +74,6 @@ class _ProfilesPageState extends State<ProfilesPage> {
       body: Watch((context) {
         final list = profiles.value;
         final sel = selectedFile.value;
-        final err = profileError.value;
-        if (err != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              showErrorDialog(context, '切换配置失败: $err');
-            }
-            profileError.value = null;
-          });
-        }
         if (list.isEmpty) return const Center(child: Text('暂无订阅'));
         return LayoutBuilder(builder: (_, constraints) {
           final cols = constraints.maxWidth > 400 ? 2 : 1;
@@ -195,7 +186,7 @@ class _ProfileCard extends StatelessWidget {
         : null;
     return Card(
       elevation: 0,
-      color: isSelected ? cs.primaryContainer : cs.surfaceContainerLow,
+      color: isSelected ? cs.primaryContainer.withValues(alpha: 0.5) : cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {

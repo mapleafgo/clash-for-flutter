@@ -4,19 +4,42 @@ import 'dart:io';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/utils/constants.dart';
 
-class AppConfigStorage {
-  static final _file =
-      File('${Constants.homeDir.path}${Constants.clashForMe}');
+class AppSettingsStorage {
+  static final _file = File('${Constants.homeDir.path}${Constants.appSettings}');
 
-  static AppStoredConfig load() {
-    if (!_file.existsSync()) return AppStoredConfig.empty();
-    final json = jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
-    return AppStoredConfig.fromJson(json);
+  static Map<String, dynamic> load() {
+    _migrateFromCfm();
+    if (!_file.existsSync()) return {};
+    try {
+      return jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
   }
 
-  static void save(AppStoredConfig config) {
+  static void save(Map<String, dynamic> settings) {
     _file.createSync(recursive: true);
-    _file.writeAsStringSync(jsonEncode(config.toJson()));
+    _file.writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert(settings),
+    );
+  }
+
+  /// 一次性迁移 cfm.json → settings.json，迁移后删除旧文件。
+  static void _migrateFromCfm() {
+    final cfm = File('${Constants.homeDir.path}/cfm.json');
+    if (!cfm.existsSync()) return;
+    if (_file.existsSync()) {
+      // settings.json 已存在，直接删除旧文件
+      cfm.deleteSync();
+      return;
+    }
+    try {
+      final old = jsonDecode(cfm.readAsStringSync()) as Map<String, dynamic>;
+      save(old);
+      cfm.deleteSync();
+    } catch (_) {
+      // 迁移失败不影响启动
+    }
   }
 }
 
@@ -26,6 +49,7 @@ class AppStoredConfig {
   final String delayTestUrl;
   final bool? tunIf;
   final String subUA;
+  final String? themeMode;
 
   AppStoredConfig({
     this.selectedFile,
@@ -33,6 +57,7 @@ class AppStoredConfig {
     required this.delayTestUrl,
     this.tunIf,
     String? subUA,
+    this.themeMode,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
@@ -45,6 +70,7 @@ class AppStoredConfig {
         delayTestUrl: json['delay-test-url'] as String? ?? Defaults.delayTestUrl,
         tunIf: json['tun-if'] as bool?,
         subUA: json['sub-ua'] as String? ?? Defaults.subUA,
+        themeMode: json['theme-mode'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -52,8 +78,8 @@ class AppStoredConfig {
         'profiles': profiles.map((e) => e.toJson()).toList(),
         'delay-test-url': delayTestUrl,
         'tun-if': tunIf,
-        // UA 为默认时不持久化，加载时直接用即时版本常量
         if (subUA != Defaults.subUA) 'sub-ua': subUA,
+        if (themeMode != null) 'theme-mode': themeMode,
       };
 
   factory AppStoredConfig.empty() => AppStoredConfig(

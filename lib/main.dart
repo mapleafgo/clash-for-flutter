@@ -57,15 +57,11 @@ void main() async {
 Future<void> _initApp() async {
   await LibCore.instance.init();
 
-  // 订阅内核事件流，驱动 UI 信号更新
-  LibCore.instance.platform.events.listen(LibCore.instance.handleCoreEvent);
-
   // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
     await LibCore.instance
         .initCore(Constants.homeDir.path)
         .timeout(const Duration(seconds: 10));
-    await LibCore.instance.setLocale('zh_CN');
   } on TimeoutException {
     initError.value = '内核初始化超时';
   } catch (e) {
@@ -81,13 +77,18 @@ Future<void> _initApp() async {
     try {
       if (await LibCore.instance.isVpnRunning()) {
         vpnConnected.value = true;
-        LibCore.instance.coreConnected.value = true;
         ensureTunEnabled(true);
+        LibCore.instance.syncRunningState();
       }
     } catch (_) {}
   }
 
   startWatchingSelectedFile();
+
+  // 无配置文件时内核不会启动，手动将状态设为"就绪"避免 UI 持续 loading
+  if (selectedFile.value == null && LibCore.instance.stateSignal.peek() == 0) {
+    LibCore.instance.stateSignal.value = 1;
+  }
 }
 
 /// 解析 --home-dir 命令行参数，提权重启时用于指定用户数据目录。

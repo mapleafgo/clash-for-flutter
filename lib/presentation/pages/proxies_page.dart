@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/proxy_group.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
@@ -10,18 +12,12 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 final _sortType = signal(SortType.defaults);
 
-bool _tagsEquals(List<String> a, List<String> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
-
-final _testingTags = signal<Set<String>>({});
-final _testingTimers = <String, Timer>{};
-final _initialDelays = <String, int>{};
-String? _testingGroupTag;
+const _delayColorGood = Color(0xFF2E7D32);
+const _delayColorGoodDark = Color(0xFF66BB6A);
+const _delayColorMedium = Color(0xFFF9A825);
+const _delayColorMediumDark = Color(0xFFFFEE58);
+const _delayColorBad = Color(0xFFC62828);
+const _delayColorBadDark = Color(0xFFEF5350);
 
 class ProxiesPage extends StatefulWidget {
   const ProxiesPage({super.key});
@@ -31,6 +27,8 @@ class ProxiesPage extends StatefulWidget {
 }
 
 class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
+  static final _testingTags = signal<Set<String>>({});
+  static final _groupTesting = signal(false);
   final _fabVisible = ValueNotifier<bool>(true);
   TabController? _tabController;
   List<String> _cachedTags = [];
@@ -45,55 +43,18 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
           .where((g) => !isUsedProxy(g.tag))
           .map((g) => g.tag)
           .toList();
-      if (!_tagsEquals(_cachedTags, newTags)) {
+      if (!listEquals(_cachedTags, newTags)) {
         _cachedTags = newTags;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) setState(() {});
         });
       }
     });
-
-    createEffect(() {
-      final testing = _testingTags.peek();
-      if (testing.isEmpty) return;
-      final groupTag = _testingGroupTag;
-      if (groupTag == null) return;
-
-      final group = LibCore.instance.proxiesSignal.value
-          .where((g) => g.tag == groupTag)
-          .firstOrNull;
-      if (group == null) return;
-
-      final delays = LibCore.instance.proxyDelaysSignal.value;
-      final completed = <String>[];
-      for (final tag in testing) {
-        final initial = _initialDelays[tag];
-        if (initial == null) {
-          completed.add(tag);
-          continue;
-        }
-        final currentDelay = delays[tag];
-        if (currentDelay != null && currentDelay > 0 && currentDelay != initial) {
-          completed.add(tag);
-        }
-      }
-
-      if (completed.isNotEmpty) {
-        for (final tag in completed) {
-          _initialDelays.remove(tag);
-          _testingTimers[tag]?.cancel();
-          _testingTimers.remove(tag);
-        }
-        final remaining =
-            Set<String>.from(_testingTags.value)..removeAll(completed);
-        _testingTags.value = remaining;
-        if (remaining.isEmpty) _testingGroupTag = null;
-      }
-    });
   }
 
   void _syncTags() {
-    _cachedTags = LibCore.instance.proxiesSignal.peek()
+    _cachedTags = LibCore.instance.proxiesSignal
+        .peek()
         .where((g) => !isUsedProxy(g.tag))
         .map((g) => g.tag)
         .toList();
@@ -102,13 +63,6 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
   @override
   void dispose() {
     _fabVisible.dispose();
-    for (final timer in _testingTimers.values) {
-      timer.cancel();
-    }
-    _testingTimers.clear();
-    _testingTags.value = {};
-    _initialDelays.clear();
-    _testingGroupTag = null;
     super.dispose();
   }
 
@@ -131,14 +85,19 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
               ),
               const SizedBox(width: 8),
               Watch((context) {
-                if (_testingTags.value.isNotEmpty) {
-                  return const SizedBox.shrink();
-                }
+                final busy = _groupTesting.value;
                 return FloatingActionButton(
                   heroTag: 'speed',
-                  onPressed: _testAllDelay,
+                  onPressed: busy ? null : _testAllDelay,
                   tooltip: '测速',
-                  child: const Icon(Icons.speed),
+                  child: busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.speed),
                 );
               }),
             ],
@@ -162,6 +121,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
             : _ProxiesTabView(
                 tags: _cachedTags,
                 onControllerChanged: (c) => _tabController = c,
+                onExpand: () => _showGroupsDialog(context),
               ),
       ),
     );
@@ -177,29 +137,28 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
     if (index >= groups.length) return;
     final group = groups[index];
 
-    _testingGroupTag = group.tag;
-
-    final tags = <String>{};
-    for (final item in group.items) {
-      if (!isUsedProxy(item.tag) && !_testingTags.value.contains(item.tag)) {
-        tags.add(item.tag);
-        _initialDelays[item.tag] = LibCore.instance.proxyDelaysSignal.peek()[item.tag] ?? 0;
-        LibCore.instance.testDelay(item.tag).catchError((_) {});
-      }
-    }
+    final tags = group.items
+        .where((item) => !isUsedProxy(item.tag))
+        .map((item) => item.tag)
+        .toSet();
     if (tags.isEmpty) return;
 
-    _testingTags.value = Set<String>.from(_testingTags.value)..addAll(tags);
-
+    _groupTesting.value = true;
+    final cleared =
+        Map<String, int>.from(LibCore.instance.proxyDelaysSignal.peek());
     for (final tag in tags) {
-      _testingTimers[tag]?.cancel();
-      _testingTimers[tag] = Timer(const Duration(seconds: 5), () {
-        _testingTimers.remove(tag);
-        _initialDelays.remove(tag);
-        final remaining = Set<String>.from(_testingTags.value)..remove(tag);
-        _testingTags.value = remaining;
-        if (remaining.isEmpty) _testingGroupTag = null;
-      });
+      cleared.remove(tag);
+    }
+    LibCore.instance.proxyDelaysSignal.value = cleared;
+
+    try {
+      final delays = await LibCore.instance.testGroupDelay(group.tag);
+      if (delays.isNotEmpty) {
+        LibCore.instance.updateProxyDelays(delays);
+      }
+    } catch (_) {
+    } finally {
+      _groupTesting.value = false;
     }
   }
 
@@ -225,6 +184,29 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
       ),
     );
   }
+
+  void _showGroupsDialog(BuildContext context) {
+    final controller = _tabController;
+    if (controller == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('选择分组'),
+        children: _cachedTags.asMap().entries.map((entry) {
+          final index = entry.key;
+          final tag = entry.value;
+          return ListTile(
+            title: Text(tag),
+            selected: index == controller.index,
+            onTap: () {
+              Navigator.pop(ctx);
+              controller.animateTo(index);
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
 }
 
 // --- Tab Structure ---
@@ -232,7 +214,12 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
 class _ProxiesTabView extends StatefulWidget {
   final List<String> tags;
   final ValueChanged<TabController>? onControllerChanged;
-  const _ProxiesTabView({required this.tags, this.onControllerChanged});
+  final VoidCallback? onExpand;
+  const _ProxiesTabView({
+    required this.tags,
+    this.onControllerChanged,
+    this.onExpand,
+  });
 
   @override
   State<_ProxiesTabView> createState() => _ProxiesTabViewState();
@@ -255,7 +242,7 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
   @override
   void didUpdateWidget(_ProxiesTabView old) {
     super.didUpdateWidget(old);
-    if (!_tagsEquals(old.tags, widget.tags)) {
+    if (!listEquals(old.tags, widget.tags)) {
       final previousIndex = _tabController.index;
       _tabController.dispose();
       _tabController = TabController(
@@ -276,10 +263,26 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        tabs: widget.tags.map((tag) => Tab(text: tag)).toList(),
+      Row(
+        children: [
+          Expanded(
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              padding: const EdgeInsets.only(left: 12),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: widget.tags.map((tag) => Tab(text: tag)).toList(),
+            ),
+          ),
+          if (widget.tags.length > 5)
+            IconButton(
+              icon: const Icon(Icons.unfold_more, size: 20),
+              tooltip: '展开分组',
+              onPressed: widget.onExpand,
+            ),
+        ],
       ),
       Expanded(
         child: TabBarView(
@@ -305,14 +308,15 @@ class _ProxyList extends StatelessWidget {
       final group = LibCore.instance.proxiesSignal.value
           .where((g) => g.tag == groupTag)
           .firstOrNull;
-      final testing = _testingTags.value;
+      final selected = LibCore.instance.selectedProxySignal.value[groupTag] ?? '';
+      final testing = _ProxiesPageState._testingTags.value;
       final items = _sortedItems(group?.items ?? []);
 
       return ListView.builder(
         itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
           item: items[i],
-          selected: items[i].tag == (group?.selected ?? ''),
+          selected: items[i].tag == selected,
           groupName: groupTag,
           testing: testing.contains(items[i].tag),
         ),
@@ -363,31 +367,38 @@ class _ProxyTile extends StatelessWidget {
     }
 
     final cs = Theme.of(context).colorScheme;
-    return ListTile(
-      selected: selected,
-      dense: true,
-      selectedTileColor: cs.primaryContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(item.tag,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: selected ? FontWeight.w600 : null,
-            color: selected ? cs.primary : null,
-          )),
-      subtitle:
-          Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
-      trailing: Watch((context) {
-        final delay = LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
-        return _delayWidget(delay, testing, context);
-      }),
-      onTap: () async {
-        await LibCore.instance.selectProxy(groupName, item.tag);
-      },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          color: selected ? cs.primaryContainer.withValues(alpha: 0.5) : null,
+          child: ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: Text(item.tag,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w600 : null,
+                  color: selected ? cs.primary : null,
+                )),
+            subtitle:
+                Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
+            trailing: Watch((context) {
+              final delay = LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
+              return _delayWidget(delay, testing, item.tag);
+            }),
+            onTap: () async {
+              await LibCore.instance.selectProxy(groupName, item.tag);
+            },
+          ),
+        ),
+      ),
     );
   }
 }
 
-Widget _delayWidget(int delay, bool testing, BuildContext context) {
+Widget _delayWidget(int delay, bool testing, String tag) {
   if (testing) {
     return const SizedBox(
       width: 16,
@@ -395,16 +406,43 @@ Widget _delayWidget(int delay, bool testing, BuildContext context) {
       child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
-  if (delay <= 0) return const SizedBox.shrink();
-  return _delayText(delay, context);
+  return GestureDetector(
+    onTap: () => _testSingleDelay(tag),
+    child: Builder(builder: (context) {
+      if (delay <= 0) {
+        return Text('...',
+            style: TextStyle(
+                fontSize: 13, color: Theme.of(context).disabledColor));
+      }
+      return _delayText(delay, context);
+    }),
+  );
+}
+
+Future<void> _testSingleDelay(String tag) async {
+  final testing = _ProxiesPageState._testingTags;
+  if (!testing.value.contains(tag)) {
+    testing.value = Set<String>.from(testing.value)..add(tag);
+  }
+  try {
+    final delay = await LibCore.instance.testDelay(tag);
+    if (delay > 0) {
+      LibCore.instance.updateProxyDelay(tag, delay);
+    }
+  } catch (e) {
+    LogFileWriter.instance?.log('testDelay($tag) error: $e',
+        level: LogLevel.warning, name: 'delay');
+  } finally {
+    testing.value = Set<String>.from(testing.value)..remove(tag);
+  }
 }
 
 Widget _delayText(int delay, BuildContext context) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final color = delay <= 500
-      ? isDark ? const Color(0xFF66BB6A) : const Color(0xFF2E7D32)
+      ? isDark ? _delayColorGoodDark : _delayColorGood
       : delay <= 1000
-          ? isDark ? const Color(0xFFFFEE58) : const Color(0xFFF9A825)
-          : isDark ? const Color(0xFFEF5350) : const Color(0xFFC62828);
+          ? isDark ? _delayColorMediumDark : _delayColorMedium
+          : isDark ? _delayColorBadDark : _delayColorBad;
   return Text('${delay}ms', style: TextStyle(color: color, fontSize: 13));
 }

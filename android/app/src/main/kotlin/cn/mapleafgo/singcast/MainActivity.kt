@@ -11,15 +11,14 @@ import android.os.IBinder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMethodCodec
 
 class MainActivity : FlutterFragmentActivity() {
 
     private val tag = "SingcastVpn"
-    private val channel = "cn.mapleafgo/singcast"
-    private val eventChannelName = "cn.mapleafgo/singcast/events"
+    private val channelName = "cn.mapleafgo/singcast"
+    private lateinit var flutterChannel: MethodChannel
     @Volatile private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
     private var pendingVpn: VpnRequest? = null
@@ -39,7 +38,6 @@ class MainActivity : FlutterFragmentActivity() {
             AppLog.i(tag, "VPN service connected, running=$running")
             if (running) {
                 Mobile.setVpnService(vpnService)
-                Mobile.notifyVpnStateChanged(true)
             }
         }
         override fun onServiceDisconnected(name: ComponentName) {
@@ -74,23 +72,19 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.init(filesDir)
         AppLog.i(tag, "MainActivity: file log initialized")
 
-        // 所有 MethodChannel/EventChannel 回调在后台线程执行，JNI 调用不阻塞主线程
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
 
-        MethodChannel(messenger, channel, StandardMethodCodec.INSTANCE, taskQueue).setMethodCallHandler { call, result ->
+        flutterChannel = MethodChannel(messenger, channelName, StandardMethodCodec.INSTANCE, taskQueue)
+        flutterChannel.setMethodCallHandler { call, result ->
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
-        EventChannel(messenger, eventChannelName, StandardMethodCodec.INSTANCE, taskQueue).setStreamHandler(object : EventChannel.StreamHandler {
-            override fun onListen(args: Any?, sink: EventChannel.EventSink) {
-                Mobile.setEventSink(sink)
-                Mobile.setupEventHandler()
+        Mobile.registerCallbacks { eventType, payload ->
+            runOnUiThread {
+                flutterChannel.invokeMethod("onEvent", mapOf("eventType" to eventType, "payload" to payload))
             }
-            override fun onCancel(args: Any?) {
-                Mobile.setEventSink(null)
-            }
-        })
+        }
     }
 
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
@@ -100,7 +94,6 @@ class MainActivity : FlutterFragmentActivity() {
                 AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
                 Mobile.initCore(optionsJSON)
                 Mobile.detectAndReportInterfaces(this@MainActivity)
-                Mobile.detectAndReportDefaultInterface(this@MainActivity)
                 result.success(null)
             } catch (e: Throwable) {
                 AppLog.e(tag, "handleMethodCall: initCore failed", e)
@@ -110,13 +103,22 @@ class MainActivity : FlutterFragmentActivity() {
                 val content = args?.str("content") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
                 val svc = vpnService
-                AppLog.i(tag, "handleMethodCall: startCoreWithContent (${content.length} chars, vpn=${svc != null})")
+                val tunEnabled = isTunEnabled(content)
+                AppLog.i(tag, "startCoreWithContent: ${content.length} chars, vpnSvc=${svc != null}, vpnRunning=${svc?.isRunning()}, tun=$tunEnabled")
                 if (svc != null && svc.isRunning()) {
+                    AppLog.i(tag, "startCoreWithContent: VPN running, calling refreshConfig")
                     svc.refreshConfig(content, proxy)
+                    result.success(null)
+                } else if (tunEnabled) {
+                    AppLog.i(tag, "startCoreWithContent: TUN detected but VPN not running, routing through VPN service")
+                    requestVpn(content, proxy, true, result)
                 } else {
+                    AppLog.i(tag, "startCoreWithContent: no TUN, starting core directly")
+                    Mobile.detectAndReportInterfaces(this@MainActivity)
+                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
                     Mobile.startWithContent(content, proxy)
+                    result.success(null)
                 }
-                result.success(null)
             } catch (e: Throwable) {
                 AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
                 result.error("CORE_ERROR", e.message, null)
@@ -137,10 +139,6 @@ class MainActivity : FlutterFragmentActivity() {
                 AppLog.e(tag, "handleMethodCall: destroyCore failed", e)
                 result.error("CORE_ERROR", e.message, null)
             }
-            "pause" -> try { Mobile.pause(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "wake" -> try { Mobile.wake(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "resetNetwork" -> try { Mobile.resetNetwork(); result.success(null) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // TUN / VPN
@@ -159,11 +157,13 @@ class MainActivity : FlutterFragmentActivity() {
             // Queries
             "queryProxies" -> try { result.success(Mobile.queryProxies()) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryTraffic" -> try { result.success(Mobile.queryTraffic()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryLogs" -> try { result.success(Mobile.queryLogs(args?.get("clear") as? Boolean ?: false)) }
+            "queryStats" -> try { result.success(Mobile.queryStats()) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "queryConnections" -> try { result.success(Mobile.queryConnections()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryMode" -> try { result.success(Mobile.queryMode()) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryState" -> try { result.success(Mobile.queryState()) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // Proxy control
             "selectProxy" -> try {
@@ -171,8 +171,17 @@ class MainActivity : FlutterFragmentActivity() {
                 result.success(null)
             } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "testDelay" -> try {
-                Mobile.testDelay(args?.str("name") ?: "")
-                result.success(null)
+                val delay = Mobile.testDelay(
+                    args?.str("name") ?: "",
+                    args?.getInt("timeoutMs") ?: 3000
+                )
+                result.success(delay)
+            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "testGroupDelay" -> try {
+                result.success(Mobile.testGroupDelay(
+                    args?.str("group") ?: "",
+                    args?.getInt("timeoutMs") ?: 3000
+                ))
             } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "setMode" -> try {
                 Mobile.setMode(args?.str("mode") ?: "")
@@ -187,12 +196,6 @@ class MainActivity : FlutterFragmentActivity() {
                 result.success(null)
             } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // Config
-            "reloadTUN" -> try { Mobile.reloadTUN(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "setOverridePackages" -> try { Mobile.setOverridePackages(args?.str("overrideJSON") ?: "{}"); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryTunOptions" -> try { result.success(Mobile.queryTunOptions()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "setGroupExpand" -> try {
                 Mobile.setGroupExpand(args?.str("group") ?: "", args?.get("expand") as? Boolean ?: false)
                 result.success(null)
@@ -204,16 +207,17 @@ class MainActivity : FlutterFragmentActivity() {
             }
             "setMemoryLimit" -> try { result.success(Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0)) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryMemoryStats" -> try { result.success(Mobile.queryMemoryStats()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "flushSystemDNS" -> {
                 Mobile.flushSystemDNS()
                 result.success(null)
             }
+            "flushFakeIP" -> try { Mobile.flushFakeIP(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "flushDNSCache" -> try { Mobile.flushDNSCache(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "triggerGC" -> try { Mobile.triggerGC(); result.success(null) }
+            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             // Platform
-            "needWIFIState" -> result.success(Mobile.needWIFIState())
-            "needFindProcess" -> result.success(Mobile.needFindProcess())
-            "updateWIFIState" -> { Mobile.updateWIFIState(); result.success(null) }
             "setIncludeAllNetworks" -> {
                 Mobile.setIncludeAllNetworks(args?.get("v") as? Boolean ?: false)
                 result.success(null)
@@ -222,12 +226,7 @@ class MainActivity : FlutterFragmentActivity() {
                 Mobile.setWIFIState(args?.str("ssid") ?: "", args?.str("bssid") ?: "")
                 result.success(null)
             }
-            "writeMessage" -> {
-                Mobile.writeMessage((args?.get("level") as? Number)?.toInt() ?: 4, args?.str("message") ?: "")
-                result.success(null)
-            }
             // Utilities
-            "setLocale" -> { Mobile.setLocale(args?.str("localeID") ?: ""); result.success(null) }
             "checkConfig" -> try { result.success(Mobile.checkConfig(args?.str("content") ?: "")) }
             catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
             "getVersion" -> try { result.success(Mobile.getVersion()) }
@@ -262,7 +261,7 @@ class MainActivity : FlutterFragmentActivity() {
                 pendingVpn = VpnRequest(configContent, ruleSetProxy, ipv6, result)
                 vpnPermissionLauncher.launch(intent)
             } else {
-                AppLog.i(tag, "requestVpn: VPN permission already granted, starting directly")
+                AppLog.i(tag, "requestVpn: VPN permission already granted, starting directly (config=${configContent.length} chars)")
                 startVpn(configContent, ruleSetProxy, ipv6, result)
             }
         } catch (e: Exception) {
@@ -272,7 +271,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun startVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
-        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars, ipv6=$ipv6)")
+        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars, ipv6=$ipv6, vpnBound=$vpnBound)")
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
@@ -283,7 +282,12 @@ class MainActivity : FlutterFragmentActivity() {
         if (!vpnBound) {
             bindService(intent, vpnConnection, BIND_AUTO_CREATE)
         }
+        AppLog.i(tag, "startVpn: service started and bound")
         result.success(true)
+    }
+
+    private fun isTunEnabled(content: String): Boolean {
+        return content.contains("tun:") && content.contains("enable: true")
     }
 
     private fun stopVpn() {
@@ -325,5 +329,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun Map<String, Any>.str(key: String) = this[key] as? String
+    private fun Map<String, Any>.getInt(key: String): Int = (this[key] as? Number)?.toInt() ?: 0
     private fun Map<String, Any>.getLong(key: String): Long = (this[key] as? Number)?.toLong() ?: 0
 }

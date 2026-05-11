@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.Build
 import androidx.core.app.NotificationCompat
 
 class SingcastVpnService : VpnService() {
@@ -101,7 +102,8 @@ class SingcastVpnService : VpnService() {
         }
         running = true
         disconnected = false
-        AppLog.i(TAG, "connect: starting VPN connection thread")
+        val totalStartMs = System.currentTimeMillis()
+        AppLog.i(TAG, "connect: starting VPN connection thread (config=${configContent.length} chars)")
         ipv6Enabled = enableIpv6
 
         Thread({
@@ -110,14 +112,14 @@ class SingcastVpnService : VpnService() {
                 return@Thread
             }
             try {
-                AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile")
+                AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.setVpnService(this@SingcastVpnService)
 
-                AppLog.d(TAG, "connect: step 2/5 - establishing TUN interface (ipv6=$enableIpv6)")
+                AppLog.d(TAG, "connect: step 2/5 - establishing TUN interface (ipv6=$enableIpv6, t=${System.currentTimeMillis() - totalStartMs}ms)")
                 val fd = establishTun(enableIpv6)
-                AppLog.d(TAG, "connect: TUN established, fd=$fd")
+                AppLog.d(TAG, "connect: TUN established, fd=$fd (t=${System.currentTimeMillis() - totalStartMs}ms)")
 
-                AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core")
+                AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.setTunFd(fd)
 
                 if (disconnected) {
@@ -127,20 +129,20 @@ class SingcastVpnService : VpnService() {
 
                 showNotification()
 
-                AppLog.d(TAG, "connect: step 4/5 - starting core with content (${configContent.length} chars)")
+                AppLog.d(TAG, "connect: step 4/5 - starting core with content (${configContent.length} chars, t=${System.currentTimeMillis() - totalStartMs}ms)")
                 val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 val elapsed = System.currentTimeMillis() - startMs
                 isServiceRunning = true
 
-                AppLog.d(TAG, "connect: step 5/5 - detecting and reporting network interfaces")
+                AppLog.d(TAG, "connect: step 5/5 - detecting and reporting network interfaces (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.detectAndReportInterfaces(this@SingcastVpnService)
                 Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
                 registerNetworkCallback()
 
-                AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, VPN thread exiting")
+                AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, total=${System.currentTimeMillis() - totalStartMs}ms")
             } catch (e: Throwable) {
-                AppLog.e(TAG, "connect: FAILED - core start threw exception", e)
+                AppLog.e(TAG, "connect: FAILED at t=${System.currentTimeMillis() - totalStartMs}ms", e)
                 disconnect("core_start_failed")
             }
         }, "vpn-connect").start()
@@ -156,8 +158,12 @@ class SingcastVpnService : VpnService() {
             .addDnsServer("8.8.8.8")
             .addDnsServer("8.8.4.4")
         if (enableIpv6) {
-            builder.addAddress("fdfe:dcba:9876::1", 128)
+            // /126 匹配 sing-box 内核默认 TUN 地址，/128 会导致响应包被丢弃
+            builder.addAddress("fdfe:dcba:9876::1", 126)
             builder.addRoute("::", 0)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            builder.setMetered(false)
         }
 
         val result = builder.establish()
@@ -176,27 +182,30 @@ class SingcastVpnService : VpnService() {
 
     fun disconnect(reason: String = "unknown") {
         synchronized(lock) {
-            if (disconnected) return
+            if (disconnected) {
+                AppLog.d(TAG, "disconnect: already disconnected (reason=$reason), skip")
+                return
+            }
             disconnected = true
             running = false
         }
-        AppLog.i(TAG, "disconnect: reason=$reason")
+        AppLog.i(TAG, "disconnect: reason=$reason, stopping core and clearing protector")
         isServiceRunning = false
         unregisterNetworkCallback()
         Mobile.unregisterDefaultNetworkCallback(this)
-        try { Mobile.stopCore() } catch (e: Throwable) {
-            AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
-        }
+        // detachFd 释放 ParcelFileDescriptor 对 fd 的所有权，避免 stopCore 关闭 fd 后 pfd?.close() 双重关闭
         synchronized(lock) {
-            try { pfd?.close() } catch (e: Throwable) {
-                AppLog.w(TAG, "disconnect: pfd.close error: ${e.message}")
+            try { pfd?.detachFd() } catch (e: Throwable) {
+                AppLog.w(TAG, "disconnect: pfd.detachFd error: ${e.message}")
             }
             pfd = null
         }
+        try { Mobile.stopCore() } catch (e: Throwable) {
+            AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
+        }
         Mobile.setVpnService(null)
-        Mobile.notifyVpnStateChanged(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
-        AppLog.i(TAG, "disconnect: VPN fully disconnected")
+        AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
 
     fun isRunning(): Boolean = running
@@ -217,10 +226,11 @@ class SingcastVpnService : VpnService() {
      */
     fun refreshConfig(content: String, ruleSetProxy: String) {
         if (!running || disconnected) {
-            AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring")
+            AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring (running=$running, disconnected=$disconnected)")
             return
         }
-        AppLog.i(TAG, "refreshConfig: restarting core with new config (${content.length} chars)")
+        val hasTun = content.contains("tun:") && content.contains("enable: true")
+        AppLog.i(TAG, "refreshConfig: restarting core (config=${content.length} chars, hasTun=$hasTun)")
         val startMs = System.currentTimeMillis()
         // 重新设置 TUN fd，因为 startWithContent 会重建内核
         try {
@@ -230,6 +240,7 @@ class SingcastVpnService : VpnService() {
         } catch (e: Throwable) {
             AppLog.e(TAG, "refreshConfig: failed to get TUN fd, falling back to proxy mode", e)
         }
+        AppLog.d(TAG, "refreshConfig: calling startWithContent (this=$this)")
         Mobile.startWithContent(content, ruleSetProxy)
         // 内核重建后接口信息丢失，重新检测
         Mobile.detectAndReportInterfaces(this@SingcastVpnService)

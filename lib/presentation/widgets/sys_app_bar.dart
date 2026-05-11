@@ -1,5 +1,8 @@
+import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -10,7 +13,11 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     if (!Constants.isDesktop) {
-      return AppBar(title: Text(title), centerTitle: true);
+      return AppBar(
+        title: Text(title),
+        centerTitle: true,
+        actions: [const _KernelStateIcon()],
+      );
     }
 
     return DragToMoveArea(
@@ -20,6 +27,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
         centerTitle: true,
         title: Text(title),
         actions: [
+          const _KernelStateIcon(),
           if (showClose)
             IconButton(
               icon: const Icon(Icons.close),
@@ -33,4 +41,28 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _KernelStateIcon extends StatelessWidget {
+  const _KernelStateIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final state = LibCore.instance.stateSignal.value;
+      return Padding(
+        padding: EdgeInsets.only(right: Constants.isDesktop ? 8 : 12),
+        child: switch (state) {
+          0 => const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          1 => Icon(Icons.circle, size: 12, color: Colors.grey.shade400),
+          3 => Icon(Icons.circle, size: 12, color: Colors.red.shade400),
+          _ => const Icon(Icons.circle, size: 12, color: Colors.green),
+        },
+      );
+    });
+  }
 }

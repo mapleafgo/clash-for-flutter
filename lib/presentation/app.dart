@@ -3,7 +3,10 @@ import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/log_file.dart';
+import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 class App extends StatefulWidget {
   static final routerKey = GlobalKey<NavigatorState>();
@@ -41,14 +44,24 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     _syncing = true;
     try {
       final running = await LibCore.instance.isVpnRunning();
+      LogFileWriter.instance?.log(
+        '_syncVpnState: running=$running vpnConnected=${vpnConnected.value} tunEnabled=${clashConfig.value.tunEnabled}',
+        name: 'tun',
+      );
       if (running != vpnConnected.value) {
         vpnConnected.value = running;
-        LibCore.instance.coreConnected.value = running;
+        LibCore.instance.stateSignal.value = running ? 2 : 1;
         if (!running && clashConfig.value.tunEnabled) {
+          LogFileWriter.instance?.log(
+            '_syncVpnState: VPN stopped but tunEnabled, calling asyncProfile',
+            level: LogLevel.warning,
+            name: 'tun',
+          );
           await asyncProfile();
         }
       } else if (running && LibCore.instance.proxiesSignal.value.isEmpty) {
         // VPN 运行中但代理数据为空（引擎重建后）
+        LogFileWriter.instance?.log('_syncVpnState: VPN running but proxies empty, re-querying', name: 'tun');
         try {
           final proxies = await LibCore.instance.queryProxies();
           LibCore.instance.proxiesSignal.value = proxies;
@@ -61,20 +74,21 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Singcast',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
-      routerConfig: router,
-    );
+    return Watch((context) => MaterialApp.router(
+          title: 'Singcast',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorSchemeSeed: Colors.blue,
+            useMaterial3: true,
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            colorSchemeSeed: Colors.blue,
+            useMaterial3: true,
+            brightness: Brightness.dark,
+          ),
+          themeMode: resolvedThemeMode,
+          routerConfig: router,
+        ));
   }
 }

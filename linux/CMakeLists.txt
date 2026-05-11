@@ -14,7 +14,10 @@ set(APPLICATION_ID "cn.mapleafgo.singcast")
 cmake_policy(SET CMP0063 NEW)
 
 # Load bundled libraries from the lib/ directory relative to the binary.
-set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+# Include absolute path first: setcap makes the binary AT_SECURE, which causes
+# the dynamic linker to refuse $ORIGIN expansion. The absolute path works in
+# both AT_SECURE and normal mode; $ORIGIN/lib serves as a relocatable fallback.
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib:$ORIGIN/lib")
 
 # Root filesystem for cross-building.
 if(FLUTTER_TARGET_PLATFORM_SYSROOT)

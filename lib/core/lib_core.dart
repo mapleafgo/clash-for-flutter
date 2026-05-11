@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'dart:io';
 
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../domain/connection.dart';
+import '../domain/enums.dart';
 import '../domain/log.dart';
 import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
@@ -15,37 +17,32 @@ import 'lib_core_channel.dart';
 import 'lib_core_exception.dart';
 
 abstract class LibCorePlatform {
-  Stream<CoreEvent> get events;
   Future<void> init();
   Future<void> initCore(String homeDir);
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
   Future<void> stopCore();
   Future<void> destroyCore();
-  Future<void> pause();
-  Future<void> wake();
   Future<void> resetNetwork();
-  Future<void> reloadTUN();
-  Future<void> setOverridePackages(String overrideJSON);
-  Future<String> queryTunOptions();
-  Future<List<ProxyGroup>> queryProxies();
+  Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<TrafficSnapshot> queryTraffic();
-  Future<List<LogEntry>> queryLogs({bool clear = false});
   Future<ConnectionEventsPayload> queryConnections();
+  Future<String> queryMode();
+  Future<int> queryState();
   Future<void> selectProxy(String group, String tag);
-  Future<void> testDelay(String name);
+  Future<int> testDelay(String name, {int timeoutMs = 3000});
+  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000});
   Future<void> setMode(String mode);
   Future<void> setGroupExpand(String group, bool expand);
   Future<void> closeConnection(String id);
   Future<void> closeAllConnections();
   Future<void> setLogLevel(int level);
   Future<void> setMemoryLimit(int bytes);
-  Future<String> queryMemoryStats();
   Future<void> flushSystemDNS();
-  Future<bool> needFindProcess();
-  Future<void> writeMessage(int level, String message);
+  Future<void> flushFakeIP();
+  Future<void> flushDNSCache();
+  Future<void> triggerGC();
   Future<String> checkConfig(String content);
   Future<String> getVersion();
-  Future<void> setLocale(String localeID);
   Future<void> connectVpn(
     String configContent, {
     String? ruleSetProxy,
@@ -54,12 +51,6 @@ abstract class LibCorePlatform {
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
   void updateVpnTraffic(TrafficSnapshot traffic);
-  Future<void> openTun(
-    String mergedContent, {
-    String? ruleSetProxy,
-    bool? ipv6,
-  });
-  Future<void> closeTun();
 }
 
 class LibCore {
@@ -67,24 +58,22 @@ class LibCore {
   LibCore._();
 
   late final LibCorePlatform _platform;
+  FfiWorker? _worker;
 
   final trafficSignal = signal<TrafficSnapshot?>(null);
-  final logsSignal = signal<List<LogEntry>>([]);
   final activeConnectionsSignal = signal<int>(0);
   final proxiesSignal = signal<List<ProxyGroup>>([]);
-  final proxyDelaysSignal = signal<Map<String, int>>({});
+  final selectedProxySignal = signal<Map<String, String>>({});
+  final _proxyDelays = signal<Map<String, int>>({});
+  Signal<Map<String, int>> get proxyDelaysSignal => _proxyDelays;
   final modeSignal = signal<String>('rule');
-  final coreConnected = signal<bool>(false);
+  final stateSignal = signal<int>(0);
+  final availableModesSignal = signal<List<String>>(['rule', 'global', 'direct']);
 
-  /// VPN 断开回调，由 type 5 事件触发
-  void Function()? onVpnDisconnected;
-  /// 模式变更回调，由 type 4 事件触发
-  void Function(String mode)? onModeChanged;
-
-  static const _maxLogs = 1000;
-  final _logBuffer = <LogEntry>[];
   final _activeConnectionIds = <String>{};
-  Timer? _proxiesDebounce;
+  int _prevUpTotal = 0;
+  int _prevDownTotal = 0;
+  Timer? _pollTimer;
 
   String get _platformLibPath {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
@@ -96,107 +85,136 @@ class LibCore {
     throw UnsupportedError('Unsupported platform');
   }
 
+  LibCorePlatform get platform => _platform;
+
   Future<void> init() async {
     if (Constants.isDesktop) {
-      final worker = FfiWorker();
-      await worker.spawn(_platformLibPath);
-      _platform = _FfiWorkerBackend(worker);
+      _worker = FfiWorker();
+      _worker!.onCallback = _handleWorkerCallback;
+      await _worker!.spawn(_platformLibPath);
+      _platform = _FfiWorkerBackend(_worker!);
     } else {
-      _platform = LibCoreChannel();
+      final channel = LibCoreChannel();
+      channel.onCallback = _handleWorkerCallback;
+      _platform = channel;
       await _platform.init();
     }
     await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
   }
 
-  // --- Shared event handler for both desktop and mobile ---
-
-  void _updateProxies(List<dynamic> decoded) {
-    final groups = <ProxyGroup>[];
-    final delays = <String, int>{};
-
-    for (final item in decoded) {
-      if (item is! Map<String, dynamic>) continue;
-      final group = ProxyGroup.fromJson(item);
-      groups.add(group);
-
-      // 从原始 JSON 中提取 delay 数据
-      final rawItems = item['items'] as List?;
-      if (rawItems != null) {
-        for (int i = 0; i < rawItems.length && i < group.items.length; i++) {
-          final rawItem = rawItems[i] as Map<String, dynamic>?;
-          if (rawItem != null) {
-            final delay = (rawItem['delay'] as num?)?.toInt();
-            if (delay != null) {
-              delays[group.items[i].tag] = delay;
-            }
-          }
-        }
-      }
-    }
-
-    // 防抖：50ms 内的多次推送只取最后一次
-    _proxiesDebounce?.cancel();
-    _proxiesDebounce = Timer(const Duration(milliseconds: 50), () {
-      proxiesSignal.value = groups;
-      proxyDelaysSignal.value = delays;
-    });
+  void dispose() {
+    stopPolling();
+    _worker?.dispose();
   }
 
-  void handleCoreEvent(CoreEvent event) {
-    try {
-      final decoded = jsonDecode(event.payload);
-      switch (event.type) {
-        case 0: // traffic
-          if (decoded is Map<String, dynamic>) {
-            final snapshot = TrafficSnapshot.fromJson(decoded);
-            trafficSignal.value = snapshot;
-            _updateVpnTraffic(snapshot);
+  // eventType: 0=Log, 1=URLTest, 2=ModeUpdate, 3=ConnEvent, 4=StateUpdate
+  void _handleWorkerCallback(int eventType, String payload) {
+    switch (eventType) {
+      case 0: // Log
+        final json = jsonDecode(payload) as Map<String, dynamic>;
+        LogFileWriter.instance?.writeAll([LogEntry.fromJson(json)]);
+      case 1: // URLTest
+        _queryAndUpdate();
+      case 2: // ModeUpdate
+        modeSignal.value = payload.toLowerCase();
+      case 3: // ConnEvent
+        final json = jsonDecode(payload) as Map<String, dynamic>;
+        handleConnectionEvents(ConnectionEventsPayload.fromJson(json));
+      case 4: // StateUpdate
+        final newState = int.tryParse(payload) ?? 0;
+        final oldState = stateSignal.peek();
+        LogFileWriter.instance?.log(
+          'StateUpdate: $oldState -> $newState',
+          name: 'tun',
+        );
+        if (newState != oldState) {
+          stateSignal.value = newState;
+          if (newState >= 2) {
+            startPolling();
+            _queryAndUpdate();
+            _fetchAvailableModes();
+          } else {
+            stopPolling();
+            proxiesSignal.value = [];
+            _proxyDelays.value = {};
           }
-        case 1: // logs
-          if (decoded is List) {
-            appendLogs(
-              decoded
-                  .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-                  .toList(),
-            );
-          }
-        case 2: // connections
-          if (decoded is Map<String, dynamic>) {
-            handleConnectionEvents(ConnectionEventsPayload.fromJson(decoded));
-          }
-        case 3: // proxies
-          if (decoded is List) {
-            _updateProxies(decoded);
-          }
-        case 4: // mode
-          if (decoded is Map<String, dynamic>) {
-            final modeStr = decoded['current_mode'] as String? ?? 'rule';
-            modeSignal.value = modeStr;
-            onModeChanged?.call(modeStr);
-          }
-        case 5: // vpn state changed
-          if (decoded is Map<String, dynamic>) {
-            final connected = decoded['connected'] as bool? ?? true;
-            if (!connected) onVpnDisconnected?.call();
-          }
-        case 6: // core logs (internal)
-          if (decoded is List) {
-            appendLogs(
-              decoded
-                  .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-                  .toList(),
-            );
-          }
-        case 7: // connected
-          coreConnected.value = true;
-        case 8: // disconnected
-          coreConnected.value = false;
-          proxiesSignal.value = [];
-          proxyDelaysSignal.value = {};
-      }
-    } catch (_) {
-      // Defensive: ignore malformed event payloads
+        }
     }
+  }
+
+  void updateProxyDelays(Map<String, int> delays) {
+    _proxyDelays.value = delays;
+  }
+
+  void updateProxyDelay(String tag, int delay) {
+    final current = Map<String, int>.from(_proxyDelays.peek());
+    current[tag] = delay;
+    _proxyDelays.value = current;
+  }
+
+  // --- Polling ---
+
+  void startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
+  }
+
+  void stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _prevUpTotal = 0;
+    _prevDownTotal = 0;
+  }
+
+  Future<void> _poll() async {
+    try {
+      if (stateSignal.peek() < 2) return;
+
+      final raw = await queryTraffic();
+      final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
+      final downSpeed = (raw.downTotal - _prevDownTotal).clamp(0, raw.downTotal);
+      _prevUpTotal = raw.upTotal;
+      _prevDownTotal = raw.downTotal;
+
+      final traffic = TrafficSnapshot(
+        up: upSpeed,
+        down: downSpeed,
+        upTotal: raw.upTotal,
+        downTotal: raw.downTotal,
+        memory: raw.memory,
+        connections: raw.connections,
+      );
+      trafficSignal.value = traffic;
+      activeConnectionsSignal.value = traffic.connections;
+      _updateVpnTraffic(traffic);
+
+      // 检测异常：有上传无下载 或 内存/连接数异常
+      if (upSpeed > 1024 && downSpeed == 0) {
+        LogFileWriter.instance?.log(
+          'traffic anomaly: up=$upSpeed down=$downSpeed conns=${traffic.connections} mem=${traffic.memory}',
+          level: LogLevel.warning,
+          name: 'tun',
+        );
+      }
+      if (traffic.memory > 100 * 1024 * 1024 || traffic.connections > 500) {
+        LogFileWriter.instance?.log(
+          'resource pressure: mem=${(traffic.memory / 1024 / 1024).toStringAsFixed(1)}MB conns=${traffic.connections}',
+          level: LogLevel.warning,
+          name: 'tun',
+        );
+      }
+    } catch (e) {
+      LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'poll');
+      if (e is StateError) stopPolling();
+    }
+  }
+
+  /// 同步内核运行状态（移动端引擎重建恢复时调用）
+  void syncRunningState() {
+    stateSignal.value = 2;
+    startPolling();
+    _queryAndUpdate();
+    _fetchAvailableModes();
   }
 
   // --- Delegated methods ---
@@ -209,78 +227,181 @@ class LibCore {
     }
   }
 
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
-      _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
-  Future<void> stopCore() => _platform.stopCore();
-  Future<void> destroyCore() => _platform.destroyCore();
-  Future<void> pause() => _platform.pause();
-  Future<void> wake() => _platform.wake();
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+    await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
+    stateSignal.value = 2;
+    startPolling();
+    _queryAndUpdate();
+    _fetchAvailableModes();
+  }
+
+  Future<void> stopCore() async {
+    stopPolling();
+    await _platform.stopCore();
+    stateSignal.value = 1;
+    proxiesSignal.value = [];
+    _proxyDelays.value = {};
+  }
+
+  Future<void> destroyCore() async {
+    stopPolling();
+    await _platform.destroyCore();
+    stateSignal.value = 3;
+    proxiesSignal.value = [];
+    _proxyDelays.value = {};
+  }
   Future<void> resetNetwork() => _platform.resetNetwork();
-  Future<void> reloadTUN() => _platform.reloadTUN();
-  Future<void> setOverridePackages(String overrideJSON) =>
-      _platform.setOverridePackages(overrideJSON);
-  Future<String> queryTunOptions() => _platform.queryTunOptions();
-  Future<List<ProxyGroup>> queryProxies() => _platform.queryProxies();
+  Future<List<ProxyGroup>> queryProxies() async =>
+      (await _platform.queryProxies()).$1;
   Future<TrafficSnapshot> queryTraffic() => _platform.queryTraffic();
-  Future<List<LogEntry>> queryLogs({bool clear = false}) =>
-      _platform.queryLogs(clear: clear);
-  Future<void> selectProxy(String group, String tag) =>
-      _platform.selectProxy(group, tag);
-  Future<void> testDelay(String name) => _platform.testDelay(name);
-  Future<void> setMode(String mode) => _platform.setMode(mode);
+  Future<ConnectionEventsPayload> queryConnections() =>
+      _platform.queryConnections();
+  Future<void> selectProxy(String group, String tag) async {
+    await _platform.selectProxy(group, tag);
+    final current = Map<String, String>.from(selectedProxySignal.peek());
+    current[group] = tag;
+    selectedProxySignal.value = current;
+  }
+  Future<int> testDelay(String name, {int timeoutMs = 3000}) =>
+      _platform.testDelay(name, timeoutMs: timeoutMs);
+
+  Future<void> setMode(String mode) async {
+    await _platform.setMode(mode);
+    // 当前模式由内核回调 (eventType=2) 更新
+  }
+
   Future<void> setGroupExpand(String group, bool expand) =>
       _platform.setGroupExpand(group, expand);
   Future<void> closeConnection(String id) => _platform.closeConnection(id);
   Future<void> closeAllConnections() => _platform.closeAllConnections();
   Future<void> setLogLevel(int level) => _platform.setLogLevel(level);
   Future<void> setMemoryLimit(int bytes) => _platform.setMemoryLimit(bytes);
-  Future<String> queryMemoryStats() => _platform.queryMemoryStats();
   Future<void> flushSystemDNS() => _platform.flushSystemDNS();
-  Future<bool> needFindProcess() => _platform.needFindProcess();
-  Future<void> writeMessage(int level, String message) =>
-      _platform.writeMessage(level, message);
   Future<String> checkConfig(String content) => _platform.checkConfig(content);
   Future<String> getVersion() => _platform.getVersion();
-  Future<void> setLocale(String localeID) => _platform.setLocale(localeID);
+  Future<String> queryMode() => _platform.queryMode();
+  Future<int> queryState() => _platform.queryState();
+  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) =>
+      _platform.testGroupDelay(group, timeoutMs: timeoutMs);
+  Future<void> flushFakeIP() => _platform.flushFakeIP();
+  Future<void> flushDNSCache() => _platform.flushDNSCache();
+  Future<void> triggerGC() => _platform.triggerGC();
   Future<void> connectVpn(
     String configContent, {
     String? ruleSetProxy,
     bool? ipv6,
-  }) => _platform.connectVpn(
-    configContent,
-    ruleSetProxy: ruleSetProxy,
-    ipv6: ipv6,
-  );
-  Future<void> disconnectVpn() => _platform.disconnectVpn();
-  Future<bool> isVpnRunning() => _platform.isVpnRunning();
-  Future<void> openTun(
-    String mergedContent, {
-    String? ruleSetProxy,
-    bool? ipv6,
-  }) =>
-      _platform.openTun(mergedContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
-  Future<void> closeTun() => _platform.closeTun();
+  }) async {
+    await _platform.connectVpn(
+      configContent,
+      ruleSetProxy: ruleSetProxy,
+      ipv6: ipv6,
+    );
+    stateSignal.value = 2;
+    startPolling();
+    _queryAndUpdate();
+    _fetchAvailableModes();
+  }
 
-  // --- Log buffer management ---
+  Future<void> disconnectVpn() async {
+    await _platform.disconnectVpn();
+    stateSignal.value = 1;
+    stopPolling();
+    proxiesSignal.value = [];
+    _proxyDelays.value = {};
+  }
+
+  Future<bool> isVpnRunning() => _platform.isVpnRunning();
+
+  // --- Proxy query helper ---
+
+  void _queryAndUpdate() {
+    _platform.queryProxies().then((result) {
+      proxiesSignal.value = result.$1;
+      final selected = <String, String>{};
+      for (final g in result.$1) {
+        if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
+      }
+      selectedProxySignal.value = selected;
+      if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
+    }).catchError((e) {
+      LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'proxies');
+    });
+  }
+
+  void _fetchAvailableModes() {
+    _platform.queryMode().then((modeJson) {
+      final decoded = jsonDecode(modeJson) as Map<String, dynamic>;
+      final available = decoded['modes'];
+      if (available is List) {
+        availableModesSignal.value = available
+            .map((e) => (e as String).toLowerCase())
+            .toList();
+      }
+    }).catchError((_) {});
+  }
+
+  // --- VPN traffic ---
 
   void _updateVpnTraffic(TrafficSnapshot traffic) {
     if (Constants.isDesktop) return;
     _platform.updateVpnTraffic(traffic);
   }
 
-  void clearLogs() {
-    _logBuffer.clear();
-    logsSignal.value = [];
-    queryLogs(clear: true).catchError((_) => <LogEntry>[]);
+  // --- Shared response parsers ---
+
+  static (List<ProxyGroup>, Map<String, int>) parseProxiesJson(dynamic json) {
+    if (json is! List) return (<ProxyGroup>[], <String, int>{});
+    final groups = <ProxyGroup>[];
+    final delays = <String, int>{};
+    for (final item in json) {
+      final map = item as Map<String, dynamic>;
+      final group = ProxyGroup.fromJson(map);
+      groups.add(group);
+      final rawItems = map['items'] as List?;
+      if (rawItems != null) {
+        for (int i = 0; i < rawItems.length && i < group.items.length; i++) {
+          final rawItem = rawItems[i] as Map<String, dynamic>?;
+          if (rawItem != null) {
+            final delay = (rawItem['delay'] as num?)?.toInt();
+            if (delay != null) delays[group.items[i].tag] = delay;
+          }
+        }
+      }
+    }
+    return (groups, delays);
   }
 
-  void appendLogs(List<LogEntry> newLogs) {
-    _logBuffer.addAll(newLogs);
-    if (_logBuffer.length > _maxLogs) {
-      _logBuffer.removeRange(0, _logBuffer.length - _maxLogs);
+  static TrafficSnapshot parseTrafficJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return TrafficSnapshot();
+    return TrafficSnapshot.fromKernelJson(json);
+  }
+
+  static ConnectionEventsPayload parseConnectionsJson(dynamic json) {
+    if (json is! Map<String, dynamic>) {
+      return ConnectionEventsPayload(reset: true, items: []);
     }
-    logsSignal.value = List.unmodifiable(_logBuffer);
-    LogFileWriter.instance?.writeAll(newLogs);
+    return ConnectionEventsPayload.fromJson(json);
+  }
+
+  static Map<String, int> parseGroupDelayJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return {};
+    return json.map((k, v) => MapEntry(k, (v as num).toInt()));
+  }
+
+  static String parseVersionJson(dynamic result) {
+    if (result is String) {
+      try {
+        final decoded = jsonDecode(result);
+        if (decoded is Map<String, dynamic>) {
+          return decoded['version'] as String? ?? result;
+        }
+      } catch (_) {}
+      return result;
+    }
+    if (result is Map<String, dynamic>) {
+      return result['version'] as String? ?? result.toString();
+    }
+    return result?.toString() ?? '';
   }
 
   void handleConnectionEvents(ConnectionEventsPayload payload) {
@@ -294,8 +415,6 @@ class LibCore {
     }
     activeConnectionsSignal.value = _activeConnectionIds.length;
   }
-
-  LibCorePlatform get platform => _platform;
 }
 
 /// Desktop FFI backend using FfiWorker.
@@ -304,15 +423,12 @@ class _FfiWorkerBackend implements LibCorePlatform {
   _FfiWorkerBackend(this._worker);
 
   @override
-  Stream<CoreEvent> get events => _worker.events;
-
-  @override
   Future<void> init() async {}
 
   @override
   Future<void> initCore(String homeDir) => _worker.invoke('CoreInit', {
-    'optionsJSON': jsonEncode({'home_dir': homeDir, 'log_max_lines': 500}),
-  });
+        'optionsJSON': jsonEncode({'home_dir': homeDir, 'log_max_lines': 500}),
+      });
 
   @override
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
@@ -328,56 +444,24 @@ class _FfiWorkerBackend implements LibCorePlatform {
   Future<void> destroyCore() => _worker.invoke('CoreDestroy');
 
   @override
-  Future<void> pause() => _worker.invoke('CorePause');
-
-  @override
-  Future<void> wake() => _worker.invoke('CoreWake');
-
-  @override
   Future<void> resetNetwork() => _worker.invoke('CoreResetNetwork');
 
   @override
-  Future<void> reloadTUN() => _worker.invoke('CoreReloadTUN');
-
-  @override
-  Future<void> setOverridePackages(String overrideJSON) =>
-      _worker.invoke('CoreSetOverridePackages', {'overrideJSON': overrideJSON});
-
-  @override
-  Future<String> queryTunOptions() =>
-      _worker.invoke<String>('CoreQueryTunOptions');
-
-  @override
-  Future<List<ProxyGroup>> queryProxies() async {
+  Future<(List<ProxyGroup>, Map<String, int>)> queryProxies() async {
     final json = await _worker.invoke<dynamic>('CoreQueryProxies');
-    return (json as List)
-        .map((e) => ProxyGroup.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return LibCore.parseProxiesJson(json);
   }
 
   @override
   Future<TrafficSnapshot> queryTraffic() async {
-    final json = await _worker.invoke<dynamic>('CoreQueryTraffic');
-    return TrafficSnapshot.fromJson(json as Map<String, dynamic>);
-  }
-
-  @override
-  Future<List<LogEntry>> queryLogs({bool clear = false}) async {
-    final json = await _worker.invoke<dynamic>('CoreQueryLogs', {
-      'clear': clear ? 1 : 0,
-    });
-    return (json as List)
-        .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final json = await _worker.invoke<dynamic>('CoreQueryStats');
+    return LibCore.parseTrafficJson(json);
   }
 
   @override
   Future<ConnectionEventsPayload> queryConnections() async {
     final json = await _worker.invoke<dynamic>('CoreQueryConnections');
-    if (json is! Map<String, dynamic>) {
-      return ConnectionEventsPayload(reset: true, items: []);
-    }
-    return ConnectionEventsPayload.fromJson(json);
+    return LibCore.parseConnectionsJson(json);
   }
 
   @override
@@ -385,8 +469,15 @@ class _FfiWorkerBackend implements LibCorePlatform {
       _worker.invoke('CoreSelectProxy', {'group': group, 'tag': tag});
 
   @override
-  Future<void> testDelay(String name) =>
-      _worker.invoke('CoreTestDelay', {'name': name});
+  Future<int> testDelay(String name, {int timeoutMs = 3000}) =>
+      _worker.invoke<int>('CoreTestDelay', {'name': name, 'timeoutMs': timeoutMs});
+
+  @override
+  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) async {
+    final json = await _worker.invoke<dynamic>(
+        'CoreTestGroupDelay', {'group': group, 'timeoutMs': timeoutMs});
+    return LibCore.parseGroupDelayJson(json);
+  }
 
   @override
   Future<void> setMode(String mode) =>
@@ -413,29 +504,41 @@ class _FfiWorkerBackend implements LibCorePlatform {
       _worker.invoke('CoreSetMemoryLimit', {'bytes': bytes});
 
   @override
-  Future<String> queryMemoryStats() =>
-      _worker.invoke<String>('CoreQueryMemoryStats');
-
-  @override
   Future<void> flushSystemDNS() => _worker.invoke('CoreFlushSystemDNS');
 
   @override
-  Future<bool> needFindProcess() => _worker.invoke<bool>('CoreNeedFindProcess');
+  Future<String> queryMode() async {
+    final json = await _worker.invoke<dynamic>('CoreQueryMode');
+    return jsonEncode(json);
+  }
 
   @override
-  Future<void> writeMessage(int level, String message) =>
-      _worker.invoke('CoreWriteMessage', {'level': level, 'message': message});
+  Future<int> queryState() => _worker.invoke<int>('CoreQueryState');
 
   @override
-  Future<String> checkConfig(String content) =>
-      _worker.invoke<String>('CoreCheckConfig', {'content': content});
+  Future<void> flushFakeIP() => _worker.invoke('CoreFlushFakeIP');
 
   @override
-  Future<String> getVersion() => _worker.invoke<String>('CoreGetVersion');
+  Future<void> flushDNSCache() => _worker.invoke('CoreFlushDNSCache');
 
   @override
-  Future<void> setLocale(String localeID) =>
-      _worker.invoke('CoreSetLocale', {'localeID': localeID});
+  Future<void> triggerGC() => _worker.invoke('CoreTriggerGC');
+
+  @override
+  Future<String> checkConfig(String content) async {
+    try {
+      await _worker.invoke('CoreCheckConfig', {'content': content});
+      return '';
+    } on LibCoreException catch (e) {
+      return e.message;
+    }
+  }
+
+  @override
+  Future<String> getVersion() async {
+    final result = await _worker.invoke<String>('CoreGetVersion');
+    return LibCore.parseVersionJson(result);
+  }
 
   @override
   Future<void> connectVpn(
@@ -458,14 +561,4 @@ class _FfiWorkerBackend implements LibCorePlatform {
 
   @override
   void updateVpnTraffic(TrafficSnapshot traffic) {}
-
-  @override
-  Future<void> openTun(
-    String mergedContent, {
-    String? ruleSetProxy,
-    bool? ipv6,
-  }) async {}
-
-  @override
-  Future<void> closeTun() async {}
 }

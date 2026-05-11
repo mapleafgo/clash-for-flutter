@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:singcast/domain/enums.dart';
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
@@ -17,31 +17,30 @@ Future<void> initTray() async {
 
   desktopTray.addListener(_TrayHandler());
 
-  effect(() => _rebuildMenu(systemProxy.value, clashConfig.value.mode));
+  effect(() => _rebuildMenu(systemProxy.value, LibCore.instance.availableModesSignal.value, LibCore.instance.modeSignal.value));
 }
 
-Future<void> _rebuildMenu(bool proxyOn, Mode? mode) async {
+const _trayModeLabels = {
+  'rule': '规则模式',
+  'global': '全局模式',
+  'direct': '直连模式',
+};
+
+Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {
+  final modeItems = modes.map((m) => TrayMenuItem.checkbox(
+    label: _trayModeLabels[m] ?? m,
+    key: m,
+    checked: m == current,
+  )).toList();
   final menu = TrayMenu(
     items: [
       TrayMenuItem(label: '显示窗口', key: 'show'),
       TrayMenuItem.separator(),
       TrayMenuItem.checkbox(label: '系统代理', key: 'proxy', checked: proxyOn),
-      TrayMenuItem.separator(),
-      TrayMenuItem.checkbox(
-        label: '规则模式',
-        key: Mode.rule.name,
-        checked: mode == Mode.rule,
-      ),
-      TrayMenuItem.checkbox(
-        label: '全局模式',
-        key: Mode.global.name,
-        checked: mode == Mode.global,
-      ),
-      TrayMenuItem.checkbox(
-        label: '直连模式',
-        key: Mode.direct.name,
-        checked: mode == Mode.direct,
-      ),
+      if (modeItems.isNotEmpty) ...[
+        TrayMenuItem.separator(),
+        ...modeItems,
+      ],
       TrayMenuItem.separator(),
       TrayMenuItem(label: '退出', key: 'exit'),
     ],
@@ -72,8 +71,7 @@ class _TrayHandler with DesktopTrayListener {
         await windowManager.close();
         await windowManager.destroy();
       default:
-        final mode = Mode.values.where((m) => m.name == item.key);
-        if (mode.isNotEmpty) changeMode(mode.first);
+        if (item.key != null) changeModeStr(item.key!);
     }
   }
 }

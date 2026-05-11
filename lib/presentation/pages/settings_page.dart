@@ -1,3 +1,4 @@
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
@@ -10,9 +11,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _modeLabels = {
-  Mode.rule: '规则',
-  Mode.global: '全局',
-  Mode.direct: '直连',
+  'rule': '规则',
+  'global': '全局',
+  'direct': '直连',
 };
 
 const _logLevelLabels = {
@@ -20,6 +21,12 @@ const _logLevelLabels = {
   LogLevel.info: '信息',
   LogLevel.warning: '警告',
   LogLevel.error: '错误',
+};
+
+const _themeModeLabels = {
+  ThemeMode.system: '跟随系统',
+  ThemeMode.light: '浅色',
+  ThemeMode.dark: '深色',
 };
 
 class SettingsPage extends StatelessWidget {
@@ -50,13 +57,18 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
           if (Constants.isDesktop)
-            _ChoiceTile<Mode>(
-              title: '代理模式',
-              value: config.mode ?? Mode.rule,
-              items: Mode.values,
-              labelBuilder: (m) => _modeLabels[m] ?? m.name,
-              onChanged: (m) => changeMode(m),
-            ),
+            Watch((context) {
+              final modes = LibCore.instance.availableModesSignal.value;
+              final current = LibCore.instance.modeSignal.value;
+              final ready = LibCore.instance.stateSignal.value == 2;
+              return _ChoiceTile<String>(
+                title: '出站模式',
+                value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),
+                items: modes,
+                labelBuilder: (m) => _modeLabels[m] ?? m,
+                onChanged: ready ? (m) => changeModeStr(m) : null,
+              );
+            }),
           _ChoiceTile<LogLevel>(
             title: '日志等级',
             value: config.logLevel ?? LogLevel.info,
@@ -64,6 +76,14 @@ class SettingsPage extends StatelessWidget {
             labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
             onChanged: (l) => updateClashConfig(logLevel: l),
           ),
+          const _Section('外观'),
+          Watch((context) => _ChoiceTile<ThemeMode>(
+                title: '主题',
+                value: themeMode.value ?? ThemeMode.system,
+                items: ThemeMode.values,
+                labelBuilder: (m) => _themeModeLabels[m] ?? m.name,
+                onChanged: (m) => themeMode.value = m,
+              )),
           const _Section('其他设置'),
           const _UaTile(),
           _UrlTile(
@@ -77,6 +97,7 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => ruleSetProxy.value = v,
           ),
           const _Section('关于'),
+          const _KernelVersionTile(),
           ListTile(
             title: const Text('官方网站'),
             subtitle: const Text(Constants.homeUrl),
@@ -178,6 +199,40 @@ class _UrlTile extends StatelessWidget {
         );
         if (result != null && result.isNotEmpty) onChanged(result);
       },
+    );
+  }
+}
+
+class _KernelVersionTile extends StatefulWidget {
+  const _KernelVersionTile();
+
+  @override
+  State<_KernelVersionTile> createState() => _KernelVersionTileState();
+}
+
+class _KernelVersionTileState extends State<_KernelVersionTile> {
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await LibCore.instance.getVersion();
+      if (mounted) setState(() => _version = v);
+    } catch (_) {
+      if (mounted) setState(() => _version = '-');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('内核版本'),
+      subtitle: Text(_version.isEmpty ? '加载中...' : _version),
     );
   }
 }
@@ -355,7 +410,7 @@ class _ChoiceTile<T> extends StatelessWidget {
   final T value;
   final List<T> items;
   final String Function(T) labelBuilder;
-  final ValueChanged<T> onChanged;
+  final ValueChanged<T>? onChanged;
   const _ChoiceTile({
     required this.title,
     required this.value,
@@ -369,7 +424,8 @@ class _ChoiceTile<T> extends StatelessWidget {
     return ListTile(
       title: Text(title),
       subtitle: Text(labelBuilder(value)),
-      onTap: () {
+      enabled: onChanged != null,
+      onTap: onChanged == null ? null : () {
         showDialog(
           context: context,
           builder: (ctx) => SimpleDialog(
@@ -379,7 +435,7 @@ class _ChoiceTile<T> extends StatelessWidget {
                   selected: item == value,
                   onTap: () {
                     Navigator.pop(ctx);
-                    if (item != value) onChanged(item);
+                    if (item != value) onChanged?.call(item);
                   },
                 )).toList(),
           ),

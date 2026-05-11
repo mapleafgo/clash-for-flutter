@@ -12,7 +12,7 @@ class Constants {
 
   static const profilesPath = "/profiles";
   static const clashConfig = "/config.yaml";
-  static const clashForMe = "/cfm.json";
+  static const appSettings = "/settings.json";
   static const localhost = "127.0.0.1";
   static const logsCapacity = 1000;
 }

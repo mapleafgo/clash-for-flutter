@@ -4,42 +4,33 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-import 'ffi_worker.dart';
 import 'lib_core.dart';
 import '../domain/connection.dart';
-import '../domain/log.dart';
 import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 
 class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
-  static const _eventChannel = EventChannel('cn.mapleafgo/singcast/events');
-  final _eventController = StreamController<CoreEvent>.broadcast();
 
-  @override
-  Stream<CoreEvent> get events => _eventController.stream;
+  void Function(int eventType, String payload)? onCallback;
 
   @override
   Future<void> init() async {
-    _eventChannel.receiveBroadcastStream().listen(_onEvent);
+    _channel.setMethodCallHandler(_handleMethodCall);
     if (Platform.isAndroid) {
       await _channel.invokeMethod('requestNotificationPermission');
     }
   }
 
-  void _onEvent(dynamic event) {
-    if (event is! Map) return;
-    final map = Map<String, dynamic>.from(event);
-    final eventType = map['type'] as int? ?? -1;
-    final rawData = map['data'];
-
-    final payload = rawData is String
-        ? rawData
-        : rawData != null
-            ? jsonEncode(rawData)
-            : '';
-
-    _eventController.add(CoreEvent(eventType, payload));
+  Future<void> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'onEvent') {
+      final args = call.arguments as Map?;
+      if (args != null) {
+        final eventType = args['eventType'] as int? ?? -1;
+        final payload = args['payload'] as String? ?? '';
+        onCallback?.call(eventType, payload);
+      }
+    }
   }
 
   Future<dynamic> _invokeJson(String method, [Map<String, dynamic>? args]) async {
@@ -52,7 +43,10 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<void> initCore(String homeDir) async {
-    final optionsJSON = jsonEncode({'home_dir': homeDir, 'log_max_lines': 500});
+    final optionsJSON = jsonEncode({
+      'home_dir': homeDir,
+      'debug': true,
+    });
     try {
       await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
     } on PlatformException catch (e) {
@@ -75,64 +69,26 @@ class LibCoreChannel implements LibCorePlatform {
   Future<void> destroyCore() => _channel.invokeMethod('destroyCore');
 
   @override
-  Future<void> pause() => _channel.invokeMethod('pause');
-
-  @override
-  Future<void> wake() => _channel.invokeMethod('wake');
-
-  @override
   Future<void> resetNetwork() => _channel.invokeMethod('resetNetwork');
-
-  // --- Config ---
-
-
-  @override
-  Future<void> reloadTUN() => _channel.invokeMethod('reloadTUN');
-
-  @override
-  Future<void> setOverridePackages(String overrideJSON) =>
-      _channel.invokeMethod('setOverridePackages', {'overrideJSON': overrideJSON});
-
-  @override
-  Future<String> queryTunOptions() async {
-    final result = await _channel.invokeMethod<String>('queryTunOptions');
-    return result ?? '';
-  }
 
   // --- Queries ---
 
   @override
-  Future<List<ProxyGroup>> queryProxies() async {
+  Future<(List<ProxyGroup>, Map<String, int>)> queryProxies() async {
     final json = await _invokeJson('queryProxies');
-    if (json is! List) return [];
-    return json
-        .map((e) => ProxyGroup.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return LibCore.parseProxiesJson(json);
   }
 
   @override
   Future<TrafficSnapshot> queryTraffic() async {
-    final json = await _invokeJson('queryTraffic');
-    if (json is! Map<String, dynamic>) return TrafficSnapshot();
-    return TrafficSnapshot.fromJson(json);
-  }
-
-  @override
-  Future<List<LogEntry>> queryLogs({bool clear = false}) async {
-    final json = await _invokeJson('queryLogs', {'clear': clear});
-    if (json is! List) return [];
-    return json
-        .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final json = await _invokeJson('queryStats');
+    return LibCore.parseTrafficJson(json);
   }
 
   @override
   Future<ConnectionEventsPayload> queryConnections() async {
     final json = await _invokeJson('queryConnections');
-    if (json is! Map<String, dynamic>) {
-      return ConnectionEventsPayload(reset: true, items: []);
-    }
-    return ConnectionEventsPayload.fromJson(json);
+    return LibCore.parseConnectionsJson(json);
   }
 
   // --- Proxy Control ---
@@ -142,8 +98,19 @@ class LibCoreChannel implements LibCorePlatform {
       _channel.invokeMethod('selectProxy', {'group': group, 'tag': tag});
 
   @override
-  Future<void> testDelay(String name) =>
-      _channel.invokeMethod('testDelay', {'name': name});
+  Future<int> testDelay(String name, {int timeoutMs = 3000}) async {
+    final result = await _channel.invokeMethod(
+        'testDelay', {'name': name, 'timeoutMs': timeoutMs});
+    return (result as num?)?.toInt() ?? -1;
+  }
+
+  @override
+  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) async {
+    final raw = await _channel.invokeMethod<String>(
+        'testGroupDelay', {'group': group, 'timeoutMs': timeoutMs});
+    if (raw == null || raw.isEmpty) return {};
+    return LibCore.parseGroupDelayJson(jsonDecode(raw));
+  }
 
   @override
   Future<void> setMode(String mode) =>
@@ -174,25 +141,28 @@ class LibCoreChannel implements LibCorePlatform {
       _channel.invokeMethod('setMemoryLimit', {'bytes': bytes});
 
   @override
-  Future<String> queryMemoryStats() async {
-    final result = await _channel.invokeMethod<String>('queryMemoryStats');
+  Future<void> flushSystemDNS() => _channel.invokeMethod('flushSystemDNS');
+
+  @override
+  Future<String> queryMode() async {
+    final result = await _channel.invokeMethod<String>('queryMode');
     return result ?? '';
   }
 
   @override
-  Future<void> flushSystemDNS() => _channel.invokeMethod('flushSystemDNS');
-
-  // --- Platform ---
-
-  @override
-  Future<bool> needFindProcess() async {
-    final result = await _channel.invokeMethod<bool>('needFindProcess');
-    return result ?? false;
+  Future<int> queryState() async {
+    final result = await _channel.invokeMethod<int>('queryState');
+    return result ?? 0;
   }
 
   @override
-  Future<void> writeMessage(int level, String message) =>
-      _channel.invokeMethod('writeMessage', {'level': level, 'message': message});
+  Future<void> flushFakeIP() => _channel.invokeMethod('flushFakeIP');
+
+  @override
+  Future<void> flushDNSCache() => _channel.invokeMethod('flushDNSCache');
+
+  @override
+  Future<void> triggerGC() => _channel.invokeMethod('triggerGC');
 
   // --- Utilities ---
 
@@ -205,13 +175,9 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<String> getVersion() async {
-    final result = await _channel.invokeMethod<String>('getVersion');
-    return result ?? '';
+    final result = await _channel.invokeMethod<dynamic>('getVersion');
+    return LibCore.parseVersionJson(result);
   }
-
-  @override
-  Future<void> setLocale(String localeID) =>
-      _channel.invokeMethod('setLocale', {'localeID': localeID});
 
   // --- VPN ---
 
@@ -246,25 +212,6 @@ class LibCoreChannel implements LibCorePlatform {
         'downTotal': traffic.downTotal,
       });
     } catch (_) {}
-  }
-
-  // --- TUN / VPN ---
-
-  @override
-  Future<void> openTun(String mergedContent, {String? ruleSetProxy, bool? ipv6}) async {
-    try {
-      await stopCore();
-    } catch (_) {}
-    await connectVpn(
-      mergedContent,
-      ruleSetProxy: ruleSetProxy,
-      ipv6: ipv6,
-    );
-  }
-
-  @override
-  Future<void> closeTun() async {
-    await disconnectVpn();
   }
 
 }

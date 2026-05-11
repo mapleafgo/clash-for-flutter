@@ -3,20 +3,29 @@ import Flutter
 import Singcast
 import NetworkExtension
 
+// MARK: - Kernel callback handler
+
+class SingcastCallbackHandler: NSObject, FfiEventListener {
+    private let channel: FlutterMethodChannel
+    init(channel: FlutterMethodChannel) { self.channel = channel; super.init() }
+
+    func onEvent(_ eventType: Int32, json: String?) {
+        DispatchQueue.main.async {
+            self.channel.invokeMethod("onEvent", arguments: [
+                "eventType": Int(eventType), "payload": json ?? ""
+            ])
+        }
+    }
+}
+
 @main
 class AppDelegate: FlutterAppDelegate {
 
     private let singcast = FfiSingcast()
-    private var eventSink: FlutterEventSink?
     private var vpnConnected = false
     private let bgQueue = DispatchQueue(label: "cn.mapleafgo.singcast.core", qos: .userInitiated)
-
-    private lazy var eventHandler = SingcastEventHandler { [weak self] eventType, jsonPayload in
-        guard let self, let sink = self.eventSink else { return }
-        DispatchQueue.main.async {
-            sink(["type": eventType, "data": jsonPayload])
-        }
-    }
+    private var methodChannel: FlutterMethodChannel!
+    private var callbackHandler: SingcastCallbackHandler?
 
     override func application(
         _ application: UIApplication,
@@ -29,14 +38,13 @@ class AppDelegate: FlutterAppDelegate {
         }
 
         let messenger = controller.binaryMessenger
+        methodChannel = FlutterMethodChannel(name: "cn.mapleafgo/singcast", binaryMessenger: messenger)
+        methodChannel.setMethodCallHandler { call, result in
+            self.handle(call: call, result: result)
+        }
 
-        FlutterEventChannel(name: "cn.mapleafgo/singcast/events", binaryMessenger: messenger)
-            .setStreamHandler(self)
-
-        FlutterMethodChannel(name: "cn.mapleafgo/singcast", binaryMessenger: messenger)
-            .setMethodCallHandler { call, result in
-                self.handle(call: call, result: result)
-            }
+        callbackHandler = SingcastCallbackHandler(channel: methodChannel)
+        singcast.setOnEvent(callbackHandler)
 
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
@@ -47,10 +55,10 @@ class AppDelegate: FlutterAppDelegate {
         let args = call.arguments as? [String: Any] ?? [:]
 
         switch call.method {
-        // Heavy core lifecycle — run off main thread to avoid UI jank
+        // --- Lifecycle ---
         case "initCore":
             runAsync(result: result) {
-                try self.singcast.init_(args["homeDir"] as? String ?? "")
+                try self.singcast.init_(args["optionsJSON"] as? String ?? "")
             }
         case "startCoreWithContent":
             let content = args["content"] as? String ?? ""
@@ -66,46 +74,65 @@ class AppDelegate: FlutterAppDelegate {
             runAsync(result: result) {
                 try self.singcast.stop()
             }
-        case "closeCore":
+        case "destroyCore":
+            singcast.destroy()
+            result(nil)
+
+        case "resetNetwork":
+            singcast.resetNetwork()
+            result(nil)
+
+        // --- Config ---
+        case "reloadTUN":
             runAsync(result: result) {
-                self.singcast.close()
+                try self.singcast.reloadTUN()
+            }
+        case "setOverridePackages":
+            runAsync(result: result) {
+                try self.singcast.setOverridePackages(args["overrideJSON"] as? String ?? "{}")
             }
 
-        // TUN / VPN
-        case "connectVpn":
-            let config = args["configContent"] as? String ?? ""
-            let proxy = args["ruleSetProxy"] as? String ?? ""
-            startTunnel(configContent: config, ruleSetProxy: proxy, result: result)
-
-        case "disconnectVpn":
-            stopTunnel(result: result)
-
-        // Lightweight queries — safe on main thread
+        // --- Queries ---
         case "queryProxies":
             result(singcast.queryProxies())
-
-        case "queryTraffic":
-            result(singcast.queryTraffic())
-
-        case "queryLogs":
-            result(singcast.queryLogs())
-
+        case "queryStats":
+            result(singcast.queryStats())
         case "queryConnections":
             result(singcast.queryConnections())
+        case "queryMode":
+            result(singcast.queryMode())
+        case "queryState":
+            result(singcast.state())
 
-        // Lightweight actions — run off main thread
+        // --- Proxy Control ---
         case "selectProxy":
             runAsync(result: result) {
                 try self.singcast.selectProxy(args["group"] as? String ?? "", tag: args["tag"] as? String ?? "")
             }
         case "testDelay":
-            runAsync(result: result) {
-                try self.singcast.testDelay(args["name"] as? String ?? "")
+            let name = args["name"] as? String ?? ""
+            let timeoutMs = args["timeoutMs"] as? Int32 ?? 3000
+            bgQueue.async {
+                let delay = self.singcast.testDelay(name, timeoutMs: timeoutMs)
+                DispatchQueue.main.async { result(delay) }
+            }
+        case "testGroupDelay":
+            let group = args["group"] as? String ?? ""
+            let timeoutMs = args["timeoutMs"] as? Int32 ?? 3000
+            bgQueue.async {
+                let json = self.singcast.testGroupDelay(group, timeoutMs: timeoutMs)
+                DispatchQueue.main.async { result(json) }
             }
         case "setMode":
             runAsync(result: result) {
                 try self.singcast.setMode(args["mode"] as? String ?? "")
             }
+        case "setGroupExpand":
+            runAsync(result: result) {
+                try self.singcast.setGroupExpand(args["group"] as? String ?? "", expand: args["expand"] as? Bool ?? false)
+            }
+
+        // --- Connection Management ---
         case "closeConnection":
             runAsync(result: result) {
                 try self.singcast.closeConnection(args["id"] as? String ?? "")
@@ -115,22 +142,53 @@ class AppDelegate: FlutterAppDelegate {
                 try self.singcast.closeAllConnections()
             }
 
-        case "checkConfig":
-            result(singcast.checkConfig(args["content"] as? String ?? ""))
+        // --- Logging / Memory ---
+        case "setLogLevel":
+            singcast.setLogLevel(args["level"] as? Int32 ?? 4)
+            result(nil)
+        case "setMemoryLimit":
+            singcast.setMemoryLimit(args["bytes"] as? Int64 ?? 0)
+            result(nil)
+        case "flushSystemDNS":
+            singcast.flushSystemDNS()
+            result(nil)
+        case "flushFakeIP":
+            runAsync(result: result) {
+                try self.singcast.flushFakeIP()
+            }
+        case "flushDNSCache":
+            runAsync(result: result) {
+                try self.singcast.flushDNSCache()
+            }
+        case "triggerGC":
+            singcast.triggerGC()
+            result(nil)
 
+        // --- Utilities ---
+        case "checkConfig":
+            runAsync(result: result) {
+                try self.singcast.checkConfig(args["content"] as? String ?? "")
+            }
         case "getVersion":
             result(singcast.version())
 
-        case "requestNotificationPermission":
-            result(nil)
-
+        // --- VPN ---
+        case "connectVpn":
+            let config = args["configContent"] as? String ?? ""
+            let proxy = args["ruleSetProxy"] as? String ?? ""
+            startTunnel(configContent: config, ruleSetProxy: proxy, result: result)
+        case "disconnectVpn":
+            stopTunnel(result: result)
         case "isVpnRunning":
             NETunnelProviderManager.loadAllFromPreferences { managers, _ in
                 let status = (managers?.first?.connection as? NETunnelProviderSession)?.status ?? .invalid
                 result(status == .connected)
             }
-
         case "updateVpnTraffic":
+            result(nil)
+
+        // --- Platform (iOS no-ops) ---
+        case "requestNotificationPermission":
             result(nil)
 
         default:
@@ -213,34 +271,5 @@ class AppDelegate: FlutterAppDelegate {
                 result(nil)
             }
         }
-    }
-}
-
-// MARK: - EventChannel StreamHandler
-
-extension AppDelegate: FlutterStreamHandler {
-    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        eventSink = events
-        singcast.setOnEvent(eventHandler)
-        return nil
-    }
-
-    func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        eventSink = nil
-        return nil
-    }
-}
-
-// MARK: - EventHandler wrapper
-
-class SingcastEventHandler: NSObject, FfiEventHandler {
-    private let callback: (Int, String) -> Void
-
-    init(_ callback: @escaping (Int, String) -> Void) {
-        self.callback = callback
-    }
-
-    func onEvent(_ eventType: Int, jsonPayload: String) {
-        callback(eventType, jsonPayload)
     }
 }

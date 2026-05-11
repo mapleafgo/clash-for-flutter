@@ -1,5 +1,7 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/log.dart';
 
 class LogFileWriter {
@@ -7,6 +9,8 @@ class LogFileWriter {
 
   IOSink? _sink;
   static const _maxSize = 5 * 1024 * 1024;
+
+  LogLevel _minLevel = LogLevel.info;
 
   LogFileWriter._();
 
@@ -24,12 +28,28 @@ class LogFileWriter {
     _instance = writer;
   }
 
+  void setMinLevel(LogLevel level) => _minLevel = level;
+
+  bool _shouldLog(LogLevel level) => level.index >= _minLevel.index;
+
   void writeAll(List<LogEntry> entries) {
     final sink = _sink;
     if (sink == null) return;
     for (final e in entries) {
-      sink.writeln(_formatEntry(e));
+      if (_shouldLog(e.type)) sink.writeln(_formatEntry(e));
     }
+  }
+
+  void log(String message, {LogLevel level = LogLevel.info, String? name}) {
+    final sink = _sink;
+    if (sink == null || !_shouldLog(level)) return;
+    final entry = LogEntry(
+      type: level,
+      payload: name != null ? '[$name] $message' : message,
+      timestamp: DateTime.now(),
+    );
+    sink.writeln(_formatEntry(entry));
+    developer.log(message, name: name ?? 'app');
   }
 
   Future<void> flush() async {

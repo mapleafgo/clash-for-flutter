@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/domain/enums.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
@@ -29,6 +28,17 @@ class _HomePageState extends State<HomePage> {
         setState(() => _hasInitError = true);
       }
     });
+    effect(() {
+      final err = profileError.value;
+      if (err != null && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            showErrorDialog(context, err);
+            profileError.value = null;
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -48,9 +58,8 @@ class _HomePageState extends State<HomePage> {
                   const _TrafficTotalCard(),
                   const _ModeCard(),
                   if (Constants.isDesktop) const _ProxyModeCard(),
-                  const _RuntimeCard(),
                   const _ConnectionsCard(),
-                  const _ConnectionDetailCard(),
+                  const _RuntimeCard(),
                 ];
                 return MasonryGridView.count(
                   crossAxisCount: cols,
@@ -71,7 +80,7 @@ class _HomePageState extends State<HomePage> {
 
 // --- Card Shell ---
 
-const _smallH = 124.0; // (260 - 12) / 2，确保两个小卡片 + 间距 = 中卡片高度
+const _smallH = 124.0;
 const _mediumH = 260.0;
 
 class _CardShell extends StatelessWidget {
@@ -299,51 +308,6 @@ class _RuntimeCard extends StatelessWidget {
   }
 }
 
-// --- Connection Detail Card (In/Out) ---
-
-class _ConnectionDetailCard extends StatelessWidget {
-  const _ConnectionDetailCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Watch((context) {
-      final traffic = LibCore.instance.trafficSignal.value;
-      final connsIn = traffic?.connsIn ?? 0;
-      final connsOut = traffic?.connsOut ?? 0;
-      return LayoutBuilder(
-        builder: (_, constraints) {
-          final narrow = constraints.maxWidth < 200;
-          return _CardShell(
-            icon: Icons.swap_vert,
-            title: '连接详情',
-            height: _smallH,
-            child: narrow
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _StatRow(icon: Icons.arrow_downward, value: '$connsIn 入站', color: Colors.blue),
-                      const SizedBox(height: 6),
-                      _StatRow(icon: Icons.arrow_upward, value: '$connsOut 出站', color: Colors.deepOrange),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _StatBadge(icon: Icons.arrow_downward, value: '$connsIn 入站', color: Colors.blue),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatBadge(icon: Icons.arrow_upward, value: '$connsOut 出站', color: Colors.deepOrange),
-                      ),
-                    ],
-                  ),
-          );
-        },
-      );
-    });
-  }
-}
-
 // --- Toggle FAB ---
 
 class _ToggleFab extends StatefulWidget {
@@ -361,20 +325,29 @@ class _ToggleFabState extends State<_ToggleFab> {
     return Watch((context) {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
+      final state = LibCore.instance.stateSignal.value;
+      final hasProfile = selectedFile.value != null;
+      final ready = state == 2;
       final cs = Theme.of(context).colorScheme;
-      return FloatingActionButton.extended(
-        onPressed: _loading ? null : _toggle,
-        backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
-        foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
-        extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-        icon: _loading
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
-              )
-            : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
-        label: Text(_loading ? '切换中...' : (on ? '关闭' : '开启')),
+      return SafeArea(
+        child: FloatingActionButton.extended(
+          onPressed: _loading || !ready ? null : _toggle,
+          backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
+          foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
+          extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
+          icon: _loading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
+                )
+              : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
+          label: Text(_loading
+              ? '切换中...'
+              : (!hasProfile
+                  ? '请先添加配置'
+                  : (on ? '关闭' : '开启'))),
+        ),
       );
     });
   }
@@ -453,9 +426,11 @@ class _TrafficTotalCard extends StatelessWidget {
 
 // --- Mode Card ---
 
-const _modeLabels = {Mode.rule: '规则', Mode.global: '全局', Mode.direct: '直连'};
-
-const _modeIcons = {Mode.rule: Icons.rule, Mode.global: Icons.public, Mode.direct: Icons.phonelink};
+const _modeMeta = {
+  'rule': ('规则', Icons.rule),
+  'global': ('全局', Icons.public),
+  'direct': ('直连', Icons.phonelink),
+};
 
 class _ModeCard extends StatelessWidget {
   const _ModeCard();
@@ -463,28 +438,35 @@ class _ModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final current = clashConfig.value.mode ?? Mode.rule;
+      final state = LibCore.instance.stateSignal.value;
+      final modes = LibCore.instance.availableModesSignal.value;
+      final current = LibCore.instance.modeSignal.value;
       final busy = modeChanging.value;
       return _CardShell(
         icon: Icons.alt_route,
         title: '出站模式',
         height: _mediumH,
-        child: Column(
-          children: [
-            for (final mode in Mode.values)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: mode == Mode.values.last ? 0 : 8),
-                  child: _ModeOption(
-                    icon: _modeIcons[mode]!,
-                    label: _modeLabels[mode]!,
-                    selected: mode == current,
-                    onTap: busy ? null : () => changeMode(mode),
-                  ),
-                ),
+        child: state < 2
+            ? Center(
+                child: Text('等待内核就绪',
+                    style: TextStyle(color: Theme.of(context).disabledColor, fontSize: 13)),
+              )
+            : Column(
+                children: [
+                  for (int i = 0; i < modes.length; i++)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: i == modes.length - 1 ? 0 : 8),
+                        child: _ModeOption(
+                          icon: _modeMeta[modes[i]]?.$2 ?? Icons.alt_route,
+                          label: _modeMeta[modes[i]]?.$1 ?? modes[i],
+                          selected: modes[i] == current,
+                          onTap: busy ? null : () => changeModeStr(modes[i]),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
       );
     });
   }
@@ -505,7 +487,7 @@ class _ModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.3) : Colors.transparent,
+        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -583,7 +565,7 @@ class _ProxyModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.3) : Colors.transparent,
+        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 12),

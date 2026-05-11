@@ -1,21 +1,19 @@
 package cn.mapleafgo.singcast
 
-import android.os.Handler
 import android.os.Looper
 import android.system.Os
-import cn.mapleafgo.ffi.EventHandler
-import cn.mapleafgo.ffi.Ffi
-import cn.mapleafgo.ffi.Singcast
-import cn.mapleafgo.ffi.SocketProtector
-import io.flutter.plugin.common.EventChannel
+import cn.mapleafgo.mobile.EventListener
+import cn.mapleafgo.mobile.Mobile as NativeMobile
+import cn.mapleafgo.mobile.Singcast
+import cn.mapleafgo.mobile.SocketProtector
 
 object Mobile {
     private const val TAG = "SingcastVpn"
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val coreLock = Any()
-    private val singcast = Ffi.create()
-    @Volatile private var eventSink: EventChannel.EventSink? = null
+    private val singcast = NativeMobile.create()
     @Volatile private var vpnService: SingcastVpnService? = null
+
+    @Volatile private var protectCallCount = 0
 
     private val socketProtector = object : SocketProtector {
         override fun protect(fd: Int): Boolean {
@@ -25,8 +23,11 @@ object Mobile {
                 return false
             }
             val ok = svc.protectSocket(fd)
+            protectCallCount++
             if (!ok) {
-                AppLog.w(TAG, "socketProtector: protect($fd) failed via VpnService")
+                AppLog.w(TAG, "socketProtector: protect($fd) FAILED via VpnService")
+            } else if (protectCallCount <= 5 || protectCallCount % 100 == 0) {
+                AppLog.i(TAG, "socketProtector: protect($fd) OK (count=$protectCallCount)")
             }
             return ok
         }
@@ -35,49 +36,27 @@ object Mobile {
     fun setVpnService(svc: SingcastVpnService?) {
         vpnService = svc
         if (svc != null) {
-            AppLog.d(TAG, "setVpnService: registered socket protector")
+            AppLog.i(TAG, "setVpnService: registering socket protector (thread=${Thread.currentThread().name})")
             singcast.setSocketProtector(socketProtector)
+            AppLog.i(TAG, "setVpnService: socket protector registered successfully")
         } else {
-            AppLog.d(TAG, "setVpnService: cleared (svc=null)")
-        }
-    }
-
-    private val eventHandler = object : EventHandler {
-        override fun onEvent(eventType: Int, jsonPayload: String) {
-            val sink = eventSink
-            if (sink == null) {
-                AppLog.w(TAG, "onEvent: eventSink is null, dropping eventType=$eventType payload=${jsonPayload.take(200)}")
-                return
-            }
-            val data = mapOf("type" to eventType.toInt(), "data" to jsonPayload)
-            mainHandler.post { sink.success(data) }
+            singcast.setSocketProtector(null)
+            AppLog.w(TAG, "setVpnService: cleared (svc=null), socket protector removed")
         }
     }
 
     @Volatile private var coreInitialized = false
-
-    fun setEventSink(sink: EventChannel.EventSink?) {
-        eventSink = sink
-    }
-
-    fun setupEventHandler() {
-        if (coreInitialized) {
-            singcast.setOnEvent(eventHandler)
-        }
-    }
 
     // --- Lifecycle ---
 
     fun initCore(optionsJSON: String) {
         synchronized(coreLock) {
             if (coreInitialized) {
-                AppLog.i(TAG, "initCore: already initialized, re-registering event handler")
-                singcast.setOnEvent(eventHandler)
+                AppLog.i(TAG, "initCore: already initialized")
                 return
             }
             AppLog.i(TAG, "initCore: optionsJSON=$optionsJSON")
             singcast.init(optionsJSON)
-            singcast.setOnEvent(eventHandler)
             coreInitialized = true
             AppLog.i(TAG, "initCore: done")
         }
@@ -85,9 +64,11 @@ object Mobile {
 
     fun startWithContent(content: String, ruleSetProxy: String) {
         synchronized(coreLock) {
-            AppLog.i(TAG, "startWithContent: content=${content.length} chars, proxy='$ruleSetProxy', thread=${Thread.currentThread().name}")
+            val hasTun = content.contains("tun:") && content.contains("enable: true")
+            protectCallCount = 0
+            AppLog.i(TAG, "startWithContent: content=${content.length} chars, hasTun=$hasTun, vpnServiceSet=${vpnService != null}, thread=${Thread.currentThread().name}")
             singcast.startWithContent(content, ruleSetProxy)
-            AppLog.i(TAG, "startWithContent: completed successfully")
+            AppLog.i(TAG, "startWithContent: completed successfully, protectCallCount=$protectCallCount")
         }
     }
 
@@ -108,34 +89,10 @@ object Mobile {
         }
     }
 
-    fun pause() {
-        AppLog.i(TAG, "pause")
-        singcast.pause()
-    }
-
-    fun wake() {
-        AppLog.i(TAG, "wake")
-        singcast.wake()
-    }
-
     fun resetNetwork() {
         AppLog.i(TAG, "resetNetwork")
         singcast.resetNetwork()
     }
-
-    // --- Config ---
-
-    fun reloadTUN() {
-        AppLog.i(TAG, "reloadTUN")
-        singcast.reloadTUN()
-    }
-
-    fun setOverridePackages(overrideJSON: String) {
-        AppLog.i(TAG, "setOverridePackages: $overrideJSON")
-        singcast.setOverridePackages(overrideJSON)
-    }
-
-    fun queryTunOptions(): String = singcast.queryTunOptions()
 
     // --- Queries ---
 
@@ -146,11 +103,13 @@ object Mobile {
 
     fun queryProxies(): String = singcast.queryProxies()
 
-    fun queryTraffic(): String = singcast.queryTraffic()
-
-    fun queryLogs(clear: Boolean): String = singcast.queryLogs(clear)
+    fun queryStats(): String = singcast.queryStats()
 
     fun queryConnections(): String = singcast.queryConnections()
+
+    fun queryMode(): String = singcast.queryMode()
+
+    fun queryState(): Int = singcast.state()
 
     // --- Proxy Control ---
 
@@ -158,8 +117,12 @@ object Mobile {
         singcast.selectProxy(group, tag)
     }
 
-    fun testDelay(name: String) {
-        singcast.testDelay(name)
+    fun testDelay(name: String, timeoutMs: Int): Int {
+        return singcast.testDelay(name, timeoutMs)
+    }
+
+    fun testGroupDelay(group: String, timeoutMs: Int): String {
+        return singcast.testGroupDelay(group, timeoutMs)
     }
 
     fun setMode(mode: String) {
@@ -186,31 +149,29 @@ object Mobile {
         singcast.setLogLevel(level)
     }
 
-    fun setMemoryLimit(bytes: Long): String {
-        return try {
-            singcast.setMemoryLimit(bytes)
-            ""
-        } catch (e: Exception) {
-            AppLog.e(TAG, "setMemoryLimit: ${e.message}")
-            e.message ?: "error"
-        }
+    fun setMemoryLimit(bytes: Long) {
+        singcast.setMemoryLimit(bytes)
     }
 
-    fun queryMemoryStats(): String = singcast.queryMemoryStats()
+    fun queryRules(): String = singcast.queryRules()
 
     fun flushSystemDNS() {
         singcast.flushSystemDNS()
     }
 
-    // --- Platform ---
-
-    fun needWIFIState(): Boolean = singcast.needWIFIState()
-
-    fun needFindProcess(): Boolean = singcast.needFindProcess()
-
-    fun updateWIFIState() {
-        singcast.updateWIFIState()
+    fun flushFakeIP() {
+        singcast.flushFakeIP()
     }
+
+    fun flushDNSCache() {
+        singcast.flushDNSCache()
+    }
+
+    fun triggerGC() {
+        singcast.triggerGC()
+    }
+
+    // --- Platform ---
 
     fun setIncludeAllNetworks(v: Boolean) {
         singcast.setIncludeAllNetworks(v)
@@ -218,10 +179,6 @@ object Mobile {
 
     fun setWIFIState(ssid: String, bssid: String) {
         singcast.setWIFIState(ssid, bssid)
-    }
-
-    fun writeMessage(level: Int, message: String) {
-        singcast.writeMessage(level, message)
     }
 
     // --- Utilities ---
@@ -237,11 +194,6 @@ object Mobile {
     }
 
     fun getVersion(): String = singcast.version()
-
-    fun setLocale(localeID: String) {
-        // Locale setting not supported by current kernel
-        AppLog.d(TAG, "setLocale: $localeID (no-op)")
-    }
 
     // --- VPN Notification ---
 
@@ -298,6 +250,13 @@ object Mobile {
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
 
             if (defaultNetworkCallback == null) {
+                // 注册回调前同步获取当前活跃网络并立即报告
+                val activeNetwork = cm.activeNetwork
+                if (activeNetwork != null) {
+                    defaultNetwork = activeNetwork
+                    _reportDefaultInterface(context, activeNetwork)
+                }
+
                 val callback = object : android.net.ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: android.net.Network) {
                         defaultNetwork = network
@@ -344,6 +303,11 @@ object Mobile {
             val lp = cm.getLinkProperties(network) ?: return
             val ifaceName = lp.interfaceName ?: return
             if (ifaceName.isEmpty()) return
+            // Skip VPN/TUN interfaces — the default interface must be a real transport.
+            if (ifaceName.startsWith("tun") || ifaceName.startsWith("ppp") || ifaceName.startsWith("tap")) {
+                AppLog.d(TAG, "_reportDefaultInterface: skip VPN interface $ifaceName")
+                return
+            }
             val caps = cm.getNetworkCapabilities(network)
             val metered = if (caps != null) !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) else false
             val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
@@ -354,11 +318,11 @@ object Mobile {
         }
     }
 
-    fun notifyVpnStateChanged(connected: Boolean) {
-        AppLog.i(TAG, "notifyVpnStateChanged: connected=$connected")
-        val sink = eventSink ?: return
-        val data = mapOf("type" to 5, "data" to """{"connected":$connected}""")
-        mainHandler.post { sink.success(data) }
+    // --- Callbacks ---
+
+    fun registerCallbacks(onEvent: (Int, String) -> Unit) {
+        singcast.setOnEvent(EventListener { eventType, json -> onEvent(eventType, json) })
+        AppLog.i(TAG, "registerCallbacks: registered unified event listener")
     }
 
 }

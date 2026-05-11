@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:singcast/domain/config.dart';
+import 'package:singcast/domain/enums.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 
@@ -16,7 +17,7 @@ class CoreConfigStorage {
       mixedPort: yaml['mixed-port'] as int?,
       allowLan: yaml['allow-lan'] as bool?,
       mode: null,
-      logLevel: null,
+      logLevel: _parseLogLevel(yaml['log-level']),
       ipv6: yaml['ipv6'] as bool?,
     );
   }
@@ -29,6 +30,11 @@ class CoreConfigStorage {
     if (config.logLevel != null) yaml['log-level'] = config.logLevel!.name;
     if (config.ipv6 != null) yaml['ipv6'] = config.ipv6;
     yaml.save();
+  }
+
+  static LogLevel? _parseLogLevel(dynamic value) {
+    if (value is! String) return null;
+    return LogLevel.values.where((l) => l.name == value).firstOrNull;
   }
 
   static void createDefault() {
