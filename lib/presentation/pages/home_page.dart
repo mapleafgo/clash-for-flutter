@@ -318,19 +318,6 @@ class _ToggleFab extends StatefulWidget {
 }
 
 class _ToggleFabState extends State<_ToggleFab> {
-  bool _waitingRestart = false;
-
-  @override
-  void initState() {
-    super.initState();
-    effect(() {
-      final state = LibCore.instance.stateSignal.value;
-      if (_waitingRestart && state == 2 && mounted) {
-        setState(() => _waitingRestart = false);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -338,12 +325,11 @@ class _ToggleFabState extends State<_ToggleFab> {
       final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
       final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
-      final ready = state == 2;
-      final busy = _waitingRestart || modeChanging.value;
+      final busy = state != 2 && hasProfile;
       final cs = Theme.of(context).colorScheme;
       return SafeArea(
         child: FloatingActionButton.extended(
-          onPressed: busy || !ready ? null : _toggle,
+          onPressed: busy || !hasProfile ? null : _toggle,
           backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
           foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
           extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
@@ -367,20 +353,10 @@ class _ToggleFabState extends State<_ToggleFab> {
   Future<void> _toggle() async {
     final isTun = tunIf.value ?? false;
     if (isTun) {
-      final enable = !clashConfig.value.tunEnabled;
-      if (enable) {
-        try {
-          await toggleTun(true);
-        } catch (e) {
-          if (mounted) showErrorDialog(context, e.toString());
-        }
-      } else {
-        setState(() => _waitingRestart = true);
-        toggleTun(false).catchError((e) {
-          if (mounted) showErrorDialog(context, e.toString());
-          return null;
-        });
-      }
+      toggleTun(!clashConfig.value.tunEnabled).catchError((e) {
+        if (mounted) showErrorDialog(context, e.toString());
+        return null;
+      });
     } else {
       try {
         await (systemProxy.value ? closeProxy() : openProxy());
