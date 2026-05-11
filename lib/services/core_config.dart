@@ -190,9 +190,9 @@ Future<void> closeTun() async {
     LogFileWriter.instance?.log('closeTun: mobile path start', name: 'tun');
     vpnConnected.value = false;
     await LibCore.instance.disconnectVpn();
-    // _setTunEnabled 触发 effect 后 1 秒自动调度 asyncProfile 重启内核（代理模式），
-    // 无需手动调用 asyncProfile() 避免双重重启。
     _setTunEnabled(false);
+    // _setTunEnabled 使用 _updateConfig，effect 被 _internalUpdate 跳过，需手动调度重载
+    _scheduleReload();
     LogFileWriter.instance?.log('closeTun: done', name: 'tun');
     return;
   }
