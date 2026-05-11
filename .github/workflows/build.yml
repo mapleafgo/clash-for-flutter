@@ -45,84 +45,31 @@ jobs:
           tar -zxf libsingcast.tar.gz
           Move-Item -Force singcast-windows-amd64.dll windows/core/libsingcast-windows.dll
 
-      - name: Setup Inno Setup
+      - name: Setup Chinese language for Inno Setup
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
-      - name: Build
-        run: flutter build windows
-
-      - name: Package portable
+      - name: Build & package
         run: |
-          $system = "C:\Windows\System32"
-          $release = "build/windows/x64/runner/Release/"
-          cp $system\msvcp140.dll $release
-          cp $system\vcruntime140.dll $release
-          cp $system\vcruntime140_1.dll $release
-          New-Item -Path build/windows/x64/Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath "build/windows/x64/Output/singcast-$env:VERSION-windows-amd64-portable.zip"
+          dart pub global activate flutter_distributor
+          flutter_distributor package --platform=windows --targets=exe,zip
 
-      - name: Build installer
+      - name: Rename artifacts
         run: |
-          cd build/windows/x64
-          $issContent = @"
-          #define MyAppName "Singcast"
-          #define MyAppVersion "$($env:VERSION)"
-          #define MyAppPublisher "mapleafgo"
-          #define MyAppURL "https://github.com/mapleafgo/clash-for-flutter"
-          #define MyAppExeName "singcast.exe"
-          #define MyOutputName "singcast"
-
-          [Setup]
-          AppId={{B3039CF4-E394-42B6-971C-4BE97F322DE8}
-          AppName={#MyAppName}
-          AppVersion={#MyAppVersion}
-          AppPublisher={#MyAppPublisher}
-          AppPublisherURL={#MyAppURL}
-          AppSupportURL={#MyAppURL}
-          AppUpdatesURL={#MyAppURL}
-          DefaultDirName={autopf}\{#MyOutputName}
-          DisableProgramGroupPage=yes
-          LicenseFile=..\..\..\LICENSE
-          PrivilegesRequired=lowest
-          OutputBaseFilename={#MyOutputName}
-          SetupIconFile=..\..\..\assets\icon.ico
-          Compression=lzma
-          SolidCompression=yes
-          WizardStyle=modern
-          LanguageDetectionMethod=uilanguage
-          ShowLanguageDialog=yes
-
-          [Languages]
-          Name: "english"; MessagesFile: "compiler:Default.isl"
-          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-
-          [Tasks]
-          Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-
-          [Files]
-          Source: ".\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
-
-          [UninstallDelete]
-          Type: filesandordirs; Name: "{app}"
-
-          [Icons]
-          Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-          Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
-          [Run]
-          Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-          "@
-          $issContent | Out-File -FilePath setup.iss -Encoding UTF8
-          iscc.exe setup.iss
-          mv "Output/singcast.exe" "Output/singcast-$env:VERSION-windows-amd64.exe"
+          $distDir = "dist\${{ env.VERSION }}\windows"
+          $exe = (Get-ChildItem "$distDir\*.exe")[0]
+          $zip = (Get-ChildItem "$distDir\*.zip")[0]
+          $newExe = "dist\${{ env.VERSION }}\windows\singcast-$env:VERSION-windows-amd64.exe"
+          $newZip = "dist\${{ env.VERSION }}\windows\singcast-$env:VERSION-windows-amd64-portable.zip"
+          Move-Item -Force $exe.FullName $newExe
+          Move-Item -Force $zip.FullName $newZip
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: build/windows/x64/Output/*
+          files: dist/${{ env.VERSION }}/windows/*
           overwrite: true
 
   build-linux:
@@ -167,9 +114,6 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -178,9 +122,6 @@ jobs:
 
       - name: Sync version
         run: sed -i "" "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
-
-      - name: Install appdmg
-        run: npm install -g appdmg
 
       - name: Download cores
         run: |
@@ -201,33 +142,16 @@ jobs:
           cd $PROJECT_DIR/macos/Frameworks
           lipo -create -output libsingcast-darwin.dylib amd64-lib arm64-lib
 
-      - name: Build
-        run: flutter build macos
-
-      - name: Ad-hoc sign
-        run: codesign --force --deep --sign - build/macos/Build/Products/Release/singcast.app
-
-      - name: Create DMG
+      - name: Build & package
         run: |
-          cd build/macos/Build/Products/Release
-          cat > appdmg.json << 'EOF'
-          {
-            "title": "Singcast",
-            "icon": "singcast.app/Contents/Resources/AppIcon.icns",
-            "contents": [
-              { "x": 448, "y": 344, "type": "link", "path": "/Applications" },
-              { "x": 192, "y": 344, "type": "file", "path": "singcast.app" }
-            ]
-          }
-          EOF
-          mkdir -p dist
-          appdmg appdmg.json dist/singcast-$VERSION-macos.dmg
+          dart pub global activate flutter_distributor
+          flutter_distributor package --platform=macos --targets=dmg
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: build/macos/Build/Products/Release/dist/*.dmg
+          files: dist/*/*
           overwrite: true
 
   build-android:
