@@ -13,6 +13,12 @@ set(APPLICATION_ID "cn.mapleafgo.singcast")
 # versions of CMake.
 cmake_policy(SET CMP0063 NEW)
 
+# Determine install prefix before setting RPATH so the absolute path is correct.
+set(BUILD_BUNDLE_DIR "${PROJECT_BINARY_DIR}/bundle")
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
+endif()
+
 # Load bundled libraries from the lib/ directory relative to the binary.
 # Include absolute path first: setcap makes the binary AT_SECURE, which causes
 # the dynamic linker to refuse $ORIGIN expansion. The absolute path works in
@@ -100,10 +106,6 @@ include(flutter/generated_plugins.cmake)
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
 # directory.
-set(BUILD_BUNDLE_DIR "${PROJECT_BINARY_DIR}/bundle")
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
-endif()
 
 # Start with a clean build bundle directory every time.
 install(CODE "
