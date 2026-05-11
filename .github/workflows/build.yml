@@ -52,8 +52,8 @@ jobs:
 
       - name: Build & package
         run: |
-          dart pub global activate flutter_distributor
-          flutter_distributor package --platform=windows --targets=exe,zip
+          dart pub global activate fastforge
+          fastforge package --platform=windows --targets=exe,zip
 
       - name: Rename artifacts
         run: |
@@ -99,8 +99,8 @@ jobs:
 
       - name: Build & package
         run: |
-          dart pub global activate flutter_distributor
-          flutter_distributor package --platform=linux --targets=appimage,deb,zip
+          dart pub global activate fastforge
+          fastforge package --platform=linux --targets=appimage,deb,zip
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -110,8 +110,17 @@ jobs:
           overwrite: true
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13
+            arch: amd64
+            core_arch: amd64
+          - runner: macos-latest
+            arch: arm64
+            core_arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -123,35 +132,30 @@ jobs:
       - name: Sync version
         run: sed -i "" "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
 
-      - name: Download cores
+      - name: Download core
         run: |
-          mkdir -p core && cd core
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-amd64.tar.gz" -o libsingcast-amd64.tar.gz
-          tar -zxf libsingcast-amd64.tar.gz
-          mv libsingcast-darwin-amd64.dylib libsingcast-amd64.dylib
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz" -o libsingcast-arm64.tar.gz
-          tar -zxf libsingcast-arm64.tar.gz
-          mv libsingcast-darwin-arm64.dylib libsingcast-arm64.dylib
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
+          tar -zxf libsingcast.tar.gz
+          mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
 
-      - name: Create universal binary
-        run: |
-          PROJECT_DIR=$(pwd)
-          mkdir -p $PROJECT_DIR/macos/Frameworks
-          mv core/libsingcast-amd64.dylib $PROJECT_DIR/macos/Frameworks/amd64-lib
-          mv core/libsingcast-arm64.dylib $PROJECT_DIR/macos/Frameworks/arm64-lib
-          cd $PROJECT_DIR/macos/Frameworks
-          lipo -create -output libsingcast-darwin.dylib amd64-lib arm64-lib
+      - name: Build
+        run: flutter build macos --release
 
-      - name: Build & package
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - build/macos/Build/Products/Release/singcast.app
+
+      - name: Create DMG
         run: |
-          dart pub global activate flutter_distributor
-          flutter_distributor package --platform=macos --targets=dmg
+          APP_PATH="build/macos/Build/Products/Release/singcast.app"
+          DMG_NAME="singcast-${{ env.VERSION }}-macos-${{ matrix.arch }}.dmg"
+          DMG_PATH="$APP_PATH/../$DMG_NAME"
+          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: dist/*/*
+          files: build/macos/Build/Products/Release/*.dmg
           overwrite: true
 
   build-android:
