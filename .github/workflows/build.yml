@@ -71,7 +71,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           files: dist/*/*.exe,dist/*/*.zip
-          overwrite: true
+          overwrite_files: true
 
   build-linux:
     runs-on: ubuntu-latest
@@ -113,7 +113,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           files: dist/*/*
-          overwrite: true
+          overwrite_files: true
 
   build-macos:
     runs-on: macos-latest
@@ -155,7 +155,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           files: build/macos/Build/Products/Release/*.dmg
-          overwrite: true
+          overwrite_files: true
 
   build-android:
     runs-on: ubuntu-latest
@@ -215,4 +215,4 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           files: build/app/outputs/flutter-apk/*.apk
-          overwrite: true
+          overwrite_files: true
