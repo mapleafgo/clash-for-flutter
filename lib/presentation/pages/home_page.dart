@@ -318,7 +318,18 @@ class _ToggleFab extends StatefulWidget {
 }
 
 class _ToggleFabState extends State<_ToggleFab> {
-  bool _loading = false;
+  bool _waitingRestart = false;
+
+  @override
+  void initState() {
+    super.initState();
+    effect(() {
+      final state = LibCore.instance.stateSignal.value;
+      if (_waitingRestart && state == 2 && mounted) {
+        setState(() => _waitingRestart = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -328,21 +339,22 @@ class _ToggleFabState extends State<_ToggleFab> {
       final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
       final ready = state == 2;
+      final busy = _waitingRestart || modeChanging.value;
       final cs = Theme.of(context).colorScheme;
       return SafeArea(
         child: FloatingActionButton.extended(
-          onPressed: _loading || !ready ? null : _toggle,
+          onPressed: busy || !ready ? null : _toggle,
           backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
           foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
           extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-          icon: _loading
+          icon: busy
               ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
                 )
               : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
-          label: Text(_loading
+          label: Text(busy
               ? '切换中...'
               : (!hasProfile
                   ? '请先添加配置'
@@ -353,20 +365,28 @@ class _ToggleFabState extends State<_ToggleFab> {
   }
 
   Future<void> _toggle() async {
-    setState(() => _loading = true);
-    try {
-      final isTun = tunIf.value ?? false;
-      if (isTun) {
-        await toggleTun(!clashConfig.value.tunEnabled);
+    final isTun = tunIf.value ?? false;
+    if (isTun) {
+      final enable = !clashConfig.value.tunEnabled;
+      if (enable) {
+        try {
+          await toggleTun(true);
+        } catch (e) {
+          if (mounted) showErrorDialog(context, e.toString());
+        }
       } else {
+        setState(() => _waitingRestart = true);
+        toggleTun(false).catchError((e) {
+          if (mounted) showErrorDialog(context, e.toString());
+          return null;
+        });
+      }
+    } else {
+      try {
         await (systemProxy.value ? closeProxy() : openProxy());
+      } catch (e) {
+        if (mounted) showErrorDialog(context, e.toString());
       }
-    } catch (e) {
-      if (mounted) {
-        showErrorDialog(context, e.toString());
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
   }
 }
