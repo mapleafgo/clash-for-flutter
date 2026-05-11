@@ -117,8 +117,6 @@ jobs:
           $issContent | Out-File -FilePath setup.iss -Encoding UTF8
           iscc.exe setup.iss
           mv "Output/singcast.exe" "Output/singcast-$env:VERSION-windows-amd64.exe"
-          Compress-Archive -Path "Output/singcast-$env:VERSION-windows-amd64.exe" -DestinationPath "Output/singcast-$env:VERSION-windows-amd64.zip"
-          Remove-Item -Path "Output/singcast-$env:VERSION-windows-amd64.exe"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -155,7 +153,7 @@ jobs:
       - name: Build & package
         run: |
           dart pub global activate flutter_distributor
-          flutter_distributor package --platform=linux --targets=appimage,deb
+          flutter_distributor package --platform=linux --targets=appimage,deb,zip
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -182,10 +180,7 @@ jobs:
         run: sed -i "" "s/^version:.*/version: ${VERSION#v}/" pubspec.yaml
 
       - name: Install appdmg
-        run: |
-          python3 -m venv /tmp/venv
-          /tmp/venv/bin/pip install setuptools
-          npm install -g appdmg
+        run: npm install -g appdmg
 
       - name: Download cores
         run: |
