@@ -1,6 +1,12 @@
 display_name: Singcast
+package_name: singcast
 icon: assets/icon.png
+maintainer:
+  name: mapleafgo
+  email: mapleafgo@gmail.com
 generic_name: Proxy Client
+section: net
+priority: optional
 categories:
   - Network
 keywords:
@@ -8,4 +14,11 @@ keywords:
   - VPN
   - sing-box
 startup_notify: true
-include: []
+dependencies:
+  - libgtk-3-0
+  - libblkid1
+  - liblzma5
+  - libayatana-appindicator3-1
+  - libnotify4
+postinstall_scripts:
+  - setcap 'cap_net_admin+ep' /opt/singcast/singcast

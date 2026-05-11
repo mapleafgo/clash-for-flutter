@@ -1,15 +1,10 @@
 display_name: Singcast
 icon: assets/icon.png
-generic_name: Proxy Application
+generic_name: Proxy Client
 categories:
   - Network
-  - Science
-  - Development
-  - System
 keywords:
   - Proxy
   - VPN
   - sing-box
-  - Application
 startup_notify: true
-include: []
