@@ -57,11 +57,12 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          $distDir = "dist\${{ env.VERSION }}\windows"
+          $ver = "${{ env.VERSION }}".TrimStart('v')
+          $distDir = "dist\$ver\windows"
           $exe = (Get-ChildItem "$distDir\*.exe")[0]
           $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          $newExe = "dist\${{ env.VERSION }}\windows\singcast-$env:VERSION-windows-amd64.exe"
-          $newZip = "dist\${{ env.VERSION }}\windows\singcast-$env:VERSION-windows-amd64-portable.zip"
+          $newExe = "dist\$ver\windows\singcast-${{ env.VERSION }}-windows-amd64.exe"
+          $newZip = "dist\$ver\windows\singcast-${{ env.VERSION }}-windows-amd64-portable.zip"
           Move-Item -Force $exe.FullName $newExe
           Move-Item -Force $zip.FullName $newZip
 
@@ -92,6 +93,9 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev
+          wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x /tmp/appimagetool
+          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
 
       - name: Download core
         run: |
@@ -129,6 +133,7 @@ jobs:
 
       - name: Download core
         run: |
+          mkdir -p macos/Frameworks
           curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
           mv libsingcast-darwin-arm64.dylib macos/Frameworks/libsingcast-darwin.dylib
