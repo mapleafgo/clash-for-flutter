@@ -61,10 +61,8 @@ jobs:
           $distDir = "dist\$ver"
           $exe = (Get-ChildItem "$distDir\*.exe")[0]
           $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          $newExe = "$distDir\singcast-${{ env.VERSION }}-windows-amd64.exe"
-          $newZip = "$distDir\singcast-${{ env.VERSION }}-windows-amd64-portable.zip"
-          Move-Item -Force $exe.FullName $newExe
-          Move-Item -Force $zip.FullName $newZip
+          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-amd64.exe"
+          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-amd64-portable.zip"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -107,6 +105,14 @@ jobs:
         run: |
           dart pub global activate fastforge
           fastforge package --platform=linux --targets=appimage,deb,zip
+
+      - name: Rename artifacts
+        run: |
+          v="${VERSION#v}"
+          d="dist/$v"
+          mv "$d/singcast-$v-linux.AppImage" "$d/singcast-$v-linux-amd64.AppImage"
+          mv "$d/singcast-$v-linux.deb" "$d/singcast-$v-linux-amd64.deb"
+          mv "$d/singcast-$v-linux.zip" "$d/singcast-$v-linux-amd64.zip"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -155,9 +161,9 @@ jobs:
 
       - name: Create DMG
         run: |
+          v="${VERSION#v}"
           APP_PATH="build/macos/Build/Products/Release/singcast.app"
-          DMG_NAME="singcast-${{ env.VERSION }}-macos-${{ matrix.arch }}.dmg"
-          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "$APP_PATH/../$DMG_NAME"
+          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "build/macos/Build/Products/Release/singcast-$v-macos-${{ matrix.arch }}.dmg"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -217,7 +223,9 @@ jobs:
         run: flutter build apk --release --target-platform ${{ matrix.target }}
 
       - name: Rename artifact
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/singcast-${{ env.VERSION }}-${{ matrix.arch }}.apk
+        run: |
+          v="${VERSION#v}"
+          mv build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/singcast-$v-android-${{ matrix.arch }}.apk"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
