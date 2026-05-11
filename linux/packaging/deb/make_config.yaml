@@ -1,0 +1,11 @@
+display_name: Singcast
+icon: assets/icon.png
+generic_name: Proxy Client
+categories:
+  - Network
+keywords:
+  - Proxy
+  - VPN
+  - sing-box
+startup_notify: true
+include: []
