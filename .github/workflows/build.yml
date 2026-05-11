@@ -124,6 +124,13 @@ jobs:
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 25
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            core_arch: amd64
+          - arch: arm64
+            core_arch: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -140,9 +147,15 @@ jobs:
       - name: Download core
         run: |
           mkdir -p macos/Frameworks
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-arm64.tar.gz" -o libsingcast.tar.gz
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv libsingcast-darwin-arm64.dylib macos/Frameworks/libsingcast-darwin.dylib
+          mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
+
+      - name: Set cross-compile arch
+        if: matrix.arch == 'amd64'
+        run: |
+          sed -i '' 's/buildSettings = {/buildSettings = {\
+                  ARCHS = x86_64;/' macos/Runner.xcodeproj/project.pbxproj
 
       - name: Build
         run: flutter build macos --release
@@ -154,7 +167,7 @@ jobs:
         run: |
           v="${VERSION#v}"
           APP_PATH="build/macos/Build/Products/Release/singcast.app"
-          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "build/macos/Build/Products/Release/singcast-$v-macos-arm64.dmg"
+          hdiutil create -volname "Singcast" -srcfolder "$APP_PATH" -ov -format UDZO "build/macos/Build/Products/Release/singcast-$v-macos-${{ matrix.arch }}.dmg"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
