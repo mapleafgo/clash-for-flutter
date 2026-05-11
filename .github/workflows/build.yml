@@ -151,13 +151,9 @@ jobs:
           tar -zxf libsingcast.tar.gz
           mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
 
-      - name: Set cross-compile arch
-        if: matrix.arch == 'amd64'
-        run: |
-          sed -i '' 's/buildSettings = {/buildSettings = {\
-                  ARCHS = x86_64;/' macos/Runner.xcodeproj/project.pbxproj
-
       - name: Build
+        env:
+          ARCHS: ${{ matrix.arch == 'amd64' && 'x86_64' || '' }}
         run: flutter build macos --release
 
       - name: Ad-hoc sign
