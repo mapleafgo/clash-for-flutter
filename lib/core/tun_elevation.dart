@@ -71,40 +71,41 @@ Future<void> _checkWindowsAdminAsync() async {
 /// patchelf 无法修改正在运行的二进制（ETXTBSY），因此先复制到临时文件、
 /// 在副本上修改 RUNPATH，再用 rename() 原子替换原文件（rename 对正在
 /// 运行的进程有效：进程仍持有旧 inode，新文件通过目录项替换）。
+///
+/// 安装目录通常属于 root，普通用户无权写入，因此整个流程通过
+/// pkexec sh -c 以 root 身份执行，避免多次提权弹窗。
 Future<bool> setupTunCapability() async {
   if (!Platform.isLinux) return false;
   try {
     final exe = Platform.resolvedExecutable;
     final libDir = '${File(exe).parent.path}/lib';
-    final tmpExe = '$exe.tmp_patchelf';
 
-    // 清理上次可能残留的临时文件
-    try { File(tmpExe).deleteSync(); } catch (_) {}
-
-    // 复制到临时文件（-p 保留权限）
-    final cp = await Process.run('cp', ['-p', exe, tmpExe]);
-    if (cp.exitCode != 0) return false;
-
-    // 在副本上修改 RUNPATH
-    final patch = await Process.run('patchelf', [
-      '--set-rpath', '$libDir:\$ORIGIN/lib', tmpExe,
-    ]);
-    if (patch.exitCode != 0) {
-      try { File(tmpExe).deleteSync(); } catch (_) {}
-      return false;
+    // 已经具备 capability，无需重复提权
+    final capCheck = await Process.run('getcap', [exe]);
+    if ((capCheck.stdout ?? '').toString().contains('cap_net_admin')) {
+      return true;
     }
 
-    // 原子替换：rename() 修改目录项，不影响正在运行的进程（旧 inode）
-    final mv = await Process.run('mv', ['-T', tmpExe, exe]);
-    if (mv.exitCode != 0) {
-      try { File(tmpExe).deleteSync(); } catch (_) {}
-      return false;
-    }
+    final script = r'''
+set -e
+rm -f "$1.tmp_patchelf"
+cp -p "$1" "$1.tmp_patchelf"
+if patchelf --set-rpath "$2:\$ORIGIN/lib" "$1.tmp_patchelf" 2>/dev/null; then
+    mv -T "$1.tmp_patchelf" "$1"
+elif [ "$(stat -c '%u' "$1.tmp_patchelf")" = "0" ] && \
+     [ "$(stat -c '%u' "$(dirname "$1")")" = "0" ]; then
+    # 二进制和目录均属 root：AT_SECURE 下 $ORIGIN 仍可展开，patchelf 非必需
+    mv -T "$1.tmp_patchelf" "$1"
+else
+    # 用户拥有的二进制必须通过 patchelf 写入显式路径，否则 setcap 后 .so 加载失败
+    rm -f "$1.tmp_patchelf"
+    exit 1
+fi
+setcap cap_net_admin,cap_net_raw,cap_net_bind_service+ep "$1"
+''';
 
     final result = await Process.run('pkexec', [
-      'setcap',
-      'cap_net_admin,cap_net_raw,cap_net_bind_service+ep',
-      exe,
+      'sh', '-c', script, 'sh', exe, libDir,
     ]);
     return result.exitCode == 0;
   } catch (_) {

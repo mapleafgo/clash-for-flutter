@@ -217,7 +217,7 @@ Future<void> _openTunDesktop() async {
       final ok = await setupTunCapability();
       if (!ok) {
         _setTunEnabled(false);
-        throw TunElevationException('授予网络权限失败，请确认 pkexec 可用');
+        throw TunElevationException('授予网络权限失败，请确认 pkexec 及 patchelf 可用');
       }
       if (await relaunchSelf()) {
         exit(0);
