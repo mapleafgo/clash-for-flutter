@@ -195,8 +195,13 @@ Future<void> closeTun() async {
 // --- Desktop TUN ---
 
 Future<void> _openTunDesktop() async {
+  // TUN 模式接管全部系统流量，需关闭系统代理避免浏览器绕过 TUN
+  if (systemProxy.value) await closeProxy();
+
   if (!coreElevated.value) {
     _setTunEnabled(true);
+    // 提权重启前关闭系统代理，避免 exit(0) 后代理设置残留
+    await closeProxy();
     if (Platform.isLinux) {
       // Linux: one-time setcap，重启后 capability 持久化，后续无需再提权
       final ok = await setupTunCapability();

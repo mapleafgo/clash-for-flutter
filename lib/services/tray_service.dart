@@ -17,7 +17,11 @@ Future<void> initTray() async {
 
   desktopTray.addListener(_TrayHandler());
 
-  effect(() => _rebuildMenu(systemProxy.value, LibCore.instance.availableModesSignal.value, LibCore.instance.modeSignal.value));
+  effect(() => _rebuildMenu(
+    tunIf.value == true ? clashConfig.value.tunEnabled : systemProxy.value,
+    LibCore.instance.availableModesSignal.value,
+    LibCore.instance.modeSignal.value,
+  ));
 }
 
 const _trayModeLabels = {
@@ -32,11 +36,13 @@ Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) asyn
     key: m,
     checked: m == current,
   )).toList();
+  final isTunMode = tunIf.value == true;
+  final proxyLabel = isTunMode ? 'TUN 模式' : '系统代理';
   final menu = TrayMenu(
     items: [
       TrayMenuItem(label: '显示窗口', key: 'show'),
       TrayMenuItem.separator(),
-      TrayMenuItem.checkbox(label: '系统代理', key: 'proxy', checked: proxyOn),
+      TrayMenuItem.checkbox(label: proxyLabel, key: 'proxy', checked: proxyOn),
       if (modeItems.isNotEmpty) ...[
         TrayMenuItem.separator(),
         ...modeItems,
@@ -61,7 +67,10 @@ class _TrayHandler with DesktopTrayListener {
       case 'show':
         await windowManager.show();
       case 'proxy':
-        if (item.checked ?? false) {
+        final isTun = tunIf.value == true;
+        if (isTun) {
+          await toggleTun(!(item.checked ?? false));
+        } else if (item.checked ?? false) {
           await closeProxy();
         } else {
           await openProxy();

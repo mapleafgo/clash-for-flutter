@@ -63,13 +63,48 @@ Future<void> _checkWindowsAdminAsync() async {
 
 /// Linux: 通过 pkexec setcap 给可执行文件授予 cap_net_admin。
 /// 授权持久化在文件属性中，下次启动即生效。
+///
+/// setcap 会使二进制变为 AT_SECURE，glibc 在此模式下对非 root 拥有的目录
+/// 拒绝 $ORIGIN 展开，导致插件 .so 加载失败。因此在 setcap 之前，先用
+/// patchelf 将实际的 lib 目录写入 RUNPATH。
+///
+/// patchelf 无法修改正在运行的二进制（ETXTBSY），因此先复制到临时文件、
+/// 在副本上修改 RUNPATH，再用 rename() 原子替换原文件（rename 对正在
+/// 运行的进程有效：进程仍持有旧 inode，新文件通过目录项替换）。
 Future<bool> setupTunCapability() async {
   if (!Platform.isLinux) return false;
   try {
+    final exe = Platform.resolvedExecutable;
+    final libDir = '${File(exe).parent.path}/lib';
+    final tmpExe = '$exe.tmp_patchelf';
+
+    // 清理上次可能残留的临时文件
+    try { File(tmpExe).deleteSync(); } catch (_) {}
+
+    // 复制到临时文件（-p 保留权限）
+    final cp = await Process.run('cp', ['-p', exe, tmpExe]);
+    if (cp.exitCode != 0) return false;
+
+    // 在副本上修改 RUNPATH
+    final patch = await Process.run('patchelf', [
+      '--set-rpath', '$libDir:\$ORIGIN/lib', tmpExe,
+    ]);
+    if (patch.exitCode != 0) {
+      try { File(tmpExe).deleteSync(); } catch (_) {}
+      return false;
+    }
+
+    // 原子替换：rename() 修改目录项，不影响正在运行的进程（旧 inode）
+    final mv = await Process.run('mv', ['-T', tmpExe, exe]);
+    if (mv.exitCode != 0) {
+      try { File(tmpExe).deleteSync(); } catch (_) {}
+      return false;
+    }
+
     final result = await Process.run('pkexec', [
       'setcap',
       'cap_net_admin,cap_net_raw,cap_net_bind_service+ep',
-      Platform.resolvedExecutable,
+      exe,
     ]);
     return result.exitCode == 0;
   } catch (_) {
@@ -86,6 +121,8 @@ Future<bool> relaunchSelf() async {
       workingDirectory: Directory.current.path,
       mode: ProcessStartMode.detached,
     );
+    // 等待新进程完成初始化，避免 exit(0) 过早终止当前进程
+    await Future.delayed(const Duration(milliseconds: 200));
     return true;
   } catch (_) {
     return false;
@@ -101,13 +138,7 @@ Future<bool> relaunchElevated({String? homeDir}) async {
   final exe = Platform.resolvedExecutable;
 
   try {
-    if (Platform.isLinux) {
-      await Process.start(
-        'pkexec',
-        ['--disable-internal-agent', exe],
-        mode: ProcessStartMode.detached,
-      );
-    } else if (Platform.isMacOS) {
+    if (Platform.isMacOS) {
       // osascript 弹出系统授权对话框，用户输入密码后以 root 运行可执行文件。
       // & 后台运行：do shell script 同步等待命令完成，GUI 应用不退出会导致 osascript 挂起。
       // 传递 --home-dir 确保以 root 运行时仍使用用户的配置目录。
@@ -128,6 +159,7 @@ Future<bool> relaunchElevated({String? homeDir}) async {
       );
     }
 
+    await Future.delayed(const Duration(milliseconds: 200));
     return true;
   } catch (_) {
     return false;
