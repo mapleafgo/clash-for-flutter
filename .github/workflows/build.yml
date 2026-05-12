@@ -72,7 +72,14 @@ jobs:
           overwrite_files: true
 
   build-linux:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-latest-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -91,15 +98,16 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev
-          wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          APPIMAGE_ARCH="${{ matrix.arch == 'amd64' && 'x86_64' || 'aarch64' }}"
+          wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${APPIMAGE_ARCH}.AppImage"
           chmod +x /tmp/appimagetool
           sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-linux-amd64.tar.gz" -o libsingcast.tar.gz
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-linux-${{ matrix.arch }}.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
-          mv libsingcast-linux-amd64.so linux/core/libsingcast-linux.so
+          mv libsingcast-linux-${{ matrix.arch }}.so linux/core/libsingcast-linux.so
 
       - name: Build & package
         run: |
@@ -110,9 +118,9 @@ jobs:
         run: |
           v="${VERSION#v}"
           d="dist/$v"
-          mv "$d/singcast-$v-linux.AppImage" "$d/singcast-$v-linux-amd64.AppImage"
-          mv "$d/singcast-$v-linux.deb" "$d/singcast-$v-linux-amd64.deb"
-          mv "$d/singcast-$v-linux.zip" "$d/singcast-$v-linux-amd64.zip"
+          mv "$d/singcast-$v-linux.AppImage" "$d/singcast-$v-linux-${{ matrix.arch }}.AppImage"
+          mv "$d/singcast-$v-linux.deb" "$d/singcast-$v-linux-${{ matrix.arch }}.deb"
+          mv "$d/singcast-$v-linux.zip" "$d/singcast-$v-linux-${{ matrix.arch }}.zip"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
