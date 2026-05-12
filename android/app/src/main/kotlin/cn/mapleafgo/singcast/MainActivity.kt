@@ -34,14 +34,11 @@ class MainActivity : FlutterFragmentActivity() {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             vpnService = (service as SingcastVpnService.LocalBinder).getService()
             vpnBound = true
-            val running = vpnService?.isRunning() ?: false
-            AppLog.i(tag, "VPN service connected, running=$running")
-            if (running) {
+            if (vpnService?.isRunning() == true) {
                 Mobile.setVpnService(vpnService)
             }
         }
         override fun onServiceDisconnected(name: ComponentName) {
-            AppLog.w(tag, "VPN service disconnected unexpectedly")
             vpnBound = false
             vpnService = null
         }
@@ -53,24 +50,19 @@ class MainActivity : FlutterFragmentActivity() {
         val pending = pendingVpn
         pendingVpn = null
         if (result.resultCode == RESULT_OK && pending != null) {
-            AppLog.i(tag, "VPN permission granted, starting VPN")
             startVpn(pending.configContent, pending.ruleSetProxy, pending.ipv6, pending.result)
         } else {
-            AppLog.w(tag, "VPN permission denied (resultCode=${result.resultCode})")
             pending?.result?.error("VPN_DENIED", "VPN permission denied", null)
         }
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* best-effort, ignore result */ }
+    ) { /* best-effort */ }
 
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-
-        // Initialize file logging early
         AppLog.init(filesDir)
-        AppLog.i(tag, "MainActivity: file log initialized")
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
@@ -87,167 +79,118 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private inline fun safeCall(result: MethodChannel.Result, block: () -> Unit) {
+        try {
+            block()
+            result.success(null)
+        } catch (e: Throwable) {
+            AppLog.e(tag, "method call failed", e)
+            result.error("CORE_ERROR", e.message, null)
+        }
+    }
+
+    private inline fun <T> safeReply(result: MethodChannel.Result, block: () -> T?) {
+        try {
+            result.success(block())
+        } catch (e: Throwable) {
+            AppLog.e(tag, "method call failed", e)
+            result.error("CORE_ERROR", e.message, null)
+        }
+    }
+
     private fun handleMethodCall(method: String, args: Map<String, Any>?, result: MethodChannel.Result) {
         when (method) {
-            "initCore" -> try {
-                val optionsJSON = args?.str("optionsJSON") ?: ""
-                AppLog.i(tag, "handleMethodCall: initCore optionsJSON=$optionsJSON")
-                Mobile.initCore(optionsJSON)
+            // Lifecycle
+            "initCore" -> safeCall(result) {
+                Mobile.initCore(args?.str("optionsJSON") ?: "")
                 Mobile.detectAndReportInterfaces(this@MainActivity)
-                result.success(null)
-            } catch (e: Throwable) {
-                AppLog.e(tag, "handleMethodCall: initCore failed", e)
-                result.error("CORE_ERROR", e.message, null)
             }
-            "startCoreWithContent" -> try {
+            "startCoreWithContent" -> {
                 val content = args?.str("content") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
-                val svc = vpnService
-                val tunEnabled = isTunEnabled(content)
-                AppLog.i(tag, "startCoreWithContent: ${content.length} chars, vpnSvc=${svc != null}, vpnRunning=${svc?.isRunning()}, tun=$tunEnabled")
-                if (svc != null && svc.isRunning()) {
-                    AppLog.i(tag, "startCoreWithContent: VPN running, calling refreshConfig")
-                    svc.refreshConfig(content, proxy)
-                    result.success(null)
-                } else if (tunEnabled) {
-                    AppLog.i(tag, "startCoreWithContent: TUN detected but VPN not running, routing through VPN service")
-                    requestVpn(content, proxy, true, result)
-                } else {
-                    AppLog.i(tag, "startCoreWithContent: no TUN, starting core directly")
-                    Mobile.detectAndReportInterfaces(this@MainActivity)
-                    Mobile.detectAndReportDefaultInterface(this@MainActivity)
-                    Mobile.startWithContent(content, proxy)
-                    result.success(null)
+                try {
+                    val svc = vpnService
+                    if (svc != null && svc.isRunning()) {
+                        svc.refreshConfig(content, proxy)
+                        result.success(null)
+                    } else if (isTunEnabled(content)) {
+                        requestVpn(content, proxy, true, result)
+                    } else {
+                        Mobile.detectAndReportInterfaces(this@MainActivity)
+                        Mobile.detectAndReportDefaultInterface(this@MainActivity)
+                        Mobile.startWithContent(content, proxy)
+                        result.success(null)
+                    }
+                } catch (e: Throwable) {
+                    AppLog.e(tag, "method call failed", e)
+                    result.error("CORE_ERROR", e.message, null)
                 }
-            } catch (e: Throwable) {
-                AppLog.e(tag, "handleMethodCall: startCoreWithContent failed", e)
-                result.error("CORE_ERROR", e.message, null)
             }
-            "stopCore" -> try {
-                AppLog.i(tag, "handleMethodCall: stopCore")
-                Mobile.stopCore()
-                result.success(null)
-            } catch (e: Throwable) {
-                AppLog.e(tag, "handleMethodCall: stopCore failed", e)
-                result.error("CORE_ERROR", e.message, null)
-            }
-            "destroyCore" -> try {
-                AppLog.i(tag, "handleMethodCall: destroyCore")
-                Mobile.destroyCore()
-                result.success(null)
-            } catch (e: Throwable) {
-                AppLog.e(tag, "handleMethodCall: destroyCore failed", e)
-                result.error("CORE_ERROR", e.message, null)
-            }
-            "resetNetwork" -> try { Mobile.resetNetwork(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            // TUN / VPN
+            "destroyCore" -> safeCall(result) { Mobile.destroyCore() }
+            "resetNetwork" -> safeCall(result) { Mobile.resetNetwork() }
+
+            // VPN
             "connectVpn" -> {
                 val configContent = args?.str("configContent") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
-                val ipv6 = args?.get("ipv6") as? Boolean ?: true
-                AppLog.i(tag, "handleMethodCall: connectVpn (${configContent.length} chars, ipv6=$ipv6)")
+                val ipv6 = args?.get("ipv6") as? Boolean ?: false
                 requestVpn(configContent, proxy, ipv6, result)
             }
             "disconnectVpn" -> {
-                AppLog.i(tag, "handleMethodCall: disconnectVpn")
                 stopVpn()
                 result.success(true)
             }
+
             // Queries
-            "queryProxies" -> try { result.success(Mobile.queryProxies()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryStats" -> try { result.success(Mobile.queryStats()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryConnections" -> try { result.success(Mobile.queryConnections()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryMode" -> try { result.success(Mobile.queryMode()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "queryState" -> try { result.success(Mobile.queryState()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "queryProxies" -> safeReply(result) { Mobile.queryProxies() }
+            "queryStats" -> safeReply(result) { Mobile.queryStats() }
+            "queryConnections" -> safeReply(result) { Mobile.queryConnections() }
+            "queryMode" -> safeReply(result) { Mobile.queryMode() }
+            "queryState" -> safeReply(result) { Mobile.queryState() }
+
             // Proxy control
-            "selectProxy" -> try {
+            "selectProxy" -> safeCall(result) {
                 Mobile.selectProxy(args?.str("group") ?: "", args?.str("tag") ?: "")
-                result.success(null)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "testDelay" -> try {
-                val delay = Mobile.testDelay(
-                    args?.str("name") ?: "",
-                    args?.getInt("timeoutMs") ?: 3000
-                )
-                result.success(delay)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "testGroupDelay" -> try {
-                result.success(Mobile.testGroupDelay(
-                    args?.str("group") ?: "",
-                    args?.getInt("timeoutMs") ?: 3000
-                ))
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "setMode" -> try {
-                Mobile.setMode(args?.str("mode") ?: "")
-                result.success(null)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "closeConnection" -> try {
-                Mobile.closeConnection(args?.str("id") ?: "")
-                result.success(null)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "closeAllConnections" -> try {
-                Mobile.closeAllConnections()
-                result.success(null)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            }
+            "testDelay" -> safeReply(result) {
+                Mobile.testDelay(args?.str("name") ?: "", args?.getInt("timeoutMs") ?: 3000)
+            }
+            "testGroupDelay" -> safeReply(result) {
+                Mobile.testGroupDelay(args?.str("group") ?: "", args?.getInt("timeoutMs") ?: 3000)
+            }
+            "setMode" -> safeCall(result) { Mobile.setMode(args?.str("mode") ?: "") }
+            "closeConnection" -> safeCall(result) { Mobile.closeConnection(args?.str("id") ?: "") }
+            "closeAllConnections" -> safeCall(result) { Mobile.closeAllConnections() }
+
             // Config
-            "setGroupExpand" -> try {
+            "setGroupExpand" -> safeCall(result) {
                 Mobile.setGroupExpand(args?.str("group") ?: "", args?.get("expand") as? Boolean ?: false)
-                result.success(null)
-            } catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            }
+
             // Logging / Memory
-            "setLogLevel" -> {
-                Mobile.setLogLevel((args?.get("level") as? Number)?.toInt() ?: 4)
-                result.success(null)
-            }
-            "setMemoryLimit" -> try { result.success(Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0)) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "flushSystemDNS" -> {
-                Mobile.flushSystemDNS()
-                result.success(null)
-            }
-            "flushFakeIP" -> try { Mobile.flushFakeIP(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "flushDNSCache" -> try { Mobile.flushDNSCache(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "triggerGC" -> try { Mobile.triggerGC(); result.success(null) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
+            "setLogLevel" -> safeCall(result) { Mobile.setLogLevel((args?.get("level") as? Number)?.toInt() ?: 4) }
+            "setMemoryLimit" -> safeReply(result) { Mobile.setMemoryLimit(args?.getLong("bytes") ?: 0) }
+            "flushSystemDNS" -> safeCall(result) { Mobile.flushSystemDNS() }
+            "flushFakeIP" -> safeCall(result) { Mobile.flushFakeIP() }
+            "flushDNSCache" -> safeCall(result) { Mobile.flushDNSCache() }
+            "triggerGC" -> safeCall(result) { Mobile.triggerGC() }
+
             // Platform
-            "setIncludeAllNetworks" -> {
-                Mobile.setIncludeAllNetworks(args?.get("v") as? Boolean ?: false)
-                result.success(null)
-            }
-            "setWIFIState" -> {
-                Mobile.setWIFIState(args?.str("ssid") ?: "", args?.str("bssid") ?: "")
-                result.success(null)
-            }
+            "setIncludeAllNetworks" -> safeCall(result) { Mobile.setIncludeAllNetworks(args?.get("v") as? Boolean ?: false) }
+            "setWIFIState" -> safeCall(result) { Mobile.setWIFIState(args?.str("ssid") ?: "", args?.str("bssid") ?: "") }
+
             // Utilities
-            "checkConfig" -> try { result.success(Mobile.checkConfig(args?.str("content") ?: "")) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "getVersion" -> try { result.success(Mobile.getVersion()) }
-            catch (e: Throwable) { result.error("CORE_ERROR", e.message, null) }
-            "requestNotificationPermission" -> {
-                requestNotificationPermission()
-                result.success(null)
-            }
-            "isVpnRunning" -> {
-                val running = SingcastVpnService.isServiceRunning
-                AppLog.d(tag, "handleMethodCall: isVpnRunning=$running (vpnBound=$vpnBound)")
-                result.success(running)
-            }
-            "updateVpnTraffic" -> {
+            "checkConfig" -> safeReply(result) { Mobile.checkConfig(args?.str("content") ?: "") }
+            "getVersion" -> safeReply(result) { Mobile.getVersion() }
+            "requestNotificationPermission" -> safeCall(result) { requestNotificationPermission() }
+            "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
+            "updateVpnTraffic" -> safeCall(result) {
                 vpnService?.updateTraffic(
                     up = args?.getLong("up") ?: 0,
                     down = args?.getLong("down") ?: 0,
                     upTotal = args?.getLong("upTotal") ?: 0,
                     downTotal = args?.getLong("downTotal") ?: 0,
                 )
-                result.success(null)
             }
             else -> result.notImplemented()
         }
@@ -257,21 +200,17 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val intent = VpnService.prepare(this)
             if (intent != null) {
-                AppLog.i(tag, "requestVpn: VPN permission not yet granted, launching dialog")
                 pendingVpn = VpnRequest(configContent, ruleSetProxy, ipv6, result)
                 vpnPermissionLauncher.launch(intent)
             } else {
-                AppLog.i(tag, "requestVpn: VPN permission already granted, starting directly (config=${configContent.length} chars)")
                 startVpn(configContent, ruleSetProxy, ipv6, result)
             }
         } catch (e: Exception) {
-            AppLog.e(tag, "requestVpn: prepare() failed", e)
             result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
         }
     }
 
     private fun startVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
-        AppLog.i(tag, "startVpn: starting VPN service (config=${configContent.length} chars, ipv6=$ipv6, vpnBound=$vpnBound)")
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_CONNECT
             putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
@@ -282,7 +221,6 @@ class MainActivity : FlutterFragmentActivity() {
         if (!vpnBound) {
             bindService(intent, vpnConnection, BIND_AUTO_CREATE)
         }
-        AppLog.i(tag, "startVpn: service started and bound")
         result.success(true)
     }
 
@@ -291,7 +229,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun stopVpn() {
-        AppLog.i(tag, "stopVpn: stopping VPN (vpnBound=$vpnBound)")
         vpnService?.disconnect("user_disconnect")
         try { unbindService(vpnConnection) } catch (_: Exception) {}
         stopService(Intent(this, SingcastVpnService::class.java))
@@ -300,7 +237,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
-        AppLog.i(tag, "MainActivity.onDestroy: vpnBound=$vpnBound")
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }
@@ -308,13 +244,9 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onResume() {
         super.onResume()
         if (!vpnBound && SingcastVpnService.isServiceRunning) {
-            AppLog.i(tag, "onResume: VPN service running but not bound, re-binding")
             try {
-                val intent = Intent(this, SingcastVpnService::class.java)
-                bindService(intent, vpnConnection, BIND_AUTO_CREATE)
-            } catch (e: Exception) {
-                AppLog.w(tag, "onResume: failed to re-bind VPN service: ${e.message}")
-            }
+                bindService(Intent(this, SingcastVpnService::class.java), vpnConnection, BIND_AUTO_CREATE)
+            } catch (_: Exception) {}
         }
     }
 

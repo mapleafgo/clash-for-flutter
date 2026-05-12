@@ -53,14 +53,14 @@ class _KernelStateIcon extends StatelessWidget {
       return Padding(
         padding: EdgeInsets.only(right: Constants.isDesktop ? 8 : 12),
         child: switch (state) {
-          0 => const SizedBox(
+          LibCore.kStateCreated || LibCore.kStateStarting => const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-          1 => Icon(Icons.circle, size: 12, color: Colors.grey.shade400),
-          3 => Icon(Icons.circle, size: 12, color: Colors.red.shade400),
-          _ => const Icon(Icons.circle, size: 12, color: Colors.green),
+          LibCore.kStateInitialized => Icon(Icons.circle, size: 12, color: Colors.grey.shade400),
+          LibCore.kStateDestroyed => Icon(Icons.circle, size: 12, color: Colors.red.shade400),
+          _ => Icon(Icons.circle, size: 12, color: Colors.green),
         },
       );
     });

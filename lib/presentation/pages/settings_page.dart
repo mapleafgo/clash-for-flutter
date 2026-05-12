@@ -60,7 +60,7 @@ class SettingsPage extends StatelessWidget {
             Watch((context) {
               final modes = LibCore.instance.availableModesSignal.value;
               final current = LibCore.instance.modeSignal.value;
-              final ready = LibCore.instance.stateSignal.value == 2;
+              final ready = LibCore.instance.stateSignal.value == LibCore.kStateRunning;
               return _ChoiceTile<String>(
                 title: '出站模式',
                 value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),

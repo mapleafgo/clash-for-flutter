@@ -110,17 +110,10 @@ void startWatchingSelectedFile() {
         ? file
         : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
     if (!File(path).existsSync()) return;
-    // 首次触发：内核已在运行则仅同步数据
+    // 首次触发：由 _initApp 显式调用 asyncProfile()，此处仅标记已激活
     if (!_profileAutoActivated) {
       _profileAutoActivated = true;
-      // peek() 不创建订阅，避免 stateSignal 变化时重复触发 effect
-      if (LibCore.instance.stateSignal.peek() == 2) {
-        LogFileWriter.instance?.log(
-          'startWatchingSelectedFile: first trigger, core already running (state=2), skip',
-          name: 'tun',
-        );
-        return;
-      }
+      return;
     }
     LogFileWriter.instance?.log(
       'startWatchingSelectedFile: activating profile $file (state=${LibCore.instance.stateSignal.peek()})',
@@ -153,35 +146,23 @@ Future<bool> _activateProfile(String yamlPath) async {
   try {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
-    LogFileWriter.instance?.log(
-      '_activateProfile: merged=${merged.length} chars, tunInConfig=${merged.contains('tun:')}, tunEnabled=${clashConfig.value.tunEnabled}',
-      name: 'tun',
-    );
 
-    // 步骤 1: 预验证新配置（在断开连接前）
-    try {
-      final validationResult = await LibCore.instance.checkConfig(merged);
-      if (validationResult.isNotEmpty) {
-        profileError.value = validationResult;
-        LogFileWriter.instance?.log('_activateProfile: validation failed: $validationResult', level: LogLevel.error, name: 'tun');
-        return false;
-      }
-    } catch (e) {
-      // 验证失败不阻止尝试，但记录警告
-      // 某些配置问题只有在实际运行时才会发现
-      LogFileWriter.instance?.log('_activateProfile: checkConfig exception: $e', level: LogLevel.warning, name: 'tun');
+    // 步骤 1: 预验证新配置（配置未变时跳过，仅配置变更时验证）
+    if (_lastWorkingConfig != null && merged != _lastWorkingConfig) {
+      try {
+        final validationResult = await LibCore.instance.checkConfig(merged);
+        if (validationResult.isNotEmpty) {
+          profileError.value = validationResult;
+          return false;
+        }
+      } catch (_) {}
     }
 
     try {
-      LogFileWriter.instance?.log(
-        '_activateProfile: calling startCoreWithContent (merged=${merged.length} chars)',
-        name: 'tun',
-      );
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,
       );
-      LogFileWriter.instance?.log('_activateProfile: startCoreWithContent succeeded', name: 'tun');
     } catch (e) {
       LogFileWriter.instance?.log('_activateProfile: startCoreWithContent failed: $e', level: LogLevel.error, name: 'tun');
       // 回滚到上次工作配置

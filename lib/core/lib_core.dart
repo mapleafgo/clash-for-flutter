@@ -20,14 +20,13 @@ abstract class LibCorePlatform {
   Future<void> init();
   Future<void> initCore(String homeDir);
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
-  Future<void> stopCore();
   Future<void> destroyCore();
   Future<void> resetNetwork();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<TrafficSnapshot> queryTraffic();
   Future<ConnectionEventsPayload> queryConnections();
   Future<String> queryMode();
-  Future<int> queryState();
+  Future<String> queryState();
   Future<void> selectProxy(String group, String tag);
   Future<int> testDelay(String name, {int timeoutMs = 3000});
   Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000});
@@ -57,6 +56,12 @@ class LibCore {
   static final LibCore instance = LibCore._();
   LibCore._();
 
+  static const kStateCreated = 'created';
+  static const kStateInitialized = 'initialized';
+  static const kStateStarting = 'starting';
+  static const kStateRunning = 'running';
+  static const kStateDestroyed = 'destroyed';
+
   late final LibCorePlatform _platform;
   FfiWorker? _worker;
 
@@ -67,8 +72,9 @@ class LibCore {
   final _proxyDelays = signal<Map<String, int>>({});
   Signal<Map<String, int>> get proxyDelaysSignal => _proxyDelays;
   final modeSignal = signal<String>('rule');
-  final stateSignal = signal<int>(0);
+  final stateSignal = signal<String>(kStateCreated);
   final availableModesSignal = signal<List<String>>(['rule', 'global', 'direct']);
+  final proxyTogglingSignal = signal(false);
 
   final _activeConnectionIds = <String>{};
   int _prevUpTotal = 0;
@@ -121,23 +127,24 @@ class LibCore {
         final json = jsonDecode(payload) as Map<String, dynamic>;
         handleConnectionEvents(ConnectionEventsPayload.fromJson(json));
       case 4: // StateUpdate
-        final newState = int.tryParse(payload) ?? 0;
+        final newState = payload;
         final oldState = stateSignal.peek();
         LogFileWriter.instance?.log(
           'StateUpdate: $oldState -> $newState',
           name: 'tun',
         );
-        if (newState != oldState) {
-          stateSignal.value = newState;
-          if (newState >= 2) {
-            startPolling();
-            _queryAndUpdate();
-            _fetchAvailableModes();
-          } else {
-            stopPolling();
-            proxiesSignal.value = [];
-            _proxyDelays.value = {};
+        if (newState == oldState) break;
+        stateSignal.value = newState;
+        if (newState == kStateRunning) {
+          proxyTogglingSignal.value = false;
+          _onKernelRunning();
+        } else {
+          if (newState == kStateInitialized || newState == kStateDestroyed) {
+            proxyTogglingSignal.value = false;
           }
+          stopPolling();
+          proxiesSignal.value = [];
+          _proxyDelays.value = {};
         }
     }
   }
@@ -150,6 +157,12 @@ class LibCore {
     final current = Map<String, int>.from(_proxyDelays.peek());
     current[tag] = delay;
     _proxyDelays.value = current;
+  }
+
+  void _onKernelRunning() {
+    startPolling();
+    _queryAndUpdate();
+    _fetchAvailableModes();
   }
 
   // --- Polling ---
@@ -168,7 +181,7 @@ class LibCore {
 
   Future<void> _poll() async {
     try {
-      if (stateSignal.peek() < 2) return;
+      if (stateSignal.peek() != kStateRunning) return;
 
       final raw = await queryTraffic();
       final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
@@ -209,12 +222,15 @@ class LibCore {
     }
   }
 
-  /// 同步内核运行状态（移动端引擎重建恢复时调用）
-  void syncRunningState() {
-    stateSignal.value = 2;
-    startPolling();
-    _queryAndUpdate();
-    _fetchAvailableModes();
+  /// 同步内核真实状态（移动端引擎重建恢复时调用）
+  Future<void> syncKernelState() async {
+    try {
+      final state = await _platform.queryState();
+      stateSignal.value = state;
+      if (state == kStateRunning) _onKernelRunning();
+    } catch (e) {
+      stateSignal.value = kStateInitialized;
+    }
   }
 
   // --- Delegated methods ---
@@ -229,26 +245,10 @@ class LibCore {
 
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
     await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
-    stateSignal.value = 2;
-    startPolling();
-    _queryAndUpdate();
-    _fetchAvailableModes();
-  }
-
-  Future<void> stopCore() async {
-    stopPolling();
-    await _platform.stopCore();
-    stateSignal.value = 1;
-    proxiesSignal.value = [];
-    _proxyDelays.value = {};
   }
 
   Future<void> destroyCore() async {
-    stopPolling();
     await _platform.destroyCore();
-    stateSignal.value = 3;
-    proxiesSignal.value = [];
-    _proxyDelays.value = {};
   }
   Future<void> resetNetwork() => _platform.resetNetwork();
   Future<List<ProxyGroup>> queryProxies() async =>
@@ -280,7 +280,7 @@ class LibCore {
   Future<String> checkConfig(String content) => _platform.checkConfig(content);
   Future<String> getVersion() => _platform.getVersion();
   Future<String> queryMode() => _platform.queryMode();
-  Future<int> queryState() => _platform.queryState();
+  Future<String> queryState() => _platform.queryState();
   Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) =>
       _platform.testGroupDelay(group, timeoutMs: timeoutMs);
   Future<void> flushFakeIP() => _platform.flushFakeIP();
@@ -296,18 +296,10 @@ class LibCore {
       ruleSetProxy: ruleSetProxy,
       ipv6: ipv6,
     );
-    stateSignal.value = 2;
-    startPolling();
-    _queryAndUpdate();
-    _fetchAvailableModes();
   }
 
   Future<void> disconnectVpn() async {
     await _platform.disconnectVpn();
-    stateSignal.value = 1;
-    stopPolling();
-    proxiesSignal.value = [];
-    _proxyDelays.value = {};
   }
 
   Future<bool> isVpnRunning() => _platform.isVpnRunning();
@@ -438,9 +430,6 @@ class _FfiWorkerBackend implements LibCorePlatform {
       });
 
   @override
-  Future<void> stopCore() => _worker.invoke('CoreStop');
-
-  @override
   Future<void> destroyCore() => _worker.invoke('CoreDestroy');
 
   @override
@@ -504,6 +493,9 @@ class _FfiWorkerBackend implements LibCorePlatform {
       _worker.invoke('CoreSetMemoryLimit', {'bytes': bytes});
 
   @override
+  Future<String> queryState() => _worker.invoke<String>('CoreQueryState');
+
+  @override
   Future<void> flushSystemDNS() => _worker.invoke('CoreFlushSystemDNS');
 
   @override
@@ -511,9 +503,6 @@ class _FfiWorkerBackend implements LibCorePlatform {
     final json = await _worker.invoke<dynamic>('CoreQueryMode');
     return jsonEncode(json);
   }
-
-  @override
-  Future<int> queryState() => _worker.invoke<int>('CoreQueryState');
 
   @override
   Future<void> flushFakeIP() => _worker.invoke('CoreFlushFakeIP');

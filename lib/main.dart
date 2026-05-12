@@ -55,7 +55,10 @@ void main() async {
 }
 
 Future<void> _initApp() async {
+  final sw = Stopwatch()..start();
+
   await LibCore.instance.init();
+  print('[startup] LibCore.init: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}');
 
   // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
@@ -67,28 +70,41 @@ Future<void> _initApp() async {
   } catch (e) {
     initError.value = '内核初始化失败: $e';
   }
+  print('[startup] initCore: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}');
 
   await initCoreConfig();
+  print('[startup] initCoreConfig: ${sw.elapsedMilliseconds}ms');
+
   watchModeFromCore();
   initAppConfig();
+  print('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
 
-  // 移动端：同步 VPN 运行状态（引擎重建恢复时内核可能仍在运行）
+  // 移动端：引擎重建恢复时内核可能仍在运行，同步真实状态
   if (!Constants.isDesktop) {
-    try {
-      if (await LibCore.instance.isVpnRunning()) {
-        vpnConnected.value = true;
-        ensureTunEnabled(true);
-        LibCore.instance.syncRunningState();
-      }
-    } catch (_) {}
+    await LibCore.instance.syncKernelState();
+    final syncedState = LibCore.instance.stateSignal.peek();
+    print('[startup] syncKernelState: ${sw.elapsedMilliseconds}ms syncedState=$syncedState');
+    if (syncedState == LibCore.kStateRunning) {
+      vpnConnected.value = true;
+      ensureTunEnabled(true);
+      print('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
+    }
   }
 
   startWatchingSelectedFile();
+  print('[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}');
 
-  // 无配置文件时内核不会启动，手动将状态设为"就绪"避免 UI 持续 loading
-  if (selectedFile.value == null && LibCore.instance.stateSignal.peek() == 0) {
-    LibCore.instance.stateSignal.value = 1;
+  // 有配置文件且内核未运行时，直接激活 profile（不 await，内核后台启动，UI 先渲染）
+  final state = LibCore.instance.stateSignal.peek();
+  if (selectedFile.value != null && state != LibCore.kStateRunning && state != LibCore.kStateStarting) {
+    asyncProfile();
   }
+
+  // 无配置文件时内核不会启动，手动将状态设为"就绪"
+  if (selectedFile.value == null && LibCore.instance.stateSignal.peek() == LibCore.kStateCreated) {
+    LibCore.instance.stateSignal.value = LibCore.kStateInitialized;
+  }
+  print('[startup] done: ${sw.elapsedMilliseconds}ms finalState=${LibCore.instance.stateSignal.peek()}');
 }
 
 /// 解析 --home-dir 命令行参数，提权重启时用于指定用户数据目录。

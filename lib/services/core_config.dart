@@ -20,8 +20,6 @@ Timer? _reloadTimer;
 int? _lastSyncedPort;
 bool _internalUpdate = false;
 
-final modeChanging = signal(false);
-
 /// 应用主题模式：null 表示跟随系统。
 final themeMode = signal<ThemeMode?>(null);
 
@@ -72,23 +70,15 @@ Future<void> _syncModeToCore(Mode? mode) async {
     final modeStr = mode.name[0].toUpperCase() + mode.name.substring(1);
     await LibCore.instance.setMode(modeStr);
     _updateConfig((c) => c.copyWith(mode: mode));
+    LibCore.instance.modeSignal.value = mode.name;
   } catch (e) {
     LogFileWriter.instance?.log('setMode failed: $e', level: LogLevel.error, name: 'core_config');
   }
 }
 
-/// 通知内核切换模式，UI 状态由 setMode 成功后直接更新。
 Future<void> changeMode(Mode mode) async {
-  if (modeChanging.value) return;
-  if (LibCore.instance.stateSignal.value < 2) return;
-  modeChanging.value = true;
-  try {
-    await _syncModeToCore(mode);
-  } catch (e) {
-    LogFileWriter.instance?.log('changeMode error: $e', level: LogLevel.error, name: 'core_config');
-  } finally {
-    modeChanging.value = false;
-  }
+  if (LibCore.instance.stateSignal.value != LibCore.kStateRunning) return;
+  await _syncModeToCore(mode);
 }
 
 Future<void> changeModeStr(String mode) async {
@@ -98,8 +88,9 @@ Future<void> changeModeStr(String mode) async {
 
 void _scheduleReload() {
   if (selectedFile.value == null) return;
+  final state = LibCore.instance.stateSignal.value;
   LogFileWriter.instance?.log(
-    '_scheduleReload: scheduled (file=${selectedFile.value}, tun=${clashConfig.value.tunEnabled}, state=${LibCore.instance.stateSignal.value})',
+    '_scheduleReload: scheduled (file=${selectedFile.value}, tun=${clashConfig.value.tunEnabled}, state=$state)',
     name: 'tun',
   );
   _reloadTimer?.cancel();
@@ -108,11 +99,19 @@ void _scheduleReload() {
       LogFileWriter.instance?.log('_scheduleReload: skipped (TUN active)', name: 'tun');
       return;
     }
+    final curState = LibCore.instance.stateSignal.value;
+    if (curState == LibCore.kStateRunning || curState == LibCore.kStateStarting) {
+      LogFileWriter.instance?.log(
+        '_scheduleReload: skipped (kernel $curState)',
+        name: 'tun',
+      );
+      return;
+    }
     LogFileWriter.instance?.log(
       '_scheduleReload: firing asyncProfile (tun=${clashConfig.value.tunEnabled})',
       name: 'tun',
     );
-    await asyncProfile();
+    asyncProfile();
     if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
       _lastSyncedPort = clashConfig.value.mixedPort;
       await openProxy();
@@ -144,12 +143,14 @@ void watchModeFromCore() {
 }
 
 Future<void> toggleTun(bool enable) async {
+  final sw = Stopwatch()..start();
   LogFileWriter.instance?.log('toggleTun($enable) called', name: 'tun');
   if (enable) {
     await openTun();
   } else {
     await closeTun();
   }
+  LogFileWriter.instance?.log('toggleTun($enable): ${sw.elapsedMilliseconds}ms', name: 'tun');
 }
 
 Future<void> openTun() async {
@@ -160,23 +161,16 @@ Future<void> openTun() async {
     if (!File(path).existsSync()) return;
 
     try {
-      LogFileWriter.instance?.log('openTun: mobile path start (file=$file)', name: 'tun');
       _reloadTimer?.cancel();
       _setTunEnabled(true);
       final yamlContent = await File(path).readAsString();
       final merged = mergeProfileConfig(yamlContent);
-      LogFileWriter.instance?.log(
-        'openTun: calling connectVpn (merged=${merged.length} chars, tunEnabled=${clashConfig.value.tunEnabled})',
-        name: 'tun',
-      );
       await LibCore.instance.connectVpn(
         merged,
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
-      LogFileWriter.instance?.log('openTun: connectVpn completed', name: 'tun');
     } catch (e) {
-      LogFileWriter.instance?.log('openTun: FAILED: $e', level: LogLevel.error, name: 'tun');
       _setTunEnabled(false);
       rethrow;
     }
@@ -187,13 +181,12 @@ Future<void> openTun() async {
 
 Future<void> closeTun() async {
   if (!Constants.isDesktop) {
-    LogFileWriter.instance?.log('closeTun: mobile path start', name: 'tun');
     vpnConnected.value = false;
-    await LibCore.instance.disconnectVpn();
     _setTunEnabled(false);
-    // _setTunEnabled 使用 _updateConfig，effect 被 _internalUpdate 跳过，需手动调度重载
-    _scheduleReload();
-    LogFileWriter.instance?.log('closeTun: done', name: 'tun');
+    // 先关闭 VPN 接口（不停内核），避免 refreshConfig 中 fdsan 崩溃
+    await LibCore.instance.disconnectVpn();
+    // fire-and-forget：内核后台热重载，FAB loading 由 StateUpdate 回调清除
+    asyncProfile();
     return;
   }
   await _closeTunDesktop();
@@ -234,13 +227,13 @@ Future<void> _openTunDesktop() async {
     }
   }
   _setTunEnabled(true);
-  await asyncProfile();
+  asyncProfile();
 }
 
 Future<void> _closeTunDesktop() async {
   _setTunEnabled(false);
-  if (LibCore.instance.stateSignal.value < 2) return;
-  await asyncProfile();
+  if (LibCore.instance.stateSignal.value != LibCore.kStateRunning) return;
+  asyncProfile();
 }
 
 void _setTunEnabled(bool enable) {

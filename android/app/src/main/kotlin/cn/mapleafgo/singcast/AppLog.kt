@@ -15,7 +15,7 @@ object AppLog {
     private const val MAX_LOG_SIZE = 5L * 1024 * 1024 // 5MB
     private const val LOG_FILE = "singcast.log"
 
-    private var writer: BufferedWriter? = null
+    @Volatile private var writer: BufferedWriter? = null
     private val dateFormat = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
 
     fun init(logDir: File): File {

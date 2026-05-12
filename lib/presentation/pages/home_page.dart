@@ -321,26 +321,27 @@ class _ToggleFabState extends State<_ToggleFab> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final toggling = LibCore.instance.proxyTogglingSignal.value;
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
       final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
-      final busy = state != 2 && hasProfile;
+      final running = state == LibCore.kStateRunning;
       final cs = Theme.of(context).colorScheme;
       return SafeArea(
         child: FloatingActionButton.extended(
-          onPressed: busy || !hasProfile ? null : _toggle,
+          onPressed: toggling || !hasProfile || !running ? null : _toggle,
           backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
           foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
           extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-          icon: busy
+          icon: toggling
               ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
                 )
               : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
-          label: Text(busy
+          label: Text(toggling
               ? '切换中...'
               : (!hasProfile
                   ? '请先添加配置'
@@ -352,17 +353,17 @@ class _ToggleFabState extends State<_ToggleFab> {
 
   Future<void> _toggle() async {
     final isTun = tunIf.value ?? false;
-    if (isTun) {
-      toggleTun(!clashConfig.value.tunEnabled).catchError((e) {
-        if (mounted) showErrorDialog(context, e.toString());
-        return null;
-      });
-    } else {
-      try {
+    final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
+    LibCore.instance.proxyTogglingSignal.value = true;
+    try {
+      if (isTun) {
+        await toggleTun(!on);
+      } else {
         await (systemProxy.value ? closeProxy() : openProxy());
-      } catch (e) {
-        if (mounted) showErrorDialog(context, e.toString());
       }
+    } catch (e) {
+      LibCore.instance.proxyTogglingSignal.value = false;
+      if (mounted) showErrorDialog(context, e.toString());
     }
   }
 }
@@ -437,12 +438,11 @@ class _ModeCard extends StatelessWidget {
       final state = LibCore.instance.stateSignal.value;
       final modes = LibCore.instance.availableModesSignal.value;
       final current = LibCore.instance.modeSignal.value;
-      final busy = modeChanging.value;
       return _CardShell(
         icon: Icons.alt_route,
         title: '出站模式',
         height: _mediumH,
-        child: state < 2
+        child: modes.isEmpty
             ? Center(
                 child: Text('等待内核就绪',
                     style: TextStyle(color: Theme.of(context).disabledColor, fontSize: 13)),
@@ -457,7 +457,7 @@ class _ModeCard extends StatelessWidget {
                           icon: _modeMeta[modes[i]]?.$2 ?? Icons.alt_route,
                           label: _modeMeta[modes[i]]?.$1 ?? modes[i],
                           selected: modes[i] == current,
-                          onTap: busy ? null : () => changeModeStr(modes[i]),
+                          onTap: state != LibCore.kStateRunning ? null : () => changeModeStr(modes[i]),
                         ),
                       ),
                     ),

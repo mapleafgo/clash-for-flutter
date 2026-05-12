@@ -136,7 +136,7 @@ void _workerEntryPoint(_WorkerInit init) {
   final bindings = LibCoreBindings(lib);
 
   // 统一事件回调：ownership transfer，Dart 侧拷贝后调 CoreFreeString 释放
-  // eventType: 0=Log, 1=URLTest, 2=ModeUpdate, 3=ConnEvent
+  // eventType: 0=Log, 1=URLTest, 2=ModeUpdate, 3=ConnEvent, 4=StateUpdate
   _eventCb = ffi.NativeCallable<
       ffi.Void Function(ffi.Int32, ffi.Pointer<ffi.Char>)>.listener(
           (int eventType, ffi.Pointer<ffi.Char> payload) {
@@ -266,7 +266,7 @@ dynamic _dispatch(LibCoreBindings b, String method, Map<String, dynamic>? args) 
 
     // State & Mode queries
     case 'CoreQueryState':
-      return b.CoreQueryState();
+      return _parseResultString(b.CoreQueryState(), b);
     case 'CoreQueryMode':
       return _parseResultJson(b.CoreQueryMode(), b);
 

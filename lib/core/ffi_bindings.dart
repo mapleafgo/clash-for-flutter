@@ -57,14 +57,15 @@ class LibCoreBindings {
       _lookup<ffi.NativeFunction<ffi.Void Function()>>('CoreDestroy');
   late final _CoreDestroy = _CoreDestroyPtr.asFunction<void Function()>();
 
-  int CoreQueryState() {
+
+  ffi.Pointer<ffi.Char> CoreQueryState() {
     return _CoreQueryState();
   }
 
-  late final _CoreQueryStatePtr =
-      _lookup<ffi.NativeFunction<ffi.Int Function()>>('CoreQueryState');
+  late final _CoreQueryStatePtr = _lookup<
+      ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('CoreQueryState');
   late final _CoreQueryState =
-      _CoreQueryStatePtr.asFunction<int Function()>();
+      _CoreQueryStatePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
   // --- Config ---
 

@@ -56,14 +56,12 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
-      _channel.invokeMethod('startCoreWithContent', {
-        'content': content,
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
-
-  @override
-  Future<void> stopCore() => _channel.invokeMethod('stopCore');
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+    await _channel.invokeMethod('startCoreWithContent', {
+      'content': content,
+      'ruleSetProxy': ruleSetProxy ?? '',
+    });
+  }
 
   @override
   Future<void> destroyCore() => _channel.invokeMethod('destroyCore');
@@ -150,9 +148,9 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<int> queryState() async {
-    final result = await _channel.invokeMethod<int>('queryState');
-    return result ?? 0;
+  Future<String> queryState() async {
+    final result = await _channel.invokeMethod<String>('queryState');
+    return result ?? LibCore.kStateCreated;
   }
 
   @override
@@ -182,16 +180,18 @@ class LibCoreChannel implements LibCorePlatform {
   // --- VPN ---
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
-      _channel.invokeMethod('connectVpn', {
-        'configContent': configContent,
-        'ruleSetProxy': ruleSetProxy ?? '',
-        'ipv6': ipv6,
-      });
+  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) async {
+    await _channel.invokeMethod('connectVpn', {
+      'configContent': configContent,
+      'ruleSetProxy': ruleSetProxy ?? '',
+      'ipv6': ipv6,
+    });
+  }
 
   @override
-  Future<void> disconnectVpn() =>
-      _channel.invokeMethod('disconnectVpn');
+  Future<void> disconnectVpn() async {
+    await _channel.invokeMethod('disconnectVpn');
+  }
 
   @override
   Future<bool> isVpnRunning() async {

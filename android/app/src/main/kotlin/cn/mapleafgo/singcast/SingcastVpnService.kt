@@ -42,6 +42,8 @@ class SingcastVpnService : VpnService() {
     private var pfd: ParcelFileDescriptor? = null
     @Volatile private var running = false
     @Volatile private var disconnected = false
+    // dup 后的裸 fd，不经过 ParcelFileDescriptor 包装，避免 fdsan 崩溃
+    private var activeTunFd: Int = -1
     private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
@@ -50,11 +52,9 @@ class SingcastVpnService : VpnService() {
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private val networkHandler = Handler(Looper.getMainLooper())
     private val networkUpdateRunnable = Runnable {
-        AppLog.d(TAG, "NetworkCallback: executing debounced interface update")
         Mobile.detectAndReportInterfaces(this@SingcastVpnService)
         Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
     }
-    private var lastNetworkUpdateMs: Long = 0
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
@@ -102,7 +102,6 @@ class SingcastVpnService : VpnService() {
         }
         running = true
         disconnected = false
-        val totalStartMs = System.currentTimeMillis()
         AppLog.i(TAG, "connect: starting VPN connection thread (config=${configContent.length} chars)")
         ipv6Enabled = enableIpv6
 
@@ -112,14 +111,11 @@ class SingcastVpnService : VpnService() {
                 return@Thread
             }
             try {
-                AppLog.d(TAG, "connect: step 1/5 - setting VpnService on Mobile (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.setVpnService(this@SingcastVpnService)
 
-                AppLog.d(TAG, "connect: step 2/5 - establishing TUN interface (ipv6=$enableIpv6, t=${System.currentTimeMillis() - totalStartMs}ms)")
                 val fd = establishTun(enableIpv6)
-                AppLog.d(TAG, "connect: TUN established, fd=$fd (t=${System.currentTimeMillis() - totalStartMs}ms)")
+                AppLog.i(TAG, "connect: TUN established, fd=$fd")
 
-                AppLog.d(TAG, "connect: step 3/5 - setting TUN fd in core (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.setTunFd(fd)
 
                 if (disconnected) {
@@ -129,20 +125,16 @@ class SingcastVpnService : VpnService() {
 
                 showNotification()
 
-                AppLog.d(TAG, "connect: step 4/5 - starting core with content (${configContent.length} chars, t=${System.currentTimeMillis() - totalStartMs}ms)")
-                val startMs = System.currentTimeMillis()
                 Mobile.startWithContent(configContent, ruleSetProxy)
-                val elapsed = System.currentTimeMillis() - startMs
                 isServiceRunning = true
 
-                AppLog.d(TAG, "connect: step 5/5 - detecting and reporting network interfaces (t=${System.currentTimeMillis() - totalStartMs}ms)")
                 Mobile.detectAndReportInterfaces(this@SingcastVpnService)
                 Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
                 registerNetworkCallback()
 
-                AppLog.i(TAG, "connect: core started successfully in ${elapsed}ms, total=${System.currentTimeMillis() - totalStartMs}ms")
+                AppLog.i(TAG, "connect: core started successfully")
             } catch (e: Throwable) {
-                AppLog.e(TAG, "connect: FAILED at t=${System.currentTimeMillis() - totalStartMs}ms", e)
+                AppLog.e(TAG, "connect: FAILED", e)
                 disconnect("core_start_failed")
             }
         }, "vpn-connect").start()
@@ -189,19 +181,16 @@ class SingcastVpnService : VpnService() {
             disconnected = true
             running = false
         }
-        AppLog.i(TAG, "disconnect: reason=$reason, stopping core and clearing protector")
+        AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
         unregisterNetworkCallback()
         Mobile.unregisterDefaultNetworkCallback(this)
-        // detachFd 释放 ParcelFileDescriptor 对 fd 的所有权，避免 stopCore 关闭 fd 后 pfd?.close() 双重关闭
         synchronized(lock) {
             try { pfd?.detachFd() } catch (e: Throwable) {
                 AppLog.w(TAG, "disconnect: pfd.detachFd error: ${e.message}")
             }
             pfd = null
-        }
-        try { Mobile.stopCore() } catch (e: Throwable) {
-            AppLog.w(TAG, "disconnect: stopCore error: ${e.message}")
+            activeTunFd = -1
         }
         Mobile.setVpnService(null)
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -210,19 +199,18 @@ class SingcastVpnService : VpnService() {
 
     fun isRunning(): Boolean = running
 
-    fun getTunFd(): Int = synchronized(lock) {
-        pfd?.fd ?: throw IllegalStateException("TUN not established")
-    }
-
-    fun reloadWithNewTun(): Int {
-        val fd = establishTun(ipv6Enabled)
-        AppLog.i(TAG, "reloadWithNewTun: new TUN established, fd=$fd")
-        return fd
+    // dup 裸 fd：短暂 adopt 触发 dup，立即 detach 释放 fdsan 跟踪
+    private fun dupRawFd(fd: Int): Int {
+        val tempPfd = ParcelFileDescriptor.adoptFd(fd)
+        val dupedPfd = ParcelFileDescriptor.dup(tempPfd.fileDescriptor)
+        tempPfd.detachFd()
+        return dupedPfd.detachFd()
     }
 
     /**
-     * Hot-reload config without rebuilding TUN. Used when profile changes while VPN is active.
-     * The existing TUN fd is reused — only the core is restarted with new config content.
+     * Hot-reload config while VPN is active. Duplicates the TUN fd so the kernel's
+     * internal stop won't invalidate it, then restarts the core with new config.
+     * Uses raw fd tracking (activeTunFd) to avoid fdsan ownership conflicts.
      */
     fun refreshConfig(content: String, ruleSetProxy: String) {
         if (!running || disconnected) {
@@ -230,23 +218,36 @@ class SingcastVpnService : VpnService() {
             return
         }
         val hasTun = content.contains("tun:") && content.contains("enable: true")
-        AppLog.i(TAG, "refreshConfig: restarting core (config=${content.length} chars, hasTun=$hasTun)")
-        val startMs = System.currentTimeMillis()
-        // 重新设置 TUN fd，因为 startWithContent 会重建内核
-        try {
-            val fd = getTunFd()
-            AppLog.d(TAG, "refreshConfig: re-setting TUN fd=$fd")
-            Mobile.setTunFd(fd)
-        } catch (e: Throwable) {
-            AppLog.e(TAG, "refreshConfig: failed to get TUN fd, falling back to proxy mode", e)
+        AppLog.i(TAG, "refreshConfig: config=${content.length} chars, hasTun=$hasTun")
+        if (hasTun) {
+            try {
+                val dupFd = synchronized(lock) {
+                    val currentPfd = pfd
+                    if (currentPfd != null) {
+                        val dupedPfd = ParcelFileDescriptor.dup(currentPfd.fileDescriptor)
+                        val fd = dupedPfd.detachFd()
+                        try { currentPfd.detachFd() } catch (_: Exception) {}
+                        pfd = null
+                        activeTunFd = fd
+                        fd
+                    } else if (activeTunFd >= 0) {
+                        val fd = dupRawFd(activeTunFd)
+                        activeTunFd = fd
+                        fd
+                    } else {
+                        throw IllegalStateException("TUN not established")
+                    }
+                }
+                Mobile.setTunFd(dupFd)
+            } catch (e: Throwable) {
+                AppLog.e(TAG, "refreshConfig: failed to dup TUN fd: ${e.message}")
+            }
         }
-        AppLog.d(TAG, "refreshConfig: calling startWithContent (this=$this)")
         Mobile.startWithContent(content, ruleSetProxy)
         // 内核重建后接口信息丢失，重新检测
         Mobile.detectAndReportInterfaces(this@SingcastVpnService)
         Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
-        val elapsed = System.currentTimeMillis() - startMs
-        AppLog.i(TAG, "refreshConfig: core restarted in ${elapsed}ms")
+        AppLog.i(TAG, "refreshConfig: done")
     }
 
     fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {
@@ -257,13 +258,7 @@ class SingcastVpnService : VpnService() {
         updateNotification()
     }
 
-    fun protectSocket(fd: Int): Boolean {
-        val result = protect(fd)
-        if (!result) {
-            AppLog.w(TAG, "protectSocket: protect($fd) returned false")
-        }
-        return result
-    }
+    fun protectSocket(fd: Int): Boolean = protect(fd)
 
     private fun buildBaseNotification(): NotificationCompat.Builder {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
