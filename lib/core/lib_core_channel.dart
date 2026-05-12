@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/services.dart';
 
@@ -17,9 +16,6 @@ class LibCoreChannel implements LibCorePlatform {
   @override
   Future<void> init() async {
     _channel.setMethodCallHandler(_handleMethodCall);
-    if (Platform.isAndroid) {
-      await _channel.invokeMethod('requestNotificationPermission');
-    }
   }
 
   Future<void> _handleMethodCall(MethodCall call) async {

@@ -197,6 +197,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun requestVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
+        requestNotificationPermission()
         try {
             val intent = VpnService.prepare(this)
             if (intent != null) {
