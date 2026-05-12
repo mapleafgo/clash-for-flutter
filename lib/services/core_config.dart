@@ -23,15 +23,16 @@ bool _internalUpdate = false;
 /// 应用主题模式：null 表示跟随系统。
 final themeMode = signal<ThemeMode?>(null);
 
-ThemeMode get resolvedThemeMode =>
-    themeMode.value ?? ThemeMode.system;
+ThemeMode get resolvedThemeMode => themeMode.value ?? ThemeMode.system;
 
 Future<void> initCoreConfig() async {
   if (CoreConfigStorage.exists()) {
     _updateConfig((_) => CoreConfigStorage.load());
   }
   _lastSyncedPort = clashConfig.value.mixedPort;
-  LogFileWriter.instance?.setMinLevel(clashConfig.value.logLevel ?? LogLevel.info);
+  LogFileWriter.instance?.setMinLevel(
+    clashConfig.value.logLevel ?? LogLevel.info,
+  );
 
   detectElevation();
   await elevationReady;
@@ -72,7 +73,11 @@ Future<void> _syncModeToCore(Mode? mode) async {
     _updateConfig((c) => c.copyWith(mode: mode));
     LibCore.instance.modeSignal.value = mode.name;
   } catch (e) {
-    LogFileWriter.instance?.log('setMode failed: $e', level: LogLevel.error, name: 'core_config');
+    LogFileWriter.instance?.log(
+      'setMode failed: $e',
+      level: LogLevel.error,
+      name: 'core_config',
+    );
   }
 }
 
@@ -96,11 +101,15 @@ void _scheduleReload() {
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
     if (clashConfig.value.tunEnabled) {
-      LogFileWriter.instance?.log('_scheduleReload: skipped (TUN active)', name: 'tun');
+      LogFileWriter.instance?.log(
+        '_scheduleReload: skipped (TUN active)',
+        name: 'tun',
+      );
       return;
     }
     final curState = LibCore.instance.stateSignal.value;
-    if (curState == LibCore.kStateRunning || curState == LibCore.kStateStarting) {
+    if (curState == LibCore.kStateRunning ||
+        curState == LibCore.kStateStarting) {
       LogFileWriter.instance?.log(
         '_scheduleReload: skipped (kernel $curState)',
         name: 'tun',
@@ -150,7 +159,10 @@ Future<void> toggleTun(bool enable) async {
   } else {
     await closeTun();
   }
-  LogFileWriter.instance?.log('toggleTun($enable): ${sw.elapsedMilliseconds}ms', name: 'tun');
+  LogFileWriter.instance?.log(
+    'toggleTun($enable): ${sw.elapsedMilliseconds}ms',
+    name: 'tun',
+  );
 }
 
 Future<void> openTun() async {
@@ -196,12 +208,10 @@ Future<void> closeTun() async {
 
 Future<void> _openTunDesktop() async {
   // TUN 模式接管全部系统流量，需关闭系统代理避免浏览器绕过 TUN
-  if (systemProxy.value) await closeProxy();
+  await closeProxy();
 
   if (!coreElevated.value) {
     _setTunEnabled(true);
-    // 提权重启前关闭系统代理，避免 exit(0) 后代理设置残留
-    await closeProxy();
     if (Platform.isLinux) {
       // Linux: one-time setcap，重启后 capability 持久化，后续无需再提权
       final ok = await setupTunCapability();
@@ -251,7 +261,6 @@ void ensureTunEnabled(bool enabled) {
     _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enabled)));
   }
 }
-
 
 String _resolveProfilePath(String file) {
   if (file.startsWith('/')) return file;
