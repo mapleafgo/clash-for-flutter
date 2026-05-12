@@ -360,6 +360,8 @@ class _ToggleFabState extends State<_ToggleFab> {
         await toggleTun(!on);
       } else {
         await (systemProxy.value ? closeProxy() : openProxy());
+        // 系统代理模式不触发内核状态变更，需手动重置 loading
+        LibCore.instance.proxyTogglingSignal.value = false;
       }
     } catch (e) {
       LibCore.instance.proxyTogglingSignal.value = false;
