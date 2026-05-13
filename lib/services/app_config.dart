@@ -109,33 +109,33 @@ void _startSubUpdateTimer() {
   Timer.periodic(const Duration(hours: 1), (_) => _checkSubUpdates());
 }
 
-void _checkSubUpdates() {
+Future<void> _checkSubUpdates() async {
   final now = DateTime.now();
   final expired = profiles.value.where(
     (p) => p.type == ProfileType.url && p.url != null && p.interval > 0
         && now.isAfter(p.time.add(Duration(hours: p.interval))),
   ).toList();
   for (final p in expired) {
-    // 再次确认 profile 仍存在且未过期（前一次更新可能已替换）
     if (!profiles.value.any((e) => e.file == p.file)) continue;
-    updateSubscriptionProfile(p).then((_) {
-        LogFileWriter.instance?.log(
-          '自动更新订阅成功: ${p.name}',
-          level: LogLevel.info,
-          name: 'sub-update',
-        );
-      }).catchError((Object e) {
-        LogFileWriter.instance?.log(
-          '自动更新订阅失败: $e',
-          level: LogLevel.warning,
-          name: 'sub-update',
-        );
-      });
+    try {
+      await refreshProfile(p);
+      LogFileWriter.instance?.log(
+        '自动更新订阅成功: ${p.name}',
+        level: LogLevel.info,
+        name: 'sub-update',
+      );
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        '自动更新订阅失败: $e',
+        level: LogLevel.warning,
+        name: 'sub-update',
+      );
     }
   }
+}
 
 /// 下载订阅并替换旧 profile。校验失败时抛出异常。
-Future<Profile> updateSubscriptionProfile(Profile old) async {
+Future<Profile> refreshProfile(Profile old) async {
   final dir = '${Constants.homeDir.path}${Constants.profilesPath}';
   final updated = await downloadSubscription(
     url: old.url!,

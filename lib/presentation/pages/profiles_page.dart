@@ -352,7 +352,7 @@ class _ProfileCard extends StatelessWidget {
           time: profile.time, url: newUrl, interval: interval,
           userinfo: profile.userinfo,
         );
-        await updateSubscriptionProfile(checked);
+        await refreshProfile(checked);
       } catch (e) {
         if (context.mounted) showErrorDialog(context, 'URL 校验失败: $e');
       }
@@ -404,7 +404,7 @@ class _ProfileCard extends StatelessWidget {
     if (profile.url == null) return;
     _updatingFile.value = profile.file;
     try {
-      await updateSubscriptionProfile(profile);
+      await refreshProfile(profile);
     } catch (e) {
       if (context.mounted) {
         showErrorDialog(context, '更新失败: $e');
