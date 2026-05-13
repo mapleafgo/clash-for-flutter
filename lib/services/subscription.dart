@@ -22,6 +22,7 @@ Future<Profile> downloadSubscription({
   required String url,
   required String profilesDir,
   String? name,
+  int? interval,
 }) async {
   final file = _uniqueFileName();
   final savePath = p.join(profilesDir, file);
@@ -51,7 +52,7 @@ Future<Profile> downloadSubscription({
       type: ProfileType.url,
       time: DateTime.now(),
       url: url,
-      interval: int.tryParse(resp.headers.value('profile-update-interval') ?? '') ?? 0,
+      interval: interval ?? int.tryParse(resp.headers.value('profile-update-interval') ?? '') ?? 0,
       userinfo: parseSubInfo(resp.headers.value('subscription-userinfo')),
     );
   } finally {

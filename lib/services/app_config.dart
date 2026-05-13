@@ -136,6 +136,7 @@ Future<Profile> refreshProfile(Profile old) async {
     url: old.url!,
     profilesDir: dir,
     name: old.name,
+    interval: old.interval,
   );
   final path = p.join(dir, updated.file);
   final validation = await LibCore.instance.checkConfig(
