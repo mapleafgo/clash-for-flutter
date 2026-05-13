@@ -15,7 +15,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
-Timer? _syncTimer;
 Timer? _reloadTimer;
 int? _lastSyncedPort;
 bool _internalUpdate = false;
@@ -42,8 +41,6 @@ Future<void> initCoreConfig() async {
       _internalUpdate = false;
       return;
     }
-    _syncTimer?.cancel();
-    _syncTimer = Timer(const Duration(seconds: 1), _saveToDisk);
     _scheduleReload();
   });
 }
@@ -92,30 +89,15 @@ Future<void> changeModeStr(String mode) async {
 }
 
 void _scheduleReload() {
-  if (selectedFile.value == null) return;
-  final state = LibCore.instance.stateSignal.value;
+  if (selectedFile.peek() == null) return;
+  final state = LibCore.instance.stateSignal.peek();
   LogFileWriter.instance?.log(
-    '_scheduleReload: scheduled (file=${selectedFile.value}, tun=${clashConfig.value.tunEnabled}, state=$state)',
+    '_scheduleReload: scheduled (file=${selectedFile.peek()}, tun=${clashConfig.value.tunEnabled}, state=$state)',
     name: 'tun',
   );
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
-    if (clashConfig.value.tunEnabled) {
-      LogFileWriter.instance?.log(
-        '_scheduleReload: skipped (TUN active)',
-        name: 'tun',
-      );
-      return;
-    }
-    final curState = LibCore.instance.stateSignal.value;
-    if (curState == LibCore.kStateRunning ||
-        curState == LibCore.kStateStarting) {
-      LogFileWriter.instance?.log(
-        '_scheduleReload: skipped (kernel $curState)',
-        name: 'tun',
-      );
-      return;
-    }
+    _saveToDisk();
     LogFileWriter.instance?.log(
       '_scheduleReload: firing asyncProfile (tun=${clashConfig.value.tunEnabled})',
       name: 'tun',
@@ -134,6 +116,9 @@ void updateClashConfig({
   Mode? mode,
   LogLevel? logLevel,
   bool? ipv6,
+  bool? externalController,
+  String? externalControllerAddr,
+  bool? portEnabled,
 }) {
   clashConfig.value = clashConfig.value.copyWith(
     mixedPort: mixedPort,
@@ -141,6 +126,9 @@ void updateClashConfig({
     mode: mode,
     logLevel: logLevel,
     ipv6: ipv6,
+    externalController: externalController,
+    externalControllerAddr: externalControllerAddr,
+    portEnabled: portEnabled,
   );
   if (logLevel != null) {
     LogFileWriter.instance?.setMinLevel(logLevel);

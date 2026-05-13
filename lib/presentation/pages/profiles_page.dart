@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
@@ -242,14 +244,8 @@ class _ProfileCard extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.edit_note, size: 18),
-                tooltip: '修改名称',
-                onPressed: () => _editName(context),
-                visualDensity: VisualDensity.compact,
-              ),
-              IconButton(
-                icon: const Icon(Icons.code, size: 18),
-                tooltip: '修改源',
-                onPressed: () => _editSource(context),
+                tooltip: '修改',
+                onPressed: () => _edit(context),
                 visualDensity: VisualDensity.compact,
               ),
               IconButton(
@@ -281,49 +277,94 @@ class _ProfileCard extends StatelessWidget {
     );
   }
 
-  Future<void> _editName(BuildContext context) async {
-    final name = await _showInputDialog(context, '修改名称', profile.name);
-    if (name == null || name.isEmpty) return;
-    final list = profiles.value.map((p) =>
-        p.file == profile.file ? Profile(
-          file: p.file, name: name, type: p.type, time: p.time,
-          url: p.url, interval: p.interval, userinfo: p.userinfo,
-        ) : p).toList();
-    profiles.value = list;
-  }
-
-  Future<String?> _showInputDialog(BuildContext context, String hint, [String? initial]) {
-    final controller = TextEditingController(text: initial);
-    return showDialog<String>(
+  Future<void> _edit(BuildContext context) async {
+    final nameCtl = TextEditingController(text: profile.name);
+    final urlCtl = TextEditingController(text: profile.url);
+    final intervalCtl = TextEditingController(
+      text: profile.interval > 0 ? profile.interval.toString() : '',
+    );
+    final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(hint),
-        content: TextField(
-          controller: controller,
-          maxLines: null,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
+        title: const Text('修改'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtl,
+              decoration: const InputDecoration(
+                labelText: '名称',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (profile.type == ProfileType.url) ...[
+              TextField(
+                controller: urlCtl,
+                maxLines: null,
+                decoration: InputDecoration(
+                  labelText: 'URL',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: '复制',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: urlCtl.text));
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: intervalCtl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: '更新间隔（小时）',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('确定')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
-  }
+    if (result != true) return;
+    final newUrl = profile.type == ProfileType.url ? urlCtl.text.trim() : profile.url;
+    if (profile.type == ProfileType.url && (newUrl == null || newUrl.isEmpty)) return;
+    final interval = int.tryParse(intervalCtl.text) ?? 0;
+    final newName = nameCtl.text.isEmpty ? profile.name : nameCtl.text;
 
-  Future<void> _editSource(BuildContext context) async {
-    if (profile.type == ProfileType.url) {
-      final url = await _showInputDialog(context, '修改 URL', profile.url);
-      if (url == null) return;
-      final list = profiles.value.map((p) =>
-          p.file == profile.file ? Profile(
-            file: p.file, name: p.name, type: p.type, time: p.time,
-            url: url, interval: p.interval, userinfo: p.userinfo,
-          ) : p).toList();
-      profiles.value = list;
+    // URL 变更时校验新订阅
+    if (profile.type == ProfileType.url && newUrl != profile.url) {
+      try {
+        final checked = Profile(
+          file: profile.file, name: newName, type: profile.type,
+          time: profile.time, url: newUrl, interval: interval,
+          userinfo: profile.userinfo,
+        );
+        await updateSubscriptionProfile(checked);
+      } catch (e) {
+        if (context.mounted) showErrorDialog(context, 'URL 校验失败: $e');
+      }
+      return;
     }
+
+    final list = profiles.value.map((p) =>
+        p.file == profile.file ? Profile(
+          file: p.file, name: newName, type: p.type, time: p.time,
+          url: newUrl, interval: interval, userinfo: p.userinfo,
+        ) : p).toList();
+    profiles.value = list;
   }
 
   void _remove(BuildContext context) {
@@ -363,32 +404,7 @@ class _ProfileCard extends StatelessWidget {
     if (profile.url == null) return;
     _updatingFile.value = profile.file;
     try {
-      final updated = await downloadSubscription(
-        url: profile.url!,
-        profilesDir: profilesPath,
-        name: profile.name,
-      );
-
-      final validation = await LibCore.instance.checkConfig(
-        await File(p.join(profilesPath, updated.file)).readAsString(),
-      );
-      if (validation.isNotEmpty) {
-        await File(p.join(profilesPath, updated.file)).delete();
-        if (context.mounted) {
-          showErrorDialog(context, '配置校验失败: $validation');
-        }
-        return;
-      }
-
-      final isActive = selectedFile.value == profile.file;
-      final list = profiles.value.map((p) =>
-          p.file == profile.file ? updated : p).toList();
-      profiles.value = list;
-      if (isActive) {
-        selectedFile.value = updated.file;
-      }
-      final oldPath = p.join(profilesPath, profile.file);
-      if (File(oldPath).existsSync()) await File(oldPath).delete();
+      await updateSubscriptionProfile(profile);
     } catch (e) {
       if (context.mounted) {
         showErrorDialog(context, '更新失败: $e');

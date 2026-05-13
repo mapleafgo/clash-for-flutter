@@ -19,6 +19,9 @@ class CoreConfigStorage {
       mode: null,
       logLevel: _parseLogLevel(yaml['log-level']),
       ipv6: yaml['ipv6'] as bool?,
+      externalController: yaml['external-controller'] as bool?,
+      externalControllerAddr: yaml['external-controller-addr'] as String?,
+      portEnabled: yaml['port-enabled'] as bool?,
     );
   }
 
@@ -29,6 +32,9 @@ class CoreConfigStorage {
     if (config.mode != null) yaml['mode'] = config.mode!.name;
     if (config.logLevel != null) yaml['log-level'] = config.logLevel!.name;
     if (config.ipv6 != null) yaml['ipv6'] = config.ipv6;
+    if (config.externalController != null) yaml['external-controller'] = config.externalController;
+    if (config.externalControllerAddr != null) yaml['external-controller-addr'] = config.externalControllerAddr;
+    if (config.portEnabled != null) yaml['port-enabled'] = config.portEnabled;
     yaml.save();
   }
 

@@ -39,17 +39,28 @@ class SettingsPage extends StatelessWidget {
       body: Watch((context) {
         final config = clashConfig.value;
         return ListView(children: [
-          const _Section('Clash 代理端口'),
-          _PortTile(
-            label: 'Mixed Port',
-            value: config.mixedPort,
-            onChanged: (v) => updateClashConfig(mixedPort: v),
+          const _Section('核心配置'),
+          SwitchListTile(
+            title: const Text('代理端口'),
+            subtitle: Text(config.port.toString()),
+            value: config.userPortEnabled || systemProxy.value,
+            onChanged: systemProxy.value
+                ? null
+                : (v) => updateClashConfig(portEnabled: v),
           ),
-          const _Section('Clash 设置'),
+          _PortTile(
+            label: '端口号',
+            value: config.mixedPort,
+            onChanged: config.userPortEnabled && !systemProxy.value
+                ? (v) => updateClashConfig(mixedPort: v)
+                : null,
+          ),
           SwitchListTile(
             title: const Text('允许局域网'),
             value: config.allowLan ?? false,
-            onChanged: (v) => updateClashConfig(allowLan: v),
+            onChanged: (config.userPortEnabled || systemProxy.value)
+                ? (v) => updateClashConfig(allowLan: v)
+                : null,
           ),
           SwitchListTile(
             title: const Text('IPv6'),
@@ -76,6 +87,27 @@ class SettingsPage extends StatelessWidget {
             labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
             onChanged: (l) => updateClashConfig(logLevel: l),
           ),
+          SwitchListTile(
+            title: const Text('内核 API'),
+            subtitle: Text(config.apiAddr),
+            value: config.apiEnabled,
+            onChanged: (v) => updateClashConfig(externalController: v),
+          ),
+          if (config.apiEnabled)
+            ListTile(
+              title: const Text('API 地址'),
+              subtitle: Text(config.apiAddr),
+              onTap: () async {
+                final result = await _showEditDialog(
+                  context: context,
+                  title: 'API 地址',
+                  initialValue: config.apiAddr,
+                );
+                if (result != null && result.isNotEmpty) {
+                  updateClashConfig(externalControllerAddr: result);
+                }
+              },
+            ),
           const _Section('外观'),
           Watch((context) => _ChoiceTile<ThemeMode>(
                 title: '主题',
@@ -141,7 +173,7 @@ class _Section extends StatelessWidget {
 class _PortTile extends StatelessWidget {
   final String label;
   final int? value;
-  final ValueChanged<int> onChanged;
+  final ValueChanged<int>? onChanged;
   const _PortTile({
     required this.label,
     required this.value,
@@ -150,10 +182,12 @@ class _PortTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onChanged != null;
     return ListTile(
       title: Text(label),
       subtitle: Text(value?.toString() ?? '未设置'),
-      onTap: () async {
+      enabled: enabled,
+      onTap: enabled ? () async {
         final result = await _showEditDialog(
           context: context,
           title: label,
@@ -169,9 +203,9 @@ class _PortTile extends StatelessWidget {
         );
         if (result != null) {
           final port = int.tryParse(result);
-          if (port != null) onChanged(port);
+          if (port != null && onChanged != null) onChanged!(port);
         }
-      },
+      } : null,
     );
   }
 }

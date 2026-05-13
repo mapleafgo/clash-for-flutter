@@ -12,6 +12,7 @@ import 'package:singcast/domain/enums.dart';
 import 'package:path/path.dart' as p;
 import 'package:proxy_manager/proxy_manager.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/services/subscription.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -87,6 +88,7 @@ void _startAutoSave() {
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 1), _save);
   });
+  _startSubUpdateTimer();
 }
 
 void _save() {
@@ -98,6 +100,64 @@ void _save() {
     subUA: subUA.value,
     themeMode: themeMode.value?.name,
   ).toJson());
+}
+
+void _startSubUpdateTimer() {
+  // 启动后首次检查
+  _checkSubUpdates();
+  // 之后每小时检查一次
+  Timer.periodic(const Duration(hours: 1), (_) => _checkSubUpdates());
+}
+
+void _checkSubUpdates() {
+  final now = DateTime.now();
+  final expired = profiles.value.where(
+    (p) => p.type == ProfileType.url && p.url != null && p.interval > 0
+        && now.isAfter(p.time.add(Duration(hours: p.interval))),
+  ).toList();
+  for (final p in expired) {
+    // 再次确认 profile 仍存在且未过期（前一次更新可能已替换）
+    if (!profiles.value.any((e) => e.file == p.file)) continue;
+    updateSubscriptionProfile(p).then((_) {
+        LogFileWriter.instance?.log(
+          '自动更新订阅成功: ${p.name}',
+          level: LogLevel.info,
+          name: 'sub-update',
+        );
+      }).catchError((Object e) {
+        LogFileWriter.instance?.log(
+          '自动更新订阅失败: $e',
+          level: LogLevel.warning,
+          name: 'sub-update',
+        );
+      });
+    }
+  }
+
+/// 下载订阅并替换旧 profile。校验失败时抛出异常。
+Future<Profile> updateSubscriptionProfile(Profile old) async {
+  final dir = '${Constants.homeDir.path}${Constants.profilesPath}';
+  final updated = await downloadSubscription(
+    url: old.url!,
+    profilesDir: dir,
+    name: old.name,
+  );
+  final path = p.join(dir, updated.file);
+  final validation = await LibCore.instance.checkConfig(
+    await File(path).readAsString(),
+  );
+  if (validation.isNotEmpty) {
+    await File(path).delete();
+    throw Exception('配置校验失败: $validation');
+  }
+  final isActive = selectedFile.value == old.file;
+  profiles.value = profiles.value
+      .map((p) => p.file == old.file ? updated : p)
+      .toList();
+  if (isActive) selectedFile.value = updated.file;
+  final oldPath = p.join(dir, old.file);
+  if (File(oldPath).existsSync()) await File(oldPath).delete();
+  return updated;
 }
 
 bool _profileAutoActivated = false;
@@ -201,8 +261,14 @@ String mergeProfileConfig(String yamlContent) {
   final config = clashConfig.value;
   final editor = YamlEditor(yamlContent);
 
-  if (config.mixedPort != null) {
+  final portOn = config.userPortEnabled || systemProxy.value;
+  if (portOn && config.mixedPort != null) {
     editor.update(['mixed-port'], config.mixedPort);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('mixed-port')) {
+      editor.remove(['mixed-port']);
+    }
   }
   if (config.allowLan != null) {
     editor.update(['allow-lan'], config.allowLan);
@@ -251,7 +317,14 @@ String mergeProfileConfig(String yamlContent) {
     }
   }
 
-  editor.update(['external-controller'], '127.0.0.1:9090');
+  if (config.apiEnabled) {
+    editor.update(['external-controller'], config.apiAddr);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('external-controller')) {
+      editor.remove(['external-controller']);
+    }
+  }
 
   return editor.toString();
 }
