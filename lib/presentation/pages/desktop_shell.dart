@@ -27,7 +27,7 @@ class DesktopShell extends StatelessWidget {
                   windowManager.maximize();
                 }
               },
-              child: Text('Sing', style: Theme.of(context).textTheme.titleMedium),
+              child: Image.asset('assets/logo.png', width: 32, height: 32),
             ),
           ),
           destinations: navItems
