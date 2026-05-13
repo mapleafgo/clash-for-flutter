@@ -1,7 +1,7 @@
 name: singcast
 description: A multi-platform Clash client.
 publish_to: "none"
-version: 1.13.11-beta2
+version: 1.13.11-beta5
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -46,6 +46,7 @@ dependencies:
   desktop_tray: ^2026.4.19
   yaml: ^3.1.3
   yaml_edit: ^2.2.4
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:

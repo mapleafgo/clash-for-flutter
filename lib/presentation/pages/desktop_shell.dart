@@ -1,3 +1,4 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +28,7 @@ class DesktopShell extends StatelessWidget {
                   windowManager.maximize();
                 }
               },
-              child: Image.asset('assets/logo.png', width: 32, height: 32),
+              child: SvgPicture.asset('assets/logo.svg', width: 48, height: 48),
             ),
           ),
           destinations: navItems

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
@@ -321,31 +322,33 @@ class _ToggleFabState extends State<_ToggleFab> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final toggling = LibCore.instance.proxyTogglingSignal.value;
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
       final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
       final running = state == LibCore.kStateRunning;
       final cs = Theme.of(context).colorScheme;
+
       return SafeArea(
-        child: FloatingActionButton.extended(
-          onPressed: toggling || !hasProfile || !running ? null : _toggle,
-          backgroundColor: on ? Colors.green.shade700 : cs.primaryContainer,
-          foregroundColor: on ? Colors.white : cs.onPrimaryContainer,
-          extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-          icon: toggling
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: on ? Colors.white : cs.onPrimaryContainer),
-                )
-              : Icon(on ? Icons.flight_land : Icons.flight_takeoff),
-          label: Text(toggling
-              ? '切换中...'
-              : (!hasProfile
-                  ? '请先添加配置'
-                  : (on ? '关闭' : '开启'))),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: on ? 1.0 : 0.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, _) {
+            return Transform.scale(
+              scale: 1.0 + 0.05 * (1 - (2 * t - 1).abs()),
+              child: FloatingActionButton.extended(
+                onPressed: !hasProfile || !running ? null : _toggle,
+                backgroundColor: Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
+                foregroundColor: Color.lerp(cs.onPrimaryContainer, Colors.white, t)!,
+                extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
+                icon: AnimatedIconSwitcher(value: on),
+                label: Text(
+                  !hasProfile ? '请先添加配置' : (on ? '关闭' : '开启'),
+                ),
+              ),
+            );
+          },
         ),
       );
     });
@@ -354,17 +357,13 @@ class _ToggleFabState extends State<_ToggleFab> {
   Future<void> _toggle() async {
     final isTun = tunIf.value ?? false;
     final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
-    LibCore.instance.proxyTogglingSignal.value = true;
     try {
       if (isTun) {
         await toggleTun(!on);
       } else {
         await (systemProxy.value ? closeProxy() : openProxy());
-        // 系统代理模式不触发内核状态变更，需手动重置 loading
-        LibCore.instance.proxyTogglingSignal.value = false;
       }
     } catch (e) {
-      LibCore.instance.proxyTogglingSignal.value = false;
       if (mounted) showErrorDialog(context, e.toString());
     }
   }

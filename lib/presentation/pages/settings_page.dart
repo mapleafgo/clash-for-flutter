@@ -1,11 +1,14 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
+import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -129,6 +132,7 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => ruleSetProxy.value = v,
           ),
           const _Section('关于'),
+          const _AboutHeader(),
           const _KernelVersionTile(),
           ListTile(
             title: const Text('官方网站'),
@@ -536,4 +540,76 @@ Future<String?> _showEditDialog({
       );
     }),
   );
+}
+
+class _AboutHeader extends StatefulWidget {
+  const _AboutHeader();
+
+  @override
+  State<_AboutHeader> createState() => _AboutHeaderState();
+}
+
+class _AboutHeaderState extends State<_AboutHeader>
+    with SingleTickerProviderStateMixin {
+  int _tapCount = 0;
+  DateTime? _lastTap;
+  late final _shakeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    super.dispose();
+  }
+
+  void _onLogoTap() {
+    final now = DateTime.now();
+    if (_lastTap == null || now.difference(_lastTap!) > const Duration(seconds: 2)) {
+      _tapCount = 1;
+    } else {
+      _tapCount++;
+    }
+    _lastTap = now;
+
+    if (_tapCount >= 6) {
+      _tapCount = 0;
+      _shakeController.forward(from: 0);
+      if (!Constants.isDesktop) {
+        HapticFeedback.mediumImpact();
+        Future.delayed(const Duration(milliseconds: 150), () {
+          HapticFeedback.mediumImpact();
+        });
+      }
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('这都被你发现了！'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: GestureDetector(
+        onTap: _onLogoTap,
+        child: ShakeBuilder(
+          controller: _shakeController,
+          child: Column(children: [
+            SvgPicture.asset('assets/logo.svg', width: 64, height: 64),
+            const SizedBox(height: 8),
+            Text(
+              'Singcast',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
