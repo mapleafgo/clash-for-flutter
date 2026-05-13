@@ -41,7 +41,7 @@ class ClashConfig {
   factory ClashConfig.defaults() => ClashConfig(
       mixedPort: 7890,
       externalControllerAddr: '127.0.0.1:9090',
-      portEnabled: true);
+      portEnabled: false);
 
   ClashConfig copyWith({
     int? mixedPort,
@@ -71,7 +71,7 @@ class ClashConfig {
   int get port => mixedPort ?? 0;
   bool get apiEnabled => externalController ?? false;
   String get apiAddr => externalControllerAddr ?? '127.0.0.1:9090';
-  bool get userPortEnabled => portEnabled ?? true;
+  bool get userPortEnabled => portEnabled ?? false;
 }
 
 @JsonSerializable()

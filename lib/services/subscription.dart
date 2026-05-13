@@ -8,14 +8,22 @@ import 'package:singcast/services/app_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml_edit/yaml_edit.dart';
 
+int _lastFileMs = 0;
+
+String _uniqueFileName() {
+  var ms = DateTime.now().millisecondsSinceEpoch;
+  if (ms == _lastFileMs) ms++;
+  _lastFileMs = ms;
+  return '$ms.yaml';
+}
+
 /// Download a subscription from a URL and save it as a profile file.
 Future<Profile> downloadSubscription({
   required String url,
   required String profilesDir,
   String? name,
 }) async {
-  final time = DateTime.now();
-  final file = '${time.millisecondsSinceEpoch}.yaml';
+  final file = _uniqueFileName();
   final savePath = p.join(profilesDir, file);
 
   // 确保 profiles 目录存在
@@ -41,7 +49,7 @@ Future<Profile> downloadSubscription({
       file: file,
       name: name ?? extractFilename(resp.headers.value('content-disposition')) ?? file,
       type: ProfileType.url,
-      time: time,
+      time: DateTime.now(),
       url: url,
       interval: int.tryParse(resp.headers.value('profile-update-interval') ?? '') ?? 0,
       userinfo: parseSubInfo(resp.headers.value('subscription-userinfo')),

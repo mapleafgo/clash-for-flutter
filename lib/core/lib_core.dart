@@ -76,7 +76,6 @@ class LibCore {
   final availableModesSignal = signal<List<String>>(['rule', 'global', 'direct']);
   final proxyTogglingSignal = signal(false);
 
-  final _activeConnectionIds = <String>{};
   int _prevUpTotal = 0;
   int _prevDownTotal = 0;
   Timer? _pollTimer;
@@ -124,8 +123,7 @@ class LibCore {
       case 2: // ModeUpdate
         modeSignal.value = payload.toLowerCase();
       case 3: // ConnEvent
-        final json = jsonDecode(payload) as Map<String, dynamic>;
-        handleConnectionEvents(ConnectionEventsPayload.fromJson(json));
+        break;
       case 4: // StateUpdate
         final newState = payload;
         final oldState = stateSignal.peek();
@@ -396,17 +394,6 @@ class LibCore {
     return result?.toString() ?? '';
   }
 
-  void handleConnectionEvents(ConnectionEventsPayload payload) {
-    if (payload.reset) _activeConnectionIds.clear();
-    for (final event in payload.items) {
-      if (event.eventType == 0) {
-        _activeConnectionIds.add(event.id);
-      } else {
-        _activeConnectionIds.remove(event.id);
-      }
-    }
-    activeConnectionsSignal.value = _activeConnectionIds.length;
-  }
 }
 
 /// Desktop FFI backend using FfiWorker.

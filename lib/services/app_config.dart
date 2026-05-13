@@ -160,8 +160,6 @@ Future<Profile> refreshProfile(Profile old) async {
   return updated;
 }
 
-bool _profileAutoActivated = false;
-
 void startWatchingSelectedFile() {
   effect(() {
     final file = selectedFile.value;
@@ -170,11 +168,6 @@ void startWatchingSelectedFile() {
         ? file
         : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
     if (!File(path).existsSync()) return;
-    // 首次触发：由 _initApp 显式调用 asyncProfile()，此处仅标记已激活
-    if (!_profileAutoActivated) {
-      _profileAutoActivated = true;
-      return;
-    }
     LogFileWriter.instance?.log(
       'startWatchingSelectedFile: activating profile $file (state=${LibCore.instance.stateSignal.peek()})',
       name: 'tun',
