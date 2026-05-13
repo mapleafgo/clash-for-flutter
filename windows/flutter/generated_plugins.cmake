@@ -6,7 +6,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_lifecycle
   desktop_tray
   local_notifier
-  proxy_manager
   screen_retriever_windows
   url_launcher_windows
   window_manager

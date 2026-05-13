@@ -10,15 +10,11 @@ import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:path/path.dart' as p;
-import 'package:proxy_manager/proxy_manager.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/services/subscription.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
-final _proxyManager = ProxyManager();
-
-final systemProxy = signal(false);
 final selectedFile = signal<String?>(null);
 final profiles = signal<List<Profile>>([]);
 final profileError = signal<String?>(null);
@@ -78,7 +74,6 @@ String? _resolveSelected(String? file, List<Profile> list) {
 
 void _startAutoSave() {
   effect(() {
-    systemProxy.value;
     selectedFile.value;
     profiles.value;
     delayTestUrl.value;
@@ -254,7 +249,8 @@ String mergeProfileConfig(String yamlContent) {
   final config = clashConfig.value;
   final editor = YamlEditor(yamlContent);
 
-  final portOn = config.userPortEnabled || systemProxy.value;
+  // 系统代理依赖 mixed-port，开启时隐式需要端口
+  final portOn = config.userPortEnabled || config.systemProxyEnabled;
   if (portOn && config.mixedPort != null) {
     editor.update(['mixed-port'], config.mixedPort);
   } else {
@@ -319,6 +315,15 @@ String mergeProfileConfig(String yamlContent) {
     }
   }
 
+  if (config.systemProxyEnabled) {
+    editor.update(['mixed-system-proxy'], true);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('mixed-system-proxy')) {
+      editor.remove(['mixed-system-proxy']);
+    }
+  }
+
   return editor.toString();
 }
 
@@ -339,34 +344,6 @@ Future<bool> asyncProfile() async {
       ? file
       : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
   return _activateProfile(path);
-}
-
-Future<void> openProxy() async {
-  if (!Constants.isDesktop) return;
-  final port = clashConfig.value.port;
-  if (port == 0) {
-    updateClashConfig(mixedPort: 7890);
-  }
-  final actualPort = clashConfig.value.port;
-  if (Platform.isLinux) {
-    await _proxyManager.setAsSystemProxy(ProxyTypes.http, Constants.localhost, actualPort);
-    await _proxyManager.setAsSystemProxy(ProxyTypes.https, Constants.localhost, actualPort);
-    await _proxyManager.setAsSystemProxy(ProxyTypes.socks, Constants.localhost, actualPort);
-    await Process.run('gsettings', ['set', 'org.gnome.system.proxy', 'mode', 'manual']);
-  } else if (Platform.isMacOS) {
-    await _proxyManager.setAsSystemProxy(ProxyTypes.http, Constants.localhost, actualPort);
-    await _proxyManager.setAsSystemProxy(ProxyTypes.socks, Constants.localhost, actualPort);
-  } else {
-    await _proxyManager.setAsSystemProxy(ProxyTypes.http, Constants.localhost, actualPort);
-    await _proxyManager.setAsSystemProxy(ProxyTypes.https, Constants.localhost, actualPort);
-  }
-  systemProxy.value = true;
-}
-
-Future<void> closeProxy() async {
-  if (!Constants.isDesktop) return;
-  _proxyManager.cleanSystemProxy();
-  systemProxy.value = false;
 }
 
 String get profilesPath =>

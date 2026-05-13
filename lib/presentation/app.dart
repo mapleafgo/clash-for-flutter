@@ -1,3 +1,5 @@
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
@@ -7,6 +9,8 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+
+final appReady = signal(false);
 
 class App extends StatefulWidget {
   static final routerKey = GlobalKey<NavigatorState>();
@@ -59,7 +63,6 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           await asyncProfile();
         }
       } else if (running && LibCore.instance.proxiesSignal.value.isEmpty) {
-        // VPN 运行中但代理数据为空（引擎重建后）
         LogFileWriter.instance?.log('_syncVpnState: VPN running but proxies empty, re-querying', name: 'tun');
         try {
           final proxies = await LibCore.instance.queryProxies();
@@ -73,21 +76,44 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) => MaterialApp.router(
-          title: 'Singcast',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorSchemeSeed: Colors.blue,
-            useMaterial3: true,
-            brightness: Brightness.light,
-          ),
-          darkTheme: ThemeData(
-            colorSchemeSeed: Colors.blue,
-            useMaterial3: true,
-            brightness: Brightness.dark,
-          ),
-          themeMode: resolvedThemeMode,
-          routerConfig: router,
-        ));
+    return Watch((context) {
+      final ready = appReady.value;
+      return MaterialApp.router(
+        title: 'Singcast',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorSchemeSeed: Colors.blue,
+          useMaterial3: true,
+          brightness: Brightness.light,
+        ),
+        darkTheme: ThemeData(
+          colorSchemeSeed: Colors.blue,
+          useMaterial3: true,
+          brightness: Brightness.dark,
+        ),
+        themeMode: resolvedThemeMode,
+        routerConfig: ready ? router : _splashRouter,
+      );
+    });
+  }
+}
+
+final _splashRouter = GoRouter(routes: [
+  GoRoute(path: '/', builder: (_, __) => const _SplashPage()),
+]);
+
+class _SplashPage extends StatelessWidget {
+  const _SplashPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1C1B1F) : Colors.white;
+    return Scaffold(
+      backgroundColor: bg,
+      body: Center(
+        child: SvgPicture.asset('assets/logo.svg', width: 120, height: 120),
+      ),
+    );
   }
 }

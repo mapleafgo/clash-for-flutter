@@ -21,6 +21,8 @@ class ClashConfig {
   final String? externalControllerAddr;
   @JsonKey(name: 'port-enabled')
   final bool? portEnabled;
+  @JsonKey(name: 'mixed-system-proxy')
+  final bool? mixedSystemProxy;
 
   ClashConfig({
     this.mixedPort,
@@ -32,6 +34,7 @@ class ClashConfig {
     this.externalController,
     this.externalControllerAddr,
     this.portEnabled,
+    this.mixedSystemProxy,
   });
 
   factory ClashConfig.fromJson(Map<String, dynamic> json) =>
@@ -53,6 +56,7 @@ class ClashConfig {
     bool? externalController,
     String? externalControllerAddr,
     bool? portEnabled,
+    bool? mixedSystemProxy,
   }) =>
       ClashConfig(
         mixedPort: mixedPort ?? this.mixedPort,
@@ -65,6 +69,7 @@ class ClashConfig {
         externalControllerAddr:
             externalControllerAddr ?? this.externalControllerAddr,
         portEnabled: portEnabled ?? this.portEnabled,
+        mixedSystemProxy: mixedSystemProxy ?? this.mixedSystemProxy,
       );
 
   bool get tunEnabled => tun?.enable ?? false;
@@ -72,6 +77,7 @@ class ClashConfig {
   bool get apiEnabled => externalController ?? false;
   String get apiAddr => externalControllerAddr ?? '127.0.0.1:9090';
   bool get userPortEnabled => portEnabled ?? false;
+  bool get systemProxyEnabled => mixedSystemProxy ?? false;
 }
 
 @JsonSerializable()

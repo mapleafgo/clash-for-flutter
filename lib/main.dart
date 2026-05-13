@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
-import 'package:singcast/presentation/app.dart';
+import 'package:singcast/presentation/app.dart' show App, appReady;
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/tray_service.dart';
@@ -44,14 +44,14 @@ void main() async {
   CoreConfigStorage.createDefault();
 
   // 初始化内核和配置
+  runApp(const App());
   await _initApp();
+  appReady.value = true;
 
   if (Constants.isDesktop) {
     await initTray();
     windowManager.addListener(_WindowListener());
   }
-
-  runApp(const App());
 }
 
 Future<void> _initApp() async {

@@ -311,19 +311,14 @@ class _RuntimeCard extends StatelessWidget {
 
 // --- Toggle FAB ---
 
-class _ToggleFab extends StatefulWidget {
+class _ToggleFab extends StatelessWidget {
   const _ToggleFab();
 
-  @override
-  State<_ToggleFab> createState() => _ToggleFabState();
-}
-
-class _ToggleFabState extends State<_ToggleFab> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final isTun = tunIf.value ?? false;
-      final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
+      final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
       final running = state == LibCore.kStateRunning;
@@ -338,7 +333,7 @@ class _ToggleFabState extends State<_ToggleFab> {
             return Transform.scale(
               scale: 1.0 + 0.05 * (1 - (2 * t - 1).abs()),
               child: FloatingActionButton.extended(
-                onPressed: !hasProfile || !running ? null : _toggle,
+                onPressed: !hasProfile || !running ? null : () => _toggle(context, isTun, on),
                 backgroundColor: Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
                 foregroundColor: Color.lerp(cs.onPrimaryContainer, Colors.white, t)!,
                 extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
@@ -354,17 +349,15 @@ class _ToggleFabState extends State<_ToggleFab> {
     });
   }
 
-  Future<void> _toggle() async {
-    final isTun = tunIf.value ?? false;
-    final on = isTun ? clashConfig.value.tunEnabled : systemProxy.value;
+  Future<void> _toggle(BuildContext context, bool isTun, bool on) async {
     try {
       if (isTun) {
         await toggleTun(!on);
       } else {
-        await (systemProxy.value ? closeProxy() : openProxy());
+        await toggleSystemProxy(!on);
       }
     } catch (e) {
-      if (mounted) showErrorDialog(context, e.toString());
+      if (context.mounted) showErrorDialog(context, e.toString());
     }
   }
 }

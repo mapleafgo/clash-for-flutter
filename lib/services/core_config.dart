@@ -16,7 +16,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 final clashConfig = signal(ClashConfig.defaults());
 
 Timer? _reloadTimer;
-int? _lastSyncedPort;
 bool _internalUpdate = false;
 
 /// 应用主题模式：null 表示跟随系统。
@@ -28,7 +27,6 @@ Future<void> initCoreConfig() async {
   if (CoreConfigStorage.exists()) {
     _updateConfig((_) => CoreConfigStorage.load());
   }
-  _lastSyncedPort = clashConfig.value.mixedPort;
   LogFileWriter.instance?.setMinLevel(
     clashConfig.value.logLevel ?? LogLevel.info,
   );
@@ -51,6 +49,7 @@ void _saveToDisk() {
   if (!Constants.isDesktop) {
     config = config.copyWith(tun: TunConfig(enable: false));
   }
+  config = config.copyWith(mixedSystemProxy: false);
   CoreConfigStorage.save(config);
 }
 
@@ -103,10 +102,6 @@ void _scheduleReload() {
       name: 'tun',
     );
     asyncProfile();
-    if (systemProxy.value && _lastSyncedPort != clashConfig.value.mixedPort) {
-      _lastSyncedPort = clashConfig.value.mixedPort;
-      await openProxy();
-    }
   });
 }
 
@@ -119,6 +114,7 @@ void updateClashConfig({
   bool? externalController,
   String? externalControllerAddr,
   bool? portEnabled,
+  bool? mixedSystemProxy,
 }) {
   clashConfig.value = clashConfig.value.copyWith(
     mixedPort: mixedPort,
@@ -129,6 +125,7 @@ void updateClashConfig({
     externalController: externalController,
     externalControllerAddr: externalControllerAddr,
     portEnabled: portEnabled,
+    mixedSystemProxy: mixedSystemProxy,
   );
   if (logLevel != null) {
     LogFileWriter.instance?.setMinLevel(logLevel);
@@ -143,9 +140,9 @@ Future<void> toggleTun(bool enable) async {
   final sw = Stopwatch()..start();
   LogFileWriter.instance?.log('toggleTun($enable) called', name: 'tun');
   if (enable) {
-    await openTun();
+    await enableTun();
   } else {
-    await closeTun();
+    await disableTun();
   }
   LogFileWriter.instance?.log(
     'toggleTun($enable): ${sw.elapsedMilliseconds}ms',
@@ -153,7 +150,30 @@ Future<void> toggleTun(bool enable) async {
   );
 }
 
-Future<void> openTun() async {
+Future<void> enableSystemProxy() async {
+  if (!Constants.isDesktop) return;
+  _updateConfig((c) => c.copyWith(
+    mixedSystemProxy: true,
+    tun: TunConfig(enable: false),
+  ));
+  await asyncProfile();
+}
+
+Future<void> disableSystemProxy() async {
+  if (!Constants.isDesktop) return;
+  _updateConfig((c) => c.copyWith(mixedSystemProxy: false));
+  await asyncProfile();
+}
+
+Future<void> toggleSystemProxy(bool enable) async {
+  if (enable) {
+    await enableSystemProxy();
+  } else {
+    await disableSystemProxy();
+  }
+}
+
+Future<void> enableTun() async {
   if (!Constants.isDesktop) {
     final file = selectedFile.value;
     if (file == null) return;
@@ -162,7 +182,7 @@ Future<void> openTun() async {
 
     try {
       _reloadTimer?.cancel();
-      _setTunEnabled(true);
+      _applyTunConfig(true);
       final yamlContent = await File(path).readAsString();
       final merged = mergeProfileConfig(yamlContent);
       await LibCore.instance.connectVpn(
@@ -171,76 +191,78 @@ Future<void> openTun() async {
         ipv6: clashConfig.value.ipv6,
       );
     } catch (e) {
-      _setTunEnabled(false);
+      _applyTunConfig(false);
       rethrow;
     }
     return;
   }
-  await _openTunDesktop();
+  await _enableTunDesktop();
 }
 
-Future<void> closeTun() async {
+Future<void> disableTun() async {
   if (!Constants.isDesktop) {
     vpnConnected.value = false;
-    _setTunEnabled(false);
+    _applyTunConfig(false);
     // 先关闭 VPN 接口（不停内核），避免 refreshConfig 中 fdsan 崩溃
     await LibCore.instance.disconnectVpn();
     // fire-and-forget：内核后台热重载，FAB loading 由 StateUpdate 回调清除
     asyncProfile();
     return;
   }
-  await _closeTunDesktop();
+  await _disableTunDesktop();
 }
 
 // --- Desktop TUN ---
 
-Future<void> _openTunDesktop() async {
-  // TUN 模式接管全部系统流量，需关闭系统代理避免浏览器绕过 TUN
-  await closeProxy();
+Future<void> _enableTunDesktop() async {
+  // 内核处理 TUN 与系统代理互斥，只需设置目标配置
 
   if (!coreElevated.value) {
-    _setTunEnabled(true);
+    _applyTunConfig(true);
     if (Platform.isLinux) {
       // Linux: one-time setcap，重启后 capability 持久化，后续无需再提权
       final ok = await setupTunCapability();
       if (!ok) {
-        _setTunEnabled(false);
+        _applyTunConfig(false);
         throw TunElevationException('授予网络权限失败，请确认 pkexec 及 patchelf 可用');
       }
       if (await relaunchSelf()) {
         exit(0);
       }
       // 启动新进程失败，回滚状态
-      _setTunEnabled(false);
+      _applyTunConfig(false);
       throw TunElevationException('重启应用失败');
     } else if (Platform.isMacOS) {
       // macOS: 以 root 重启，传递 homeDir 避免 root 使用 /var/root 数据目录
       if (await relaunchElevated(homeDir: Constants.homeDir.path)) {
         exit(0);
       }
-      _setTunEnabled(false);
+      _applyTunConfig(false);
       throw TunElevationException('提权失败，请重试');
     } else {
       // Windows: 以管理员重启，同一用户 %APPDATA% 不变，无需传 homeDir
       if (await relaunchElevated()) {
         exit(0);
       }
-      _setTunEnabled(false);
+      _applyTunConfig(false);
       throw TunElevationException('提权失败，请重试');
     }
   }
-  _setTunEnabled(true);
+  _applyTunConfig(true);
   asyncProfile();
 }
 
-Future<void> _closeTunDesktop() async {
-  _setTunEnabled(false);
+Future<void> _disableTunDesktop() async {
+  _applyTunConfig(false);
   if (LibCore.instance.stateSignal.value != LibCore.kStateRunning) return;
   asyncProfile();
 }
 
-void _setTunEnabled(bool enable) {
-  _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enable)));
+void _applyTunConfig(bool enable) {
+  _updateConfig((c) => c.copyWith(
+    tun: TunConfig(enable: enable),
+    mixedSystemProxy: enable ? false : c.mixedSystemProxy,
+  ));
 }
 
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）

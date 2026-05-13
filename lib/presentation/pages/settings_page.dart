@@ -46,22 +46,22 @@ class SettingsPage extends StatelessWidget {
           SwitchListTile(
             title: const Text('代理端口'),
             subtitle: Text(config.port.toString()),
-            value: config.userPortEnabled || systemProxy.value,
-            onChanged: systemProxy.value
+            value: config.userPortEnabled || config.systemProxyEnabled,
+            onChanged: config.systemProxyEnabled
                 ? null
                 : (v) => updateClashConfig(portEnabled: v),
           ),
           _PortTile(
             label: '端口号',
             value: config.mixedPort,
-            onChanged: config.userPortEnabled && !systemProxy.value
+            onChanged: config.userPortEnabled && !config.systemProxyEnabled
                 ? (v) => updateClashConfig(mixedPort: v)
                 : null,
           ),
           SwitchListTile(
             title: const Text('允许局域网'),
             value: config.allowLan ?? false,
-            onChanged: (config.userPortEnabled || systemProxy.value)
+            onChanged: (config.userPortEnabled || config.systemProxyEnabled)
                 ? (v) => updateClashConfig(allowLan: v)
                 : null,
           ),

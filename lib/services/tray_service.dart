@@ -18,7 +18,7 @@ Future<void> initTray() async {
   desktopTray.addListener(_TrayHandler());
 
   effect(() => _rebuildMenu(
-    tunIf.value == true ? clashConfig.value.tunEnabled : systemProxy.value,
+    tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled,
     LibCore.instance.availableModesSignal.value,
     LibCore.instance.modeSignal.value,
   ));
@@ -70,13 +70,11 @@ class _TrayHandler with DesktopTrayListener {
         final isTun = tunIf.value == true;
         if (isTun) {
           await toggleTun(!(item.checked ?? false));
-        } else if (item.checked ?? false) {
-          await closeProxy();
         } else {
-          await openProxy();
+          await toggleSystemProxy(!(item.checked ?? false));
         }
       case 'exit':
-        await closeProxy();
+        await LibCore.instance.destroyCore();
         await windowManager.close();
         await windowManager.destroy();
       default:

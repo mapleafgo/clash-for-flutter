@@ -15,6 +15,10 @@ ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) => ClashConfig(
   tun: json['tun'] == null
       ? null
       : TunConfig.fromJson(json['tun'] as Map<String, dynamic>),
+  externalController: json['external-controller'] as bool?,
+  externalControllerAddr: json['external-controller-addr'] as String?,
+  portEnabled: json['port-enabled'] as bool?,
+  mixedSystemProxy: json['mixed-system-proxy'] as bool?,
 );
 
 Map<String, dynamic> _$ClashConfigToJson(ClashConfig instance) =>
@@ -25,6 +29,10 @@ Map<String, dynamic> _$ClashConfigToJson(ClashConfig instance) =>
       'log-level': _$LogLevelEnumMap[instance.logLevel],
       'ipv6': instance.ipv6,
       'tun': instance.tun,
+      'external-controller': instance.externalController,
+      'external-controller-addr': instance.externalControllerAddr,
+      'port-enabled': instance.portEnabled,
+      'mixed-system-proxy': instance.mixedSystemProxy,
     };
 
 const _$ModeEnumMap = {

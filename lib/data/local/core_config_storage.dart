@@ -22,6 +22,7 @@ class CoreConfigStorage {
       externalController: yaml['external-controller'] as bool?,
       externalControllerAddr: yaml['external-controller-addr'] as String?,
       portEnabled: yaml['port-enabled'] as bool?,
+      mixedSystemProxy: yaml['mixed-system-proxy'] as bool?,
     );
   }
 
@@ -35,6 +36,7 @@ class CoreConfigStorage {
     if (config.externalController != null) yaml['external-controller'] = config.externalController;
     if (config.externalControllerAddr != null) yaml['external-controller-addr'] = config.externalControllerAddr;
     if (config.portEnabled != null) yaml['port-enabled'] = config.portEnabled;
+    if (config.mixedSystemProxy != null) yaml['mixed-system-proxy'] = config.mixedSystemProxy;
     yaml.save();
   }
 
