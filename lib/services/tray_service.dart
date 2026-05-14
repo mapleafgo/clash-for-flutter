@@ -25,9 +25,9 @@ Future<void> initTray() async {
 }
 
 const _trayModeLabels = {
-  'rule': '规则模式',
-  'global': '全局模式',
-  'direct': '直连模式',
+  'rule': '规则',
+  'global': '全局',
+  'direct': '直连',
 };
 
 Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {

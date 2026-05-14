@@ -22,7 +22,6 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return DragToMoveArea(
       child: AppBar(
-        automaticallyImplyLeading: false,
         titleSpacing: 0,
         centerTitle: true,
         title: Text(title),
