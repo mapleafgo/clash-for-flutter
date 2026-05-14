@@ -54,6 +54,7 @@ class SingcastVpnService : VpnService() {
     private val networkUpdateRunnable = Runnable {
         Mobile.detectAndReportInterfaces(this@SingcastVpnService)
         Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
+        Mobile.resetNetwork()
     }
 
     inner class LocalBinder : Binder() {
