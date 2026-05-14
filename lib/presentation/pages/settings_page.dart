@@ -44,8 +44,7 @@ class SettingsPage extends StatelessWidget {
         return ListView(children: [
           const _Section('核心配置'),
           SwitchListTile(
-            title: const Text('代理端口'),
-            subtitle: Text(config.port.toString()),
+            title: const Text('代理服务'),
             value: config.userPortEnabled || config.systemProxyEnabled,
             onChanged: config.systemProxyEnabled
                 ? null
@@ -54,16 +53,17 @@ class SettingsPage extends StatelessWidget {
           _PortTile(
             label: '端口号',
             value: config.mixedPort,
-            onChanged: config.userPortEnabled && !config.systemProxyEnabled
-                ? (v) => updateClashConfig(mixedPort: v)
-                : null,
+            onChanged: (v) => updateClashConfig(mixedPort: v),
           ),
-          SwitchListTile(
-            title: const Text('允许局域网'),
-            value: config.allowLan ?? false,
-            onChanged: (config.userPortEnabled || config.systemProxyEnabled)
-                ? (v) => updateClashConfig(allowLan: v)
-                : null,
+          _AnimatedExpand(
+            expanded: config.userPortEnabled || config.systemProxyEnabled,
+            children: [
+              SwitchListTile(
+                title: const Text('允许局域网'),
+                value: config.allowLan ?? false,
+                onChanged: (v) => updateClashConfig(allowLan: v),
+              ),
+            ],
           ),
           SwitchListTile(
             title: const Text('IPv6'),
@@ -96,21 +96,25 @@ class SettingsPage extends StatelessWidget {
             value: config.apiEnabled,
             onChanged: (v) => updateClashConfig(externalController: v),
           ),
-          if (config.apiEnabled)
-            ListTile(
-              title: const Text('API 地址'),
-              subtitle: Text(config.apiAddr),
-              onTap: () async {
-                final result = await _showEditDialog(
-                  context: context,
-                  title: 'API 地址',
-                  initialValue: config.apiAddr,
-                );
-                if (result != null && result.isNotEmpty) {
-                  updateClashConfig(externalControllerAddr: result);
-                }
-              },
-            ),
+          _AnimatedExpand(
+            expanded: config.apiEnabled,
+            children: [
+              ListTile(
+                title: const Text('API 地址'),
+                subtitle: Text(config.apiAddr),
+                onTap: () async {
+                  final result = await _showEditDialog(
+                    context: context,
+                    title: 'API 地址',
+                    initialValue: config.apiAddr,
+                  );
+                  if (result != null && result.isNotEmpty) {
+                    updateClashConfig(externalControllerAddr: result);
+                  }
+                },
+              ),
+            ],
+          ),
           const _Section('外观'),
           Watch((context) => _ChoiceTile<ThemeMode>(
                 title: '主题',
@@ -540,6 +544,26 @@ Future<String?> _showEditDialog({
       );
     }),
   );
+}
+
+class _AnimatedExpand extends StatelessWidget {
+  final bool expanded;
+  final List<Widget> children;
+  const _AnimatedExpand({required this.expanded, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubicEmphasized,
+        alignment: Alignment.topCenter,
+        child: expanded
+            ? Column(children: children)
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
 }
 
 class _AboutHeader extends StatefulWidget {
