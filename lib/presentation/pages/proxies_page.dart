@@ -6,6 +6,7 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/proxy_group.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
+import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -86,16 +87,21 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
               const SizedBox(width: 8),
               Watch((context) {
                 final busy = _groupTesting.value;
+                final hasNodes = _tabController != null && _cachedTags.isNotEmpty;
+                final disabled = busy || !hasNodes;
+                final cs = Theme.of(context).colorScheme;
                 return FloatingActionButton(
                   heroTag: 'speed',
-                  onPressed: busy ? null : _testAllDelay,
+                  onPressed: disabled ? null : _testAllDelay,
                   tooltip: '测速',
+                  backgroundColor: disabled ? cs.surfaceContainerHighest : null,
+                  foregroundColor: disabled ? cs.outline : null,
                   child: busy
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2),
                         )
                       : const Icon(Icons.speed),
                 );
@@ -117,7 +123,11 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
           return false;
         },
         child: _cachedTags.isEmpty
-            ? const Center(child: Text('暂无代理'))
+            ? const EmptyState(
+                icon: Icons.swap_horiz_rounded,
+                title: '暂无代理',
+                hint: '添加订阅后，节点将出现在这里',
+              )
             : _ProxiesTabView(
                 tags: _cachedTags,
                 onControllerChanged: (c) => _tabController = c,

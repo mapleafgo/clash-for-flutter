@@ -1,7 +1,7 @@
 name: singcast
 description: A multi-platform Clash client.
 publish_to: "none"
-version: 1.13.11-beta7
+version: 1.13.11-beta8
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -129,9 +129,9 @@ ffigen:
 flutter_native_splash:
   color: "#FFFFFF"
   color_dark: "#1C1B1F"
-  image: assets/logo.png
+  image: assets/logo_splash.png
   android_12:
-    image: assets/logo_android12.png
+    image: assets/logo_android12_splash.png
     color: "#FFFFFF"
     color_dark: "#1C1B1F"
 

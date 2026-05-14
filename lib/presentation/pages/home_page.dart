@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
@@ -319,37 +320,61 @@ class _ToggleFab extends StatelessWidget {
     return Watch((context) {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
-      final state = LibCore.instance.stateSignal.value;
       final hasProfile = selectedFile.value != null;
-      final running = state == LibCore.kStateRunning;
       final cs = Theme.of(context).colorScheme;
+      final disabled = !hasProfile;
 
       return SafeArea(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(end: on ? 1.0 : 0.0),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-          builder: (context, t, _) {
-            return Transform.scale(
-              scale: 1.0 + 0.05 * (1 - (2 * t - 1).abs()),
-              child: FloatingActionButton.extended(
-                onPressed: !hasProfile || !running ? null : () => _toggle(context, isTun, on),
-                backgroundColor: Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
-                foregroundColor: Color.lerp(cs.onPrimaryContainer, Colors.white, t)!,
-                extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-                icon: AnimatedIconSwitcher(value: on),
-                label: Text(
-                  !hasProfile ? '请先添加配置' : (on ? '关闭' : '开启'),
+        child: AnimatedScale(
+          scale: disabled ? 0.95 : (on ? 1.04 : 1.0),
+          curve: Curves.elasticOut,
+          duration: const Duration(milliseconds: 1200),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: on ? 1.0 : 0.0),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, _) {
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: t > 0.01 && !disabled
+                      ? [
+                          BoxShadow(
+                            color: Colors.green.withValues(alpha: 0.3 * t),
+                            blurRadius: 20 * t,
+                            spreadRadius: 3 * t,
+                          ),
+                        ]
+                      : [],
                 ),
-              ),
-            );
-          },
+                child: FloatingActionButton.extended(
+                  onPressed: disabled ? null : () => _toggle(context, isTun, on),
+                  backgroundColor: disabled
+                      ? cs.surfaceContainerHighest
+                      : Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
+                  foregroundColor: disabled
+                      ? cs.outline
+                      : Color.lerp(cs.onPrimaryContainer, Colors.white, t)!,
+                  extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
+                  icon: AnimatedIconSwitcher(value: on),
+                  label: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      !hasProfile ? '请先添加配置' : (on ? '关闭' : '开启'),
+                      key: ValueKey(!hasProfile ? 'none' : (on ? 'off' : 'on')),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       );
     });
   }
 
   Future<void> _toggle(BuildContext context, bool isTun, bool on) async {
+    HapticFeedback.mediumImpact();
     try {
       if (isTun) {
         await toggleTun(!on);

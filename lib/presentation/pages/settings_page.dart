@@ -1,17 +1,13 @@
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
-import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:async';
+import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 const _modeLabels = {
   'rule': '规则',
@@ -45,28 +41,32 @@ class SettingsPage extends StatelessWidget {
           const _Section('核心配置'),
           SwitchListTile(
             title: const Text('代理服务'),
+            subtitle: const Text('开启后提供 HTTP/SOCKS5 混合代理端口'),
             value: config.userPortEnabled || config.systemProxyEnabled,
             onChanged: config.systemProxyEnabled
                 ? null
                 : (v) => updateClashConfig(portEnabled: v),
-          ),
-          _PortTile(
-            label: '端口号',
-            value: config.mixedPort,
-            onChanged: (v) => updateClashConfig(mixedPort: v),
           ),
           _AnimatedExpand(
             expanded: config.userPortEnabled || config.systemProxyEnabled,
             children: [
               SwitchListTile(
                 title: const Text('允许局域网'),
+                subtitle: const Text('允许局域网内其他设备通过代理上网'),
                 value: config.allowLan ?? false,
                 onChanged: (v) => updateClashConfig(allowLan: v),
               ),
             ],
           ),
+          _PortTile(
+            label: '端口号',
+            value: config.mixedPort,
+            description: '代理服务监听的本地端口号',
+            onChanged: (v) => updateClashConfig(mixedPort: v),
+          ),
           SwitchListTile(
             title: const Text('IPv6'),
+            subtitle: const Text('代理连接支持 IPv6 网络协议'),
             value: config.ipv6 ?? false,
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
@@ -77,22 +77,16 @@ class SettingsPage extends StatelessWidget {
               final ready = LibCore.instance.stateSignal.value == LibCore.kStateRunning;
               return _ChoiceTile<String>(
                 title: '出站模式',
+                description: '控制流量路由策略',
                 value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),
                 items: modes,
                 labelBuilder: (m) => _modeLabels[m] ?? m,
                 onChanged: ready ? (m) => changeModeStr(m) : null,
               );
             }),
-          _ChoiceTile<LogLevel>(
-            title: '日志等级',
-            value: config.logLevel ?? LogLevel.info,
-            items: LogLevel.values,
-            labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
-            onChanged: (l) => updateClashConfig(logLevel: l),
-          ),
           SwitchListTile(
-            title: const Text('内核 API'),
-            subtitle: Text(config.apiAddr),
+            title: const Text('Clash API'),
+            subtitle: const Text('对外提供代理状态查询和控制接口'),
             value: config.apiEnabled,
             onChanged: (v) => updateClashConfig(externalController: v),
           ),
@@ -101,7 +95,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               ListTile(
                 title: const Text('API 地址'),
-                subtitle: Text(config.apiAddr),
+                subtitle: Text(config.apiAddr, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () async {
                   final result = await _showEditDialog(
                     context: context,
@@ -115,42 +109,44 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
+          _ChoiceTile<LogLevel>(
+            title: '日志等级',
+            description: '等级越低记录越详细，调试时可选调试',
+            value: config.logLevel ?? LogLevel.info,
+            items: LogLevel.values,
+            labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
+            onChanged: (l) => updateClashConfig(logLevel: l),
+          ),
           const _Section('外观'),
           Watch((context) => _ChoiceTile<ThemeMode>(
                 title: '主题',
+                description: '切换应用外观风格',
                 value: themeMode.value ?? ThemeMode.system,
                 items: ThemeMode.values,
                 labelBuilder: (m) => _themeModeLabels[m] ?? m.name,
                 onChanged: (m) => themeMode.value = m,
               )),
-          const _Section('其他设置'),
+          const _Section('高级'),
           const _UaTile(),
           _UrlTile(
             label: '延迟测试 Url',
+            description: '测速时请求的目标地址',
             value: delayTestUrl.value,
             onChanged: (v) => delayTestUrl.value = v,
           ),
           _UrlTile(
             label: 'Rule-Set 代理',
+            description: '下载 Rule-Set 规则集时使用的代理地址',
             value: ruleSetProxy.value,
             onChanged: (v) => ruleSetProxy.value = v,
           ),
-          const _Section('关于'),
-          const _AboutHeader(),
-          const _KernelVersionTile(),
+          const _Section('其他'),
           ListTile(
-            title: const Text('官方网站'),
-            subtitle: const Text(Constants.homeUrl),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => launchUrl(Uri.parse(Constants.homeUrl)),
+            title: const Text('关于'),
+            subtitle: const Text('版本信息与相关链接'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/about'),
           ),
-          ListTile(
-            title: const Text('源码仓库'),
-            subtitle: const Text(Constants.sourceUrl),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
-          ),
-          const _CheckUpdateTile(),
         ]);
       }),
     );
@@ -181,10 +177,12 @@ class _Section extends StatelessWidget {
 class _PortTile extends StatelessWidget {
   final String label;
   final int? value;
+  final String? description;
   final ValueChanged<int>? onChanged;
   const _PortTile({
     required this.label,
     required this.value,
+    this.description,
     required this.onChanged,
   });
 
@@ -199,6 +197,7 @@ class _PortTile extends StatelessWidget {
         final result = await _showEditDialog(
           context: context,
           title: label,
+          description: description,
           initialValue: value?.toString() ?? '',
           keyboardType: TextInputType.number,
           validator: (v) {
@@ -220,10 +219,12 @@ class _PortTile extends StatelessWidget {
 
 class _UrlTile extends StatelessWidget {
   final String label;
+  final String? description;
   final String value;
   final ValueChanged<String> onChanged;
   const _UrlTile({
     required this.label,
+    this.description,
     required this.value,
     required this.onChanged,
   });
@@ -237,133 +238,11 @@ class _UrlTile extends StatelessWidget {
         final result = await _showEditDialog(
           context: context,
           title: label,
+          description: description,
           initialValue: value,
         );
         if (result != null && result.isNotEmpty) onChanged(result);
       },
-    );
-  }
-}
-
-class _KernelVersionTile extends StatefulWidget {
-  const _KernelVersionTile();
-
-  @override
-  State<_KernelVersionTile> createState() => _KernelVersionTileState();
-}
-
-class _KernelVersionTileState extends State<_KernelVersionTile> {
-  String _version = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final v = await LibCore.instance.getVersion();
-      if (mounted) setState(() => _version = v);
-    } catch (_) {
-      if (mounted) setState(() => _version = '-');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: const Text('内核版本'),
-      subtitle: Text(_version.isEmpty ? '加载中...' : _version),
-    );
-  }
-}
-
-class _CheckUpdateTile extends StatefulWidget {
-  const _CheckUpdateTile();
-
-  @override
-  State<_CheckUpdateTile> createState() => _CheckUpdateTileState();
-}
-
-class _CheckUpdateTileState extends State<_CheckUpdateTile> {
-  int _state = 0;
-  String _currentVersion = '';
-  String _latestVersion = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    if (mounted) setState(() => _currentVersion = info.version);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: const Text('版本'),
-      subtitle: Text(_currentVersion.isNotEmpty ? _currentVersion : '加载中...'),
-      trailing: _trailing(),
-      onTap: _state == 1 ? null : _check,
-    );
-  }
-
-  Widget _trailing() {
-    return switch (_state) {
-      1 => const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      2 => const Icon(Icons.check_circle_outline, color: Colors.green),
-      3 => const Icon(Icons.system_update, color: Colors.blue),
-      -1 => const Icon(Icons.error_outline, color: Colors.red),
-      _ => const Icon(Icons.refresh),
-    };
-  }
-
-  Future<void> _check() async {
-    setState(() => _state = 1);
-    try {
-      final resp = await Dio().get<Map<String, dynamic>>(Constants.releaseUrl);
-      final tagName = resp.data?['tag_name'] as String? ?? '';
-      _latestVersion = tagName.replaceFirst('v', '');
-
-      if (_currentVersion == _latestVersion) {
-        if (mounted) setState(() => _state = 2);
-      } else {
-        if (mounted) setState(() => _state = 3);
-        _showUpdateDialog();
-      }
-    } catch (_) {
-      if (mounted) setState(() => _state = -1);
-    }
-  }
-
-  void _showUpdateDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('发现新版本'),
-        content: Text('当前版本: $_currentVersion\n最新版本: $_latestVersion'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('忽略'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              launchUrl(Uri.parse('${Constants.sourceUrl}/releases/latest'));
-            },
-            child: const Text('前往下载'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -395,7 +274,15 @@ class _UaTile extends StatelessWidget {
         title: const Text('订阅 User-Agent'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text('更新订阅时使用的 User-Agent 标识', style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+              ),
+            ),
             TextField(
               controller: controller,
               maxLines: null,
@@ -449,12 +336,14 @@ class _UaTile extends StatelessWidget {
 
 class _ChoiceTile<T> extends StatelessWidget {
   final String title;
+  final String? description;
   final T value;
   final List<T> items;
   final String Function(T) labelBuilder;
   final ValueChanged<T>? onChanged;
   const _ChoiceTile({
     required this.title,
+    this.description,
     required this.value,
     required this.items,
     required this.labelBuilder,
@@ -472,14 +361,21 @@ class _ChoiceTile<T> extends StatelessWidget {
           context: context,
           builder: (ctx) => SimpleDialog(
             title: Text(title),
-            children: items.map((item) => ListTile(
-                  title: Text(labelBuilder(item)),
-                  selected: item == value,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    if (item != value) onChanged?.call(item);
-                  },
-                )).toList(),
+            children: [
+              if (description != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text(description!, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                ),
+              ...items.map((item) => ListTile(
+                    title: Text(labelBuilder(item)),
+                    selected: item == value,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (item != value) onChanged?.call(item);
+                    },
+                  )),
+            ],
           ),
         );
       },
@@ -490,6 +386,7 @@ class _ChoiceTile<T> extends StatelessWidget {
 Future<String?> _showEditDialog({
   required BuildContext context,
   required String title,
+  String? description,
   required String initialValue,
   TextInputType? keyboardType,
   String? Function(String?)? validator,
@@ -502,24 +399,37 @@ Future<String?> _showEditDialog({
     builder: (ctx) => Watch((context) {
       return AlertDialog(
         title: Text(title),
-        content: TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: null,
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            errorText: errorText.value,
-          ),
-          onSubmitted: (v) {
-            if (validator != null) {
-              final err = validator(v);
-              if (err != null) {
-                errorText.value = err;
-                return;
-              }
-            }
-            Navigator.pop(ctx, v);
-          },
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (description != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(description, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                ),
+              ),
+            TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              maxLines: null,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                errorText: errorText.value,
+              ),
+              onSubmitted: (v) {
+                if (validator != null) {
+                  final err = validator(v);
+                  if (err != null) {
+                    errorText.value = err;
+                    return;
+                  }
+                }
+                Navigator.pop(ctx, v);
+              },
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -561,78 +471,6 @@ class _AnimatedExpand extends StatelessWidget {
         child: expanded
             ? Column(children: children)
             : const SizedBox.shrink(),
-      ),
-    );
-  }
-}
-
-class _AboutHeader extends StatefulWidget {
-  const _AboutHeader();
-
-  @override
-  State<_AboutHeader> createState() => _AboutHeaderState();
-}
-
-class _AboutHeaderState extends State<_AboutHeader>
-    with SingleTickerProviderStateMixin {
-  int _tapCount = 0;
-  DateTime? _lastTap;
-  late final _shakeController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 600),
-  );
-
-  @override
-  void dispose() {
-    _shakeController.dispose();
-    super.dispose();
-  }
-
-  void _onLogoTap() {
-    final now = DateTime.now();
-    if (_lastTap == null || now.difference(_lastTap!) > const Duration(seconds: 2)) {
-      _tapCount = 1;
-    } else {
-      _tapCount++;
-    }
-    _lastTap = now;
-
-    if (_tapCount >= 6) {
-      _tapCount = 0;
-      _shakeController.forward(from: 0);
-      if (!Constants.isDesktop) {
-        HapticFeedback.mediumImpact();
-        Future.delayed(const Duration(milliseconds: 150), () {
-          HapticFeedback.mediumImpact();
-        });
-      }
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('这都被你发现了！'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: GestureDetector(
-        onTap: _onLogoTap,
-        child: ShakeBuilder(
-          controller: _shakeController,
-          child: Column(children: [
-            SvgPicture.asset('assets/logo.svg', width: 64, height: 64),
-            const SizedBox(height: 8),
-            Text(
-              'Singcast',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ]),
-        ),
       ),
     );
   }

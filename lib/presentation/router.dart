@@ -1,3 +1,4 @@
+import 'package:singcast/presentation/pages/about_page.dart';
 import 'package:singcast/presentation/pages/desktop_shell.dart';
 import 'package:singcast/presentation/pages/home_page.dart';
 import 'package:singcast/presentation/pages/mobile_shell.dart';
@@ -57,7 +58,13 @@ final router = GoRouter(
         StatefulShellBranch(routes: [
           GoRoute(
               path: Routes.settings,
-              builder: (context, state) => const SettingsPage()),
+              builder: (context, state) => const SettingsPage(),
+              routes: [
+                GoRoute(
+                  path: 'about',
+                  builder: (context, state) => const AboutPage(),
+                ),
+              ]),
         ]),
       ],
     ),

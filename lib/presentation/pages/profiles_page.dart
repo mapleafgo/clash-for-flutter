@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/subscription.dart';
@@ -76,7 +77,13 @@ class _ProfilesPageState extends State<ProfilesPage> {
       body: Watch((context) {
         final list = profiles.value;
         final sel = selectedFile.value;
-        if (list.isEmpty) return const Center(child: Text('暂无订阅'));
+        if (list.isEmpty) {
+          return const EmptyState(
+            icon: Icons.cloud_outlined,
+            title: '暂无订阅',
+            hint: '点击右下角按钮添加订阅配置',
+          );
+        }
         return LayoutBuilder(builder: (_, constraints) {
           final cols = constraints.maxWidth > 400 ? 2 : 1;
           return MasonryGridView.count(
