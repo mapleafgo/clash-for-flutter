@@ -360,8 +360,19 @@ class _ToggleFab extends StatelessWidget {
                   label: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: Text(
-                      !hasProfile ? '请先添加配置' : (on ? '关闭' : '开启'),
-                      key: ValueKey(!hasProfile ? 'none' : (on ? 'off' : 'on')),
+                      !hasProfile
+                          ? '请先添加配置'
+                          : on
+                              ? (() {
+                                  final d = formatDuration(LibCore.instance.trafficSignal.value?.startedAt ?? 0);
+                                  return d.isEmpty ? '00:00:00' : d;
+                                })()
+                              : '开启',
+                      key: ValueKey(!hasProfile
+                          ? 'none'
+                          : on
+                              ? 'on-${LibCore.instance.trafficSignal.value?.startedAt ?? 0}'
+                              : 'off'),
                     ),
                   ),
                 ),

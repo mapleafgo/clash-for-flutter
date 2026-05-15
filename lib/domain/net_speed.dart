@@ -5,6 +5,7 @@ class TrafficSnapshot {
   final int downTotal;
   final int memory;
   final int connections;
+  final int startedAt;
 
   TrafficSnapshot({
     this.up = 0,
@@ -13,15 +14,15 @@ class TrafficSnapshot {
     this.downTotal = 0,
     this.memory = 0,
     this.connections = 0,
+    this.startedAt = 0,
   });
 
-  /// 内核 up/down 是累计总量，映射到 upTotal/downTotal。
-  /// up/down (网速) 由调用方根据差值计算。
   factory TrafficSnapshot.fromKernelJson(Map<String, dynamic> json) => TrafficSnapshot(
     upTotal: (json['up'] as num?)?.toInt() ?? 0,
     downTotal: (json['down'] as num?)?.toInt() ?? 0,
     memory: (json['memory'] as num?)?.toInt() ?? 0,
     connections: (json['connections'] as num?)?.toInt() ?? 0,
+    startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -31,6 +32,7 @@ class TrafficSnapshot {
     'down_total': downTotal,
     'memory': memory,
     'connections': connections,
+    'started_at': startedAt,
   };
 }
 

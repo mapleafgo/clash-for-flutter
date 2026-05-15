@@ -8,3 +8,15 @@ String formatBytes(int value) {
   }
   return "${num.toStringAsFixed(1)} ${units[level]}";
 }
+
+String formatDuration(int startedAtMs) {
+  if (startedAtMs <= 0) return '';
+  final diff = DateTime.now().millisecondsSinceEpoch - startedAtMs;
+  if (diff < 0) return '';
+  final duration = Duration(milliseconds: diff);
+  final h = duration.inHours;
+  final m = duration.inMinutes.remainder(60);
+  final s = duration.inSeconds.remainder(60);
+  if (h > 0) return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+}
