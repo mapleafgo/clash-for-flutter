@@ -196,6 +196,18 @@ Future<bool> _activateProfile(String yamlPath) async {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
+    // 引擎重建恢复：内核仍在运行但 _lastWorkingConfig 为空（新 isolate），
+    // 同步 _lastWorkingConfig 但不重启内核，避免流量计数器归零
+    if (_lastWorkingConfig == null &&
+        LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
+      _lastWorkingConfig = merged;
+      LogFileWriter.instance?.log(
+        '_activateProfile: engine rebuild, synced _lastWorkingConfig without restart',
+        name: 'tun',
+      );
+      return true;
+    }
+
     // 步骤 1: 预验证新配置（配置未变时跳过，仅配置变更时验证）
     if (_lastWorkingConfig != null && merged != _lastWorkingConfig) {
       try {
