@@ -321,7 +321,7 @@ class _ToggleFab extends StatelessWidget {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
-      final startedAt = LibCore.instance.trafficSignal.value?.startedAt ?? 0;
+      final startedAt = switchedAt.value;
       final cs = Theme.of(context).colorScheme;
       final disabled = !hasProfile;
 
