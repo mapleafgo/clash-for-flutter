@@ -13,7 +13,11 @@ class MobileShell extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (i) {
-          shell.goBranch(i, initialLocation: i == shell.currentIndex);
+          if (i == shell.currentIndex) {
+            shell.goBranch(i, initialLocation: true);
+          } else {
+            context.go(navItems[i].path);
+          }
         },
         destinations: navItems
             .map((e) => NavigationDestination(icon: Icon(e.icon), label: e.label))
