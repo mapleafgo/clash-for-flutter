@@ -321,6 +321,7 @@ class _ToggleFab extends StatelessWidget {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
+      final startedAt = LibCore.instance.trafficSignal.value?.startedAt ?? 0;
       final cs = Theme.of(context).colorScheme;
       final disabled = !hasProfile;
 
@@ -334,6 +335,9 @@ class _ToggleFab extends StatelessWidget {
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutCubic,
             builder: (context, t, _) {
+              final fgColor = disabled
+                  ? cs.outline
+                  : Color.lerp(cs.onPrimaryContainer, Colors.white, t)!;
               return DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
@@ -347,32 +351,52 @@ class _ToggleFab extends StatelessWidget {
                         ]
                       : [],
                 ),
-                child: FloatingActionButton.extended(
-                  onPressed: disabled ? null : () => _toggle(context, isTun, on),
-                  backgroundColor: disabled
+                child: Material(
+                  color: disabled
                       ? cs.surfaceContainerHighest
                       : Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
-                  foregroundColor: disabled
-                      ? cs.outline
-                      : Color.lerp(cs.onPrimaryContainer, Colors.white, t)!,
-                  extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
-                  icon: AnimatedIconSwitcher(value: on),
-                  label: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Text(
-                      !hasProfile
-                          ? '请先添加配置'
-                          : on
-                              ? (() {
-                                  final d = formatDuration(LibCore.instance.trafficSignal.value?.startedAt ?? 0);
-                                  return d.isEmpty ? '00:00:00' : d;
-                                })()
-                              : '开启',
-                      key: ValueKey(!hasProfile
-                          ? 'none'
-                          : on
-                              ? 'on-${LibCore.instance.trafficSignal.value?.startedAt ?? 0}'
-                              : 'off'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: disabled ? null : () => _toggle(context, isTun, on),
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.elasticOut,
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconTheme(
+                              data: IconThemeData(color: fgColor),
+                              child: AnimatedIconSwitcher(value: on),
+                            ),
+                            const SizedBox(width: 8),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Text(
+                                !hasProfile
+                                    ? '请先添加配置'
+                                    : on
+                                        ? (() {
+                                            final d = formatDuration(startedAt);
+                                            return d.isEmpty ? '00:00' : d;
+                                          })()
+                                        : '开启',
+                                key: ValueKey(!hasProfile
+                                    ? 'none'
+                                    : on
+                                        ? 'on-$startedAt'
+                                        : 'off'),
+                                style: TextStyle(color: fgColor, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -385,7 +409,9 @@ class _ToggleFab extends StatelessWidget {
   }
 
   Future<void> _toggle(BuildContext context, bool isTun, bool on) async {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
+    await Future.delayed(const Duration(milliseconds: 120));
+    HapticFeedback.lightImpact();
     try {
       if (isTun) {
         await toggleTun(!on);

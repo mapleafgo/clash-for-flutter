@@ -19,7 +19,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.41.7"
-  CORE_VERSION: "v1.13.11"
+  CORE_VERSION: "v1.13.11-1"
   VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
 jobs:

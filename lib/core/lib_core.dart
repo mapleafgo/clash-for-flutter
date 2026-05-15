@@ -194,6 +194,7 @@ class LibCore {
         downTotal: raw.downTotal,
         memory: raw.memory,
         connections: raw.connections,
+        startedAt: raw.startedAt,
       );
       trafficSignal.value = traffic;
       activeConnectionsSignal.value = traffic.connections;
