@@ -131,9 +131,7 @@ void updateClashConfig({
   }
 }
 
-void watchModeFromCore() {
-  // 模式变更由 setMode 成功后直接更新，无需事件回调
-}
+void watchModeFromCore() {}
 
 Future<void> toggleTun(bool enable) async {
   final sw = Stopwatch()..start();

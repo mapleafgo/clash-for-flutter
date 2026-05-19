@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:singcast/core/lib_core.dart';
@@ -85,11 +87,13 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.light,
+          textTheme: _emojiAwareTextTheme(Brightness.light),
         ),
         darkTheme: ThemeData(
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.dark,
+          textTheme: _emojiAwareTextTheme(Brightness.dark),
         ),
         themeMode: resolvedThemeMode,
         routerConfig: ready ? router : _splashRouter,
@@ -99,7 +103,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 }
 
 final _splashRouter = GoRouter(routes: [
-  GoRoute(path: '/', builder: (_, __) => const _SplashPage()),
+  GoRoute(path: '/', builder: (_, _) => const _SplashPage()),
 ]);
 
 class _SplashPage extends StatelessWidget {
@@ -116,4 +120,14 @@ class _SplashPage extends StatelessWidget {
       ),
     );
   }
+}
+
+// Windows Segoe UI Emoji 不支持国旗，通过全局 textTheme 添加 fallback
+TextTheme? _emojiAwareTextTheme(Brightness brightness) {
+  if (!Platform.isWindows) return null;
+  final base = ThemeData(brightness: brightness).textTheme;
+  const fallback = ['Segoe UI Emoji'];
+  return base.apply(
+    fontFamilyFallback: fallback,
+  );
 }
