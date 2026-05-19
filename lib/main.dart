@@ -75,6 +75,8 @@ Future<void> _initApp() async {
   await initCoreConfig();
   print('[startup] initCoreConfig: ${sw.elapsedMilliseconds}ms');
 
+  await ensureTunElevation();
+
   watchModeFromCore();
   initAppConfig();
   print('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
