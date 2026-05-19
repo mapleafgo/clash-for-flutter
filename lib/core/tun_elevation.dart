@@ -103,7 +103,7 @@ Future<bool> relaunchSelf() async {
   try {
     await Process.start(
       Platform.resolvedExecutable,
-      ['--enable-tun'],
+      [],
       workingDirectory: Directory.current.path,
       mode: ProcessStartMode.detached,
     );
@@ -116,40 +116,57 @@ Future<bool> relaunchSelf() async {
 
 /// 以管理员/特权身份重启应用。
 /// 仅用于 macOS/Windows，Linux 使用 [relaunchSelf]。
-///
-/// [homeDir] 仅 macOS 需要：以 root 运行时 getApplicationSupportDirectory
-/// 返回 /var/root/...，需显式传递用户数据目录。
-Future<bool> relaunchElevated({String? homeDir}) async {
+Future<bool> relaunchElevated() async {
   final exe = Platform.resolvedExecutable;
 
   try {
     if (Platform.isMacOS) {
-      // osascript 弹出系统授权对话框，用户输入密码后以 root 运行可执行文件。
-      // & 后台运行：do shell script 同步等待命令完成，GUI 应用不退出会导致 osascript 挂起。
-      // 传递 --home-dir 确保以 root 运行时仍使用用户的配置目录。
-      // Process.run 等待 osascript 返回，用户取消授权时 exitCode != 0。
-      final cmd = homeDir != null
-          ? "'$exe' --home-dir '$homeDir' --enable-tun"
-          : "'$exe' --enable-tun";
       final result = await Process.run(
         'osascript',
-        ['-e', 'do shell script "$cmd &" with administrator privileges'],
+        ['-e', 'do shell script "\'$exe\' &" with administrator privileges'],
       );
       if (result.exitCode != 0) return false;
-      // osascript 返回后新进程刚启动，等待其完成初始化
       await Future.delayed(const Duration(milliseconds: 200));
     } else if (Platform.isWindows) {
-      // 通过 ShellExecuteExW + "runas" 直接触发 UAC，不依赖 PowerShell。
-      // 调用阻塞直到用户响应 UAC 对话框，成功时新进程已启动，无需 delay。
-      // --elevated 标志让 main.cpp 跳过 FindWindow 单例检测。
       final exeDir = File(exe).parent.path;
-      return runElevated(exe: exe, args: '--elevated --enable-tun', workingDir: exeDir);
+      return runElevated(exe: exe, args: '', workingDir: exeDir);
     }
 
     return true;
   } catch (_) {
     return false;
   }
+}
+
+const _pendingFile = '.singcast_pending';
+
+/// 写入提权标记文件，在 relaunch 前调用。
+/// 内容为 macOS 上需要覆盖的 home 目录路径，其他平台为空。
+void writePending({String? homeDir}) {
+  try {
+    File('${Directory.systemTemp.path}/$_pendingFile')
+        .writeAsStringSync(homeDir ?? '');
+  } catch (_) {}
+}
+
+void clearPending() {
+  try {
+    File('${Directory.systemTemp.path}/$_pendingFile').deleteSync();
+  } catch (_) {}
+}
+
+/// 检查提权标记文件。返回 home 目录覆盖路径（macOS），或空字符串表示无覆盖。
+/// 文件存在即代表需要启用 TUN。调用后自动清除。
+String? checkAndConsumePending() {
+  final file = File('${Directory.systemTemp.path}/$_pendingFile');
+  try {
+    if (file.existsSync()) {
+      final content = file.readAsStringSync().trim();
+      file.deleteSync();
+      return content.isNotEmpty ? content : null;
+    }
+  } catch (_) {}
+  return null;
 }
 
 class TunElevationException implements Exception {

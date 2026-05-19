@@ -215,37 +215,35 @@ Future<void> disableTun() async {
 // --- Desktop TUN ---
 
 Future<void> _enableTunDesktop() async {
-  // 内核处理 TUN 与系统代理互斥，只需设置目标配置
-
   if (!coreElevated.value) {
-    _applyTunConfig(true);
     if (Platform.isLinux) {
-      // Linux: one-time setcap，重启后 capability 持久化，后续无需再提权
       final ok = await setupTunCapability();
       if (!ok) {
-        _applyTunConfig(false);
         throw TunElevationException('授予网络权限失败，请确认 pkexec 及 patchelf 可用');
       }
-      if (await relaunchSelf()) {
-        exit(0);
+      writePending();
+      try {
+        if (await relaunchSelf()) exit(0);
+        throw TunElevationException('重启应用失败');
+      } finally {
+        clearPending();
       }
-      // 启动新进程失败，回滚状态
-      _applyTunConfig(false);
-      throw TunElevationException('重启应用失败');
     } else if (Platform.isMacOS) {
-      // macOS: 以 root 重启，传递 homeDir 避免 root 使用 /var/root 数据目录
-      if (await relaunchElevated(homeDir: Constants.homeDir.path)) {
-        exit(0);
+      writePending(homeDir: Constants.homeDir.path);
+      try {
+        if (await relaunchElevated()) exit(0);
+        throw TunElevationException('提权失败，请重试');
+      } finally {
+        clearPending();
       }
-      _applyTunConfig(false);
-      throw TunElevationException('提权失败，请重试');
     } else {
-      // Windows: 以管理员重启，同一用户 %APPDATA% 不变，无需传 homeDir
-      if (await relaunchElevated()) {
-        exit(0);
+      writePending();
+      try {
+        if (await relaunchElevated()) exit(0);
+        throw TunElevationException('提权失败，请重试');
+      } finally {
+        clearPending();
       }
-      _applyTunConfig(false);
-      throw TunElevationException('提权失败，请重试');
     }
   }
   _applyTunConfig(true);
