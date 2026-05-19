@@ -46,13 +46,12 @@ Future<void> initCoreConfig() async {
   });
 }
 
-/// 保存配置到磁盘。移动端不持久化 tun 状态（每次启动以代理模式运行）。
+/// 保存配置到磁盘。TUN 和系统代理不持久化，每次启动需手动开启。
 void _saveToDisk() {
-  var config = clashConfig.value;
-  if (!Constants.isDesktop) {
-    config = config.copyWith(tun: TunConfig(enable: false));
-  }
-  config = config.copyWith(mixedSystemProxy: false);
+  final config = clashConfig.value.copyWith(
+    tun: TunConfig(enable: false),
+    mixedSystemProxy: false,
+  );
   CoreConfigStorage.save(config);
 }
 
@@ -268,40 +267,6 @@ void _applyTunConfig(bool enable) {
     tun: TunConfig(enable: enable),
     mixedSystemProxy: enable ? false : c.mixedSystemProxy,
   ));
-}
-
-/// 启动时检测 TUN 配置与提权状态是否一致。
-/// TUN 已启用但进程未提权时，自动触发提权流程；
-/// 提权失败则静默禁用 TUN，继续正常启动。
-Future<void> ensureTunElevation() async {
-  if (!Constants.isDesktop) return;
-  if (!clashConfig.value.tunEnabled) return;
-  if (coreElevated.value) return;
-
-  LogFileWriter.instance?.log(
-    'ensureTunElevation: TUN enabled but not elevated',
-    name: 'tun',
-  );
-
-  bool ok;
-  if (Platform.isLinux) {
-    ok = await setupTunCapability();
-    if (ok) ok = await relaunchSelf();
-  } else if (Platform.isMacOS) {
-    ok = await relaunchElevated(homeDir: Constants.homeDir.path);
-  } else {
-    ok = await relaunchElevated();
-  }
-
-  if (ok) {
-    exit(0);
-  }
-
-  LogFileWriter.instance?.log(
-    'ensureTunElevation: elevation failed, disabling TUN',
-    name: 'tun',
-  );
-  _applyTunConfig(false);
 }
 
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
