@@ -15,8 +15,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
-/// 总开关开启的时间戳（毫秒），每次切换时重置。
-int switchedAt = 0;
 
 Timer? _reloadTimer;
 bool _internalUpdate = false;
@@ -146,7 +144,6 @@ Future<void> toggleTun(bool enable) async {
   } else {
     await disableTun();
   }
-  switchedAt = enable ? DateTime.now().millisecondsSinceEpoch : 0;
   LogFileWriter.instance?.log(
     'toggleTun($enable): ${sw.elapsedMilliseconds}ms',
     name: 'tun',
@@ -174,7 +171,6 @@ Future<void> toggleSystemProxy(bool enable) async {
   } else {
     await disableSystemProxy();
   }
-  switchedAt = enable ? DateTime.now().millisecondsSinceEpoch : 0;
 }
 
 Future<void> enableTun() async {
@@ -272,7 +268,6 @@ void _applyTunConfig(bool enable) {
 /// 提权重启后自动启用 TUN（仅内存，不持久化）。
 void applyStartupTun() {
   clashConfig.value = clashConfig.value.copyWith(tun: TunConfig(enable: true));
-  switchedAt = DateTime.now().millisecondsSinceEpoch;
 }
 
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
