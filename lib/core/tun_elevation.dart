@@ -127,15 +127,16 @@ Future<bool> relaunchElevated({String? homeDir}) async {
       // osascript 弹出系统授权对话框，用户输入密码后以 root 运行可执行文件。
       // & 后台运行：do shell script 同步等待命令完成，GUI 应用不退出会导致 osascript 挂起。
       // 传递 --home-dir 确保以 root 运行时仍使用用户的配置目录。
+      // Process.run 等待 osascript 返回，用户取消授权时 exitCode != 0。
       final cmd = homeDir != null
           ? "'$exe' --home-dir '$homeDir'"
           : "'$exe'";
-      await Process.start(
+      final result = await Process.run(
         'osascript',
         ['-e', 'do shell script "$cmd &" with administrator privileges'],
-        mode: ProcessStartMode.detached,
       );
-      // osascript 异步启动新进程，等待其完成初始化
+      if (result.exitCode != 0) return false;
+      // osascript 返回后新进程刚启动，等待其完成初始化
       await Future.delayed(const Duration(milliseconds: 200));
     } else if (Platform.isWindows) {
       // 通过 ShellExecuteExW + "runas" 直接触发 UAC，不依赖 PowerShell。
