@@ -201,9 +201,9 @@ class _SpeedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final traffic = LibCore.instance.trafficSignal.value;
-      final up = traffic?.up ?? 0;
-      final down = traffic?.down ?? 0;
+      final stats = LibCore.instance.statsSignal.value;
+      final up = stats?.up ?? 0;
+      final down = stats?.down ?? 0;
       return LayoutBuilder(
         builder: (_, constraints) {
           final narrow = constraints.maxWidth < 200;
@@ -289,8 +289,8 @@ class _RuntimeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final traffic = LibCore.instance.trafficSignal.value;
-      final memory = traffic?.memory ?? 0;
+      final stats = LibCore.instance.statsSignal.value;
+      final memory = stats?.memory ?? 0;
       final theme = Theme.of(context);
       return _CardShell(
         icon: Icons.memory,
@@ -321,8 +321,7 @@ class _ToggleFab extends StatelessWidget {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
-      final traffic = LibCore.instance.trafficSignal.value;
-      final startedAt = traffic?.startedAt ?? 0;
+      final stats = LibCore.instance.statsSignal.value;
       final cs = Theme.of(context).colorScheme;
       final disabled = !hasProfile;
 
@@ -382,15 +381,12 @@ class _ToggleFab extends StatelessWidget {
                                 !hasProfile
                                     ? '请先添加配置'
                                     : on
-                                        ? (() {
-                                            final d = formatDuration(startedAt);
-                                            return d.isEmpty ? '00:00' : d;
-                                          })()
+                                        ? formatDuration(stats?.startedAt ?? 0)
                                         : '开启',
                                 key: ValueKey(!hasProfile
                                     ? 'none'
                                     : on
-                                        ? 'on-$startedAt'
+                                        ? 'on-${stats?.startedAt ?? 0}'
                                         : 'off'),
                                 style: TextStyle(color: fgColor, fontWeight: FontWeight.w600),
                               ),
@@ -433,9 +429,9 @@ class _TrafficTotalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final traffic = LibCore.instance.trafficSignal.value;
-      final upTotal = traffic?.upTotal ?? 0;
-      final downTotal = traffic?.downTotal ?? 0;
+      final stats = LibCore.instance.statsSignal.value;
+      final upTotal = stats?.upTotal ?? 0;
+      final downTotal = stats?.downTotal ?? 0;
       return LayoutBuilder(
         builder: (_, constraints) {
           final narrow = constraints.maxWidth < 200;

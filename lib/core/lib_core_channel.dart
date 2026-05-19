@@ -74,9 +74,9 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<TrafficSnapshot> queryTraffic() async {
+  Future<CoreStats> queryStats() async {
     final json = await _invokeJson('queryStats');
-    return LibCore.parseTrafficJson(json);
+    return LibCore.parseStatsJson(json);
   }
 
   @override
@@ -199,13 +199,13 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  void updateVpnTraffic(TrafficSnapshot traffic) {
+  void updateVpnStats(CoreStats stats) {
     try {
-      _channel.invokeMethod('updateVpnTraffic', {
-        'up': traffic.up,
-        'down': traffic.down,
-        'upTotal': traffic.upTotal,
-        'downTotal': traffic.downTotal,
+      _channel.invokeMethod('updateVpnStats', {
+        'up': stats.up,
+        'down': stats.down,
+        'upTotal': stats.upTotal,
+        'downTotal': stats.downTotal,
       });
     } catch (_) {}
   }

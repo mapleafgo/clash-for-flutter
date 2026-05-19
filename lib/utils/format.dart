@@ -10,9 +10,9 @@ String formatBytes(int value) {
 }
 
 String formatDuration(int startedAtMs) {
-  if (startedAtMs <= 0) return '';
+  if (startedAtMs <= 0) return '00:00';
   final diff = DateTime.now().millisecondsSinceEpoch - startedAtMs;
-  if (diff < 0) return '';
+  if (diff < 0) return '00:00';
   final duration = Duration(milliseconds: diff);
   final h = duration.inHours;
   final m = duration.inMinutes.remainder(60);

@@ -23,7 +23,7 @@ abstract class LibCorePlatform {
   Future<void> destroyCore();
   Future<void> resetNetwork();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
-  Future<TrafficSnapshot> queryTraffic();
+  Future<CoreStats> queryStats();
   Future<ConnectionEventsPayload> queryConnections();
   Future<String> queryMode();
   Future<String> queryState();
@@ -49,7 +49,7 @@ abstract class LibCorePlatform {
   });
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
-  void updateVpnTraffic(TrafficSnapshot traffic);
+  void updateVpnStats(CoreStats stats);
 }
 
 class LibCore {
@@ -65,7 +65,7 @@ class LibCore {
   late final LibCorePlatform _platform;
   FfiWorker? _worker;
 
-  final trafficSignal = signal<TrafficSnapshot?>(null);
+  final statsSignal = signal<CoreStats?>(null);
   final activeConnectionsSignal = signal<int>(0);
   final proxiesSignal = signal<List<ProxyGroup>>([]);
   final selectedProxySignal = signal<Map<String, String>>({});
@@ -141,6 +141,8 @@ class LibCore {
             proxyTogglingSignal.value = false;
           }
           stopPolling();
+          statsSignal.value = null;
+          activeConnectionsSignal.value = 0;
           proxiesSignal.value = [];
           _proxyDelays.value = {};
         }
@@ -157,16 +159,18 @@ class LibCore {
     _proxyDelays.value = current;
   }
 
+  void clearStats() { statsSignal.value = null; }
+
   void _onKernelRunning() {
-    startPolling();
     _queryAndUpdate();
     _fetchAvailableModes();
+    startPolling();
   }
 
   // --- Polling ---
 
   void startPolling() {
-    _pollTimer?.cancel();
+    if (_pollTimer != null) return;
     _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
   }
 
@@ -181,13 +185,13 @@ class LibCore {
     try {
       if (stateSignal.peek() != kStateRunning) return;
 
-      final raw = await queryTraffic();
+      final raw = await queryStats();
       final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
       final downSpeed = (raw.downTotal - _prevDownTotal).clamp(0, raw.downTotal);
       _prevUpTotal = raw.upTotal;
       _prevDownTotal = raw.downTotal;
 
-      final traffic = TrafficSnapshot(
+      final stats = CoreStats(
         up: upSpeed,
         down: downSpeed,
         upTotal: raw.upTotal,
@@ -196,21 +200,21 @@ class LibCore {
         connections: raw.connections,
         startedAt: raw.startedAt,
       );
-      trafficSignal.value = traffic;
-      activeConnectionsSignal.value = traffic.connections;
-      _updateVpnTraffic(traffic);
+      statsSignal.value = stats;
+      activeConnectionsSignal.value = stats.connections;
+      _updateVpnStats(stats);
 
       // 检测异常：有上传无下载 或 内存/连接数异常
       if (upSpeed > 1024 && downSpeed == 0) {
         LogFileWriter.instance?.log(
-          'traffic anomaly: up=$upSpeed down=$downSpeed conns=${traffic.connections} mem=${traffic.memory}',
+          'traffic anomaly: up=$upSpeed down=$downSpeed conns=${stats.connections} mem=${stats.memory}',
           level: LogLevel.warning,
           name: 'tun',
         );
       }
-      if (traffic.memory > 100 * 1024 * 1024 || traffic.connections > 500) {
+      if (stats.memory > 100 * 1024 * 1024 || stats.connections > 500) {
         LogFileWriter.instance?.log(
-          'resource pressure: mem=${(traffic.memory / 1024 / 1024).toStringAsFixed(1)}MB conns=${traffic.connections}',
+          'resource pressure: mem=${(stats.memory / 1024 / 1024).toStringAsFixed(1)}MB conns=${stats.connections}',
           level: LogLevel.warning,
           name: 'tun',
         );
@@ -252,7 +256,7 @@ class LibCore {
   Future<void> resetNetwork() => _platform.resetNetwork();
   Future<List<ProxyGroup>> queryProxies() async =>
       (await _platform.queryProxies()).$1;
-  Future<TrafficSnapshot> queryTraffic() => _platform.queryTraffic();
+  Future<CoreStats> queryStats() => _platform.queryStats();
   Future<ConnectionEventsPayload> queryConnections() =>
       _platform.queryConnections();
   Future<void> selectProxy(String group, String tag) async {
@@ -331,11 +335,11 @@ class LibCore {
     }).catchError((_) {});
   }
 
-  // --- VPN traffic ---
+  // --- VPN stats ---
 
-  void _updateVpnTraffic(TrafficSnapshot traffic) {
+  void _updateVpnStats(CoreStats stats) {
     if (Constants.isDesktop) return;
-    _platform.updateVpnTraffic(traffic);
+    _platform.updateVpnStats(stats);
   }
 
   // --- Shared response parsers ---
@@ -362,9 +366,9 @@ class LibCore {
     return (groups, delays);
   }
 
-  static TrafficSnapshot parseTrafficJson(dynamic json) {
-    if (json is! Map<String, dynamic>) return TrafficSnapshot();
-    return TrafficSnapshot.fromKernelJson(json);
+  static CoreStats parseStatsJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return CoreStats();
+    return CoreStats.fromKernelJson(json);
   }
 
   static ConnectionEventsPayload parseConnectionsJson(dynamic json) {
@@ -430,9 +434,9 @@ class _FfiWorkerBackend implements LibCorePlatform {
   }
 
   @override
-  Future<TrafficSnapshot> queryTraffic() async {
+  Future<CoreStats> queryStats() async {
     final json = await _worker.invoke<dynamic>('CoreQueryStats');
-    return LibCore.parseTrafficJson(json);
+    return LibCore.parseStatsJson(json);
   }
 
   @override
@@ -537,5 +541,5 @@ class _FfiWorkerBackend implements LibCorePlatform {
   Future<bool> isVpnRunning() async => false;
 
   @override
-  void updateVpnTraffic(TrafficSnapshot traffic) {}
+  void updateVpnStats(CoreStats stats) {}
 }

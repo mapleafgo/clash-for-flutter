@@ -184,8 +184,8 @@ class MainActivity : FlutterFragmentActivity() {
             "getVersion" -> safeReply(result) { Mobile.getVersion() }
             "requestNotificationPermission" -> safeCall(result) { requestNotificationPermission() }
             "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
-            "updateVpnTraffic" -> safeCall(result) {
-                vpnService?.updateTraffic(
+            "updateVpnStats" -> safeCall(result) {
+                vpnService?.updateStats(
                     up = args?.getLong("up") ?: 0,
                     down = args?.getLong("down") ?: 0,
                     upTotal = args?.getLong("upTotal") ?: 0,

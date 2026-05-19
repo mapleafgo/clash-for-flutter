@@ -1,4 +1,4 @@
-class TrafficSnapshot {
+class CoreStats {
   final int up;
   final int down;
   final int upTotal;
@@ -7,7 +7,7 @@ class TrafficSnapshot {
   final int connections;
   final int startedAt;
 
-  TrafficSnapshot({
+  CoreStats({
     this.up = 0,
     this.down = 0,
     this.upTotal = 0,
@@ -17,7 +17,7 @@ class TrafficSnapshot {
     this.startedAt = 0,
   });
 
-  factory TrafficSnapshot.fromKernelJson(Map<String, dynamic> json) => TrafficSnapshot(
+  factory CoreStats.fromKernelJson(Map<String, dynamic> json) => CoreStats(
     upTotal: (json['up'] as num?)?.toInt() ?? 0,
     downTotal: (json['down'] as num?)?.toInt() ?? 0,
     memory: (json['memory'] as num?)?.toInt() ?? 0,
@@ -35,5 +35,3 @@ class TrafficSnapshot {
     'started_at': startedAt,
   };
 }
-
-typedef NetSpeed = TrafficSnapshot;
