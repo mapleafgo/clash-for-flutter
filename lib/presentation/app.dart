@@ -12,6 +12,8 @@ import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+const _windowsEmojiFallback = ['NotoColorEmoji', 'Segoe UI Emoji'];
+
 final appReady = signal(false);
 
 class App extends StatefulWidget {
@@ -87,13 +89,13 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.light,
-          textTheme: _emojiAwareTextTheme(Brightness.light),
+          fontFamilyFallback: Platform.isWindows ? _windowsEmojiFallback : null,
         ),
         darkTheme: ThemeData(
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.dark,
-          textTheme: _emojiAwareTextTheme(Brightness.dark),
+          fontFamilyFallback: Platform.isWindows ? _windowsEmojiFallback : null,
         ),
         themeMode: resolvedThemeMode,
         routerConfig: ready ? router : _splashRouter,
@@ -120,14 +122,4 @@ class _SplashPage extends StatelessWidget {
       ),
     );
   }
-}
-
-// Windows Segoe UI Emoji 不支持国旗，通过全局 textTheme 添加 fallback
-TextTheme? _emojiAwareTextTheme(Brightness brightness) {
-  if (!Platform.isWindows) return null;
-  final base = ThemeData(brightness: brightness).textTheme;
-  const fallback = ['Segoe UI Emoji'];
-  return base.apply(
-    fontFamilyFallback: fallback,
-  );
 }

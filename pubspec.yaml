@@ -62,6 +62,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+  fonts:
+    - family: NotoColorEmoji
+      fonts:
+        - asset: assets/fonts/NotoColorEmoji-Regular.ttf
 
 ffigen:
   name: "LibCoreBindings"
