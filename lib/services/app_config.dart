@@ -304,7 +304,10 @@ String mergeProfileConfig(String yamlContent) {
         editor.update(['tun', 'strict-route'], true);
       }
       if (tun is! YamlMap || !tun.containsKey('device')) {
-        editor.update(['tun', 'device'], 'singcast');
+        // macOS utun 不接受自定义名称，不设置 device 让内核自动分配 utun0/utun1
+        if (!Platform.isMacOS) {
+          editor.update(['tun', 'device'], 'singcast');
+        }
       }
       // 移动端使用 gvisor 栈，避免 mixed/system 栈在 Android 上
       // SO_BINDTODEVICE 权限不足导致 "bind forwarder to interface" 失败

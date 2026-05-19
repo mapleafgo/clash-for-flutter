@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:singcast/core/lib_core.dart';
@@ -391,6 +392,9 @@ class _ProxyTile extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: selected ? FontWeight.w600 : null,
                   color: selected ? cs.primary : null,
+                  fontFamilyFallback: Platform.isWindows
+                      ? const ['Segoe UI Emoji']
+                      : null,
                 )),
             subtitle:
                 Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
