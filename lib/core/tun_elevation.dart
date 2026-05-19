@@ -31,9 +31,16 @@ Future<void> get elevationReady => _ready ?? Future.value();
 Future<void>? _ready;
 
 bool _isRunningAsRoot() {
-  return Platform.environment['USER'] == 'root' ||
-      Platform.environment['SUDO_UID'] != null ||
-      Platform.environment['PKEXEC_UID'] != null;
+  if (Platform.environment['USER'] == 'root') return true;
+  if (Platform.environment['SUDO_UID'] != null) return true;
+  if (Platform.environment['PKEXEC_UID'] != null) return true;
+  // osascript 提权后 USER 环境变量可能不是 root，通过 id -u 检查实际 UID
+  try {
+    final result = Process.runSync('id', ['-u']);
+    return result.exitCode == 0 && result.stdout.toString().trim() == '0';
+  } catch (_) {
+    return false;
+  }
 }
 
 Future<void> _checkCapabilityAsync() async {
