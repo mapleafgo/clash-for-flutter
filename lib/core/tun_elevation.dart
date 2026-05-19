@@ -129,7 +129,7 @@ Future<bool> relaunchElevated() async {
     if (Platform.isMacOS) {
       final result = await Process.run('osascript', [
         '-e',
-        'do shell script "\'$exe\' &" with administrator privileges',
+        'do shell script "\'$exe\' >/dev/null 2>&1 &" with administrator privileges',
       ]);
       if (result.exitCode != 0) return false;
       await Future.delayed(const Duration(milliseconds: 200));
