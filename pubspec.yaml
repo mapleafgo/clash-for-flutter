@@ -148,4 +148,4 @@ flutter_launcher_icons:
     image_path: "assets/icon_padded.png"
   windows:
     generate: true
-    image_path: "assets/icon_padded.png"
+    image_path: "assets/icon.png"
