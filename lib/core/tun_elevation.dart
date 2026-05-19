@@ -103,7 +103,7 @@ Future<bool> relaunchSelf() async {
   try {
     await Process.start(
       Platform.resolvedExecutable,
-      [],
+      ['--enable-tun'],
       workingDirectory: Directory.current.path,
       mode: ProcessStartMode.detached,
     );
@@ -129,8 +129,8 @@ Future<bool> relaunchElevated({String? homeDir}) async {
       // 传递 --home-dir 确保以 root 运行时仍使用用户的配置目录。
       // Process.run 等待 osascript 返回，用户取消授权时 exitCode != 0。
       final cmd = homeDir != null
-          ? "'$exe' --home-dir '$homeDir'"
-          : "'$exe'";
+          ? "'$exe' --home-dir '$homeDir' --enable-tun"
+          : "'$exe' --enable-tun";
       final result = await Process.run(
         'osascript',
         ['-e', 'do shell script "$cmd &" with administrator privileges'],
@@ -143,7 +143,7 @@ Future<bool> relaunchElevated({String? homeDir}) async {
       // 调用阻塞直到用户响应 UAC 对话框，成功时新进程已启动，无需 delay。
       // --elevated 标志让 main.cpp 跳过 FindWindow 单例检测。
       final exeDir = File(exe).parent.path;
-      return runElevated(exe: exe, args: '--elevated', workingDir: exeDir);
+      return runElevated(exe: exe, args: '--elevated --enable-tun', workingDir: exeDir);
     }
 
     return true;

@@ -269,6 +269,12 @@ void _applyTunConfig(bool enable) {
   ));
 }
 
+/// 提权重启后自动启用 TUN（仅内存，不持久化）。
+void applyStartupTun() {
+  clashConfig.value = clashConfig.value.copyWith(tun: TunConfig(enable: true));
+  switchedAt = DateTime.now().millisecondsSinceEpoch;
+}
+
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
 void ensureTunEnabled(bool enabled) {
   if (clashConfig.value.tunEnabled != enabled) {
