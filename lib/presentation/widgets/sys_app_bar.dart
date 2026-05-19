@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
@@ -19,6 +21,9 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
       );
     }
 
+    // macOS 红绿灯已提供关闭功能，不显示额外关闭按钮
+    final needClose = showClose && !Platform.isMacOS;
+
     return DragToMoveArea(
       child: AppBar(
         titleSpacing: 0,
@@ -26,7 +31,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
         title: Text(title),
         actions: [
           const _KernelStateIcon(),
-          if (showClose)
+          if (needClose)
             IconButton(
               icon: const Icon(Icons.close),
               tooltip: '关闭',

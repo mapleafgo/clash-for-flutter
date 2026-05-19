@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,10 @@ class DesktopShell extends StatelessWidget {
   final StatefulNavigationShell shell;
   const DesktopShell({super.key, required this.shell});
 
+  /// macOS 红绿灯按钮区域高度，为 leading 图标留出间距
+  static const _macOSTitleBarPadding = 40.0;
+  static const _defaultLeadingPadding = 16.0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -17,7 +23,12 @@ class DesktopShell extends StatelessWidget {
           onDestinationSelected: (i) => _navigate(context, i),
           labelType: NavigationRailLabelType.all,
           leading: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.only(
+              top: Platform.isMacOS
+                  ? _macOSTitleBarPadding
+                  : _defaultLeadingPadding,
+              bottom: _defaultLeadingPadding,
+            ),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onPanStart: (_) => windowManager.startDragging(),
