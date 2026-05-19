@@ -63,7 +63,9 @@ Future<void> _initApp({bool tunPending = false}) async {
   final sw = Stopwatch()..start();
 
   await LibCore.instance.init();
-  _log('[startup] LibCore.init: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}');
+  _log(
+    '[startup] LibCore.init: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',
+  );
 
   // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
@@ -75,7 +77,9 @@ Future<void> _initApp({bool tunPending = false}) async {
   } catch (e) {
     initError.value = '内核初始化失败: $e';
   }
-  _log('[startup] initCore: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}');
+  _log(
+    '[startup] initCore: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',
+  );
 
   await initCoreConfig();
   _log('[startup] initCoreConfig: ${sw.elapsedMilliseconds}ms');
@@ -88,7 +92,9 @@ Future<void> _initApp({bool tunPending = false}) async {
   if (!Constants.isDesktop) {
     await LibCore.instance.syncKernelState();
     final syncedState = LibCore.instance.stateSignal.peek();
-    _log('[startup] syncKernelState: ${sw.elapsedMilliseconds}ms syncedState=$syncedState');
+    _log(
+      '[startup] syncKernelState: ${sw.elapsedMilliseconds}ms syncedState=$syncedState',
+    );
     if (syncedState == LibCore.kStateRunning) {
       vpnConnected.value = true;
       ensureTunEnabled(true);
@@ -98,30 +104,40 @@ Future<void> _initApp({bool tunPending = false}) async {
 
   // 提权重启后自动启用 TUN（标记文件由 relaunchSelf/relaunchElevated 写入 /tmp）
   // 必须在 startWatchingSelectedFile 之前，确保 effect 触发时 clashConfig 已含 TUN 配置
-  _log('[startup] tunPending=$tunPending executableArguments: ${Platform.executableArguments}');
+  _log(
+    '[startup] tunPending=$tunPending executableArguments: ${Platform.executableArguments}',
+  );
   if (tunPending) {
     applyStartupTun();
-    _log('[startup] applyStartupTun: auto-enabling TUN after elevation restart');
+    _log(
+      '[startup] applyStartupTun: auto-enabling TUN after elevation restart',
+    );
   }
 
   startWatchingSelectedFile();
-  _log('[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}');
+  _log(
+    '[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}',
+  );
 
   // 有配置文件且内核未运行时，直接激活 profile（不 await，内核后台启动，UI 先渲染）
   final state = LibCore.instance.stateSignal.peek();
-  if (selectedFile.value != null && state != LibCore.kStateRunning && state != LibCore.kStateStarting) {
+  if (selectedFile.value != null &&
+      state != LibCore.kStateRunning &&
+      state != LibCore.kStateStarting) {
     asyncProfile();
   }
 
   // 无配置文件时内核不会启动，手动将状态设为"就绪"
-  if (selectedFile.value == null && LibCore.instance.stateSignal.peek() == LibCore.kStateCreated) {
+  if (selectedFile.value == null &&
+      LibCore.instance.stateSignal.peek() == LibCore.kStateCreated) {
     LibCore.instance.stateSignal.value = LibCore.kStateInitialized;
   }
-  _log('[startup] done: ${sw.elapsedMilliseconds}ms finalState=${LibCore.instance.stateSignal.peek()}');
+  _log(
+    '[startup] done: ${sw.elapsedMilliseconds}ms finalState=${LibCore.instance.stateSignal.peek()}',
+  );
 }
 
 void _log(String msg) {
-  print(msg);
   LogFileWriter.instance?.log(msg, name: 'startup');
 }
 

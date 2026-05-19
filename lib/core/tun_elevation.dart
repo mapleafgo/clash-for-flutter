@@ -39,8 +39,9 @@ bool _isRunningAsRoot() {
 Future<void> _checkCapabilityAsync() async {
   try {
     final result = await Process.run('getcap', [Platform.resolvedExecutable]);
-    coreElevated.value =
-        (result.stdout ?? '').toString().contains('cap_net_admin');
+    coreElevated.value = (result.stdout ?? '').toString().contains(
+      'cap_net_admin',
+    );
   } catch (_) {
     coreElevated.value = false;
   }
@@ -90,7 +91,12 @@ setcap cap_net_admin,cap_net_raw,cap_net_bind_service+ep "$1"
 ''';
 
     final result = await Process.run('pkexec', [
-      'sh', '-c', script, 'sh', exe, libDir,
+      'sh',
+      '-c',
+      script,
+      'sh',
+      exe,
+      libDir,
     ]);
     return result.exitCode == 0;
   } catch (_) {
@@ -121,10 +127,10 @@ Future<bool> relaunchElevated() async {
 
   try {
     if (Platform.isMacOS) {
-      final result = await Process.run(
-        'osascript',
-        ['-e', 'do shell script "\'$exe\' &" with administrator privileges'],
-      );
+      final result = await Process.run('osascript', [
+        '-e',
+        'do shell script "\'$exe\' &" with administrator privileges',
+      ]);
       if (result.exitCode != 0) return false;
       await Future.delayed(const Duration(milliseconds: 200));
     } else if (Platform.isWindows) {
@@ -143,10 +149,9 @@ const _pendingFile = '.singcast_pending';
 /// 写入提权标记文件，在 relaunch 前调用。
 /// 内容为 macOS 上需要覆盖的 home 目录路径，其他平台为空。
 void writePending({String? homeDir}) {
-  try {
-    File('${Directory.systemTemp.path}/$_pendingFile')
-        .writeAsStringSync(homeDir ?? '');
-  } catch (_) {}
+  File(
+    '${Directory.systemTemp.path}/$_pendingFile',
+  ).writeAsStringSync(homeDir ?? '');
 }
 
 void clearPending() {
@@ -163,7 +168,7 @@ String? checkAndConsumePending() {
     if (file.existsSync()) {
       final content = file.readAsStringSync().trim();
       file.deleteSync();
-      return content.isNotEmpty ? content : null;
+      return content;
     }
   } catch (_) {}
   return null;

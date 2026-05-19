@@ -15,7 +15,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
-
 Timer? _reloadTimer;
 bool _internalUpdate = false;
 
@@ -152,10 +151,9 @@ Future<void> toggleTun(bool enable) async {
 
 Future<void> enableSystemProxy() async {
   if (!Constants.isDesktop) return;
-  _updateConfig((c) => c.copyWith(
-    mixedSystemProxy: true,
-    tun: TunConfig(enable: false),
-  ));
+  _updateConfig(
+    (c) => c.copyWith(mixedSystemProxy: true, tun: TunConfig(enable: false)),
+  );
   await asyncProfile();
 }
 
@@ -222,28 +220,19 @@ Future<void> _enableTunDesktop() async {
         throw TunElevationException('授予网络权限失败，请确认 pkexec 及 patchelf 可用');
       }
       writePending();
-      try {
-        if (await relaunchSelf()) exit(0);
-        throw TunElevationException('重启应用失败');
-      } finally {
-        clearPending();
-      }
+      if (await relaunchSelf()) exit(0);
+      clearPending();
+      throw TunElevationException('重启应用失败');
     } else if (Platform.isMacOS) {
       writePending(homeDir: Constants.homeDir.path);
-      try {
-        if (await relaunchElevated()) exit(0);
-        throw TunElevationException('提权失败，请重试');
-      } finally {
-        clearPending();
-      }
+      if (await relaunchElevated()) exit(0);
+      clearPending();
+      throw TunElevationException('提权失败，请重试');
     } else {
       writePending();
-      try {
-        if (await relaunchElevated()) exit(0);
-        throw TunElevationException('提权失败，请重试');
-      } finally {
-        clearPending();
-      }
+      if (await relaunchElevated()) exit(0);
+      clearPending();
+      throw TunElevationException('提权失败，请重试');
     }
   }
   _applyTunConfig(true);
@@ -257,10 +246,12 @@ Future<void> _disableTunDesktop() async {
 }
 
 void _applyTunConfig(bool enable) {
-  _updateConfig((c) => c.copyWith(
-    tun: TunConfig(enable: enable),
-    mixedSystemProxy: enable ? false : c.mixedSystemProxy,
-  ));
+  _updateConfig(
+    (c) => c.copyWith(
+      tun: TunConfig(enable: enable),
+      mixedSystemProxy: enable ? false : c.mixedSystemProxy,
+    ),
+  );
 }
 
 /// 提权重启后自动启用 TUN（仅内存，不持久化）。
