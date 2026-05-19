@@ -1,8 +1,7 @@
-import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/services/app_config.dart';
-import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/utils/constants.dart';
 import 'package:window_manager/window_manager.dart';
 
 class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -53,12 +52,20 @@ class _KernelStateIcon extends StatelessWidget {
         padding: EdgeInsets.only(right: Constants.isDesktop ? 8 : 12),
         child: switch (state) {
           LibCore.kStateCreated || LibCore.kStateStarting => const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          LibCore.kStateInitialized => Icon(Icons.circle, size: 12, color: Colors.grey.shade400),
-          LibCore.kStateDestroyed => Icon(Icons.circle, size: 12, color: Colors.red.shade400),
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          LibCore.kStateInitialized => Icon(
+            Icons.circle,
+            size: 12,
+            color: Colors.grey.shade400,
+          ),
+          LibCore.kStateDestroyed => Icon(
+            Icons.circle,
+            size: 12,
+            color: Colors.red.shade400,
+          ),
           _ => Icon(Icons.circle, size: 12, color: Colors.green),
         },
       );
