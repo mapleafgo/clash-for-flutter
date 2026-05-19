@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "cn.mapleafgo" "\0"
-            VALUE "FileDescription", "clash_for_flutter" "\0"
+            VALUE "FileDescription", "Singcast" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "clash_for_flutter" "\0"
+            VALUE "InternalName", "singcast" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2022 cn.mapleafgo. All rights reserved." "\0"
-            VALUE "OriginalFilename", "clash_for_flutter.exe" "\0"
-            VALUE "ProductName", "clash_for_flutter" "\0"
+            VALUE "OriginalFilename", "singcast.exe" "\0"
+            VALUE "ProductName", "Singcast" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

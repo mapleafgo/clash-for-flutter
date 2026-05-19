@@ -1,17 +1,17 @@
 import 'dart:io';
 
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/core/win_elevation.dart';
 
 final coreElevated = signal(false);
 
 /// 检测当前进程是否具备 TUN 所需的特权。
 ///
-/// - Linux: 检查 root 或 cap_net_admin capability
+/// - Linux: 检查 root 或 cap_net_admin capability（异步）
 /// - macOS: 检查 root（osascript 提权后进程以 root 运行）
-/// - Windows: 检查管理员组成员身份
+/// - Windows: 通过 FFI 检查 TokenElevation（同步，无需 PowerShell）
 ///
-/// 注意: Linux getcap 和 Windows 管理员检测是异步的，
-/// 调用方应 await [elevationReady] 确保检测完成。
+/// Linux getcap 是异步的，调用方应 await [elevationReady] 确保检测完成。
 void detectElevation() {
   if (Platform.isLinux) {
     if (_isRunningAsRoot()) {
@@ -22,11 +22,11 @@ void detectElevation() {
   } else if (Platform.isMacOS) {
     coreElevated.value = _isRunningAsRoot();
   } else if (Platform.isWindows) {
-    _ready = _checkWindowsAdminAsync();
+    coreElevated.value = isWindowsAdmin();
   }
 }
 
-/// 等待异步提权检测完成（Linux getcap / Windows 管理员检测）。
+/// 等待异步提权检测完成（仅 Linux getcap 需要）。
 Future<void> get elevationReady => _ready ?? Future.value();
 Future<void>? _ready;
 
@@ -41,21 +41,6 @@ Future<void> _checkCapabilityAsync() async {
     final result = await Process.run('getcap', [Platform.resolvedExecutable]);
     coreElevated.value =
         (result.stdout ?? '').toString().contains('cap_net_admin');
-  } catch (_) {
-    coreElevated.value = false;
-  }
-}
-
-Future<void> _checkWindowsAdminAsync() async {
-  try {
-    final result = await Process.run('powershell', [
-      '-Command', '-NoProfile',
-      '(New-Object Security.Principal.WindowsPrincipal('
-          '[Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole('
-          '[Security.Principal.WindowsBuiltInRole]::Administrator)',
-    ]);
-    coreElevated.value = result.exitCode == 0 &&
-        (result.stdout ?? '').toString().trim() == 'True';
   } catch (_) {
     coreElevated.value = false;
   }
@@ -122,7 +107,6 @@ Future<bool> relaunchSelf() async {
       workingDirectory: Directory.current.path,
       mode: ProcessStartMode.detached,
     );
-    // 等待新进程完成初始化，避免 exit(0) 过早终止当前进程
     await Future.delayed(const Duration(milliseconds: 200));
     return true;
   } catch (_) {
@@ -151,16 +135,16 @@ Future<bool> relaunchElevated({String? homeDir}) async {
         ['-e', 'do shell script "$cmd &" with administrator privileges'],
         mode: ProcessStartMode.detached,
       );
+      // osascript 异步启动新进程，等待其完成初始化
+      await Future.delayed(const Duration(milliseconds: 200));
     } else if (Platform.isWindows) {
-      // Windows 以管理员运行仍是同一用户，%APPDATA% 路径不变，无需 --home-dir。
-      // Start-Process -Verb RunAs 触发 UAC，启动后立即返回，不会阻塞。
-      await Process.start(
-        'powershell',
-        ['-Command', '-NoProfile', 'Start-Process -Verb RunAs -FilePath "$exe"'],
-      );
+      // 通过 ShellExecuteExW + "runas" 直接触发 UAC，不依赖 PowerShell。
+      // 调用阻塞直到用户响应 UAC 对话框，成功时新进程已启动，无需 delay。
+      // --elevated 标志让 main.cpp 跳过 FindWindow 单例检测。
+      final exeDir = File(exe).parent.path;
+      return runElevated(exe: exe, args: '--elevated', workingDir: exeDir);
     }
 
-    await Future.delayed(const Duration(milliseconds: 200));
     return true;
   } catch (_) {
     return false;
