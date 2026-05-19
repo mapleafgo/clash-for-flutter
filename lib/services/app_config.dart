@@ -208,6 +208,9 @@ Future<bool> _activateProfile(String yamlPath) async {
       return true;
     }
 
+    // 即将重启内核，清除旧统计数据避免短暂显示上次运行时长
+    LibCore.instance.clearStats();
+
     // 步骤 1: 预验证新配置（配置未变时跳过，仅配置变更时验证）
     if (_lastWorkingConfig != null && merged != _lastWorkingConfig) {
       try {

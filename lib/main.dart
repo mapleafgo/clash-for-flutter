@@ -91,14 +91,15 @@ Future<void> _initApp() async {
     }
   }
 
-  startWatchingSelectedFile();
-  print('[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}');
-
   // 提权重启后自动启用 TUN（--enable-tun 由 relaunchSelf/relaunchElevated 传入）
+  // 必须在 startWatchingSelectedFile 之前，确保 effect 触发时 clashConfig 已含 TUN 配置
   if (Platform.executableArguments.contains('--enable-tun')) {
     applyStartupTun();
     print('[startup] applyStartupTun: auto-enabling TUN after elevation restart');
   }
+
+  startWatchingSelectedFile();
+  print('[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}');
 
   // 有配置文件且内核未运行时，直接激活 profile（不 await，内核后台启动，UI 先渲染）
   final state = LibCore.instance.stateSignal.peek();

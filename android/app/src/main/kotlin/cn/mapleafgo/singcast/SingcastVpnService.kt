@@ -91,6 +91,7 @@ class SingcastVpnService : VpnService() {
             ACTION_DISCONNECT_NOTIFY -> {
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (notification button)")
                 disconnect("notification_button")
+                stopSelf()
             }
         }
         return START_NOT_STICKY
@@ -251,7 +252,7 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "refreshConfig: done")
     }
 
-    fun updateTraffic(up: Long, down: Long, upTotal: Long, downTotal: Long) {
+    fun updateStats(up: Long, down: Long, upTotal: Long, downTotal: Long) {
         lastUp = up
         lastDown = down
         lastUpTotal = upTotal
