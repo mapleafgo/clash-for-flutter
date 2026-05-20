@@ -145,7 +145,7 @@ class SingcastVpnService : VpnService() {
     private fun establishTun(enableIpv6: Boolean = true): Int {
         AppLog.d(TAG, "establishTun: creating VPN interface (ipv6=$enableIpv6)")
         val builder = Builder()
-            .setSession("singcast")
+            .setSession("tun0")
             .setMtu(1500)
             .addAddress("172.18.0.1", 30)
             .addRoute("0.0.0.0", 0)

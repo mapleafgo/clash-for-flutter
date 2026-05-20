@@ -61,16 +61,11 @@ object NetworkMonitor {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
             if (defaultNetworkCallback == null) {
-                val activeNetwork = cm.activeNetwork
-                if (activeNetwork != null) {
-                    defaultNetwork = activeNetwork
-                    reportDefaultInterface(context, activeNetwork)
-                }
+                reportPhysicalDefaultInterface(context, cm.activeNetwork)
 
                 val callback = object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: android.net.Network) {
-                        defaultNetwork = network
-                        reportDefaultInterface(context, network)
+                        reportPhysicalDefaultInterface(context, network)
                     }
                     override fun onLost(network: android.net.Network) {
                         if (defaultNetwork == network) {
@@ -78,7 +73,9 @@ object NetworkMonitor {
                         }
                     }
                 }
-                cm.registerBestMatchingNetworkCallback(defaultNetworkRequest, callback, Handler(Looper.getMainLooper()))
+                // registerNetworkCallback 对所有匹配网络触发回调，包括 WiFi 连上时。
+                // 不用 registerBestMatchingNetworkCallback，它追踪 VPN 网络本身。
+                cm.registerNetworkCallback(defaultNetworkRequest, callback, Handler(Looper.getMainLooper()))
                 defaultNetworkCallback = callback
             }
 
@@ -100,13 +97,23 @@ object NetworkMonitor {
         }
     }
 
+    /** 过滤 VPN/TUN 网络后上报物理默认接口 */
+    private fun reportPhysicalDefaultInterface(context: Context, network: android.net.Network?) {
+        if (network == null) return
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val lp = cm.getLinkProperties(network) ?: return
+        val ifaceName = lp.interfaceName ?: return
+        if (ifaceName.isEmpty() || ifaceName.startsWith("tun") || ifaceName.startsWith("ppp") || ifaceName.startsWith("tap")) return
+        defaultNetwork = network
+        reportDefaultInterface(context, network)
+    }
+
     private fun reportDefaultInterface(context: Context, network: android.net.Network) {
         try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val lp = cm.getLinkProperties(network) ?: return
             val ifaceName = lp.interfaceName ?: return
             if (ifaceName.isEmpty()) return
-            if (ifaceName.startsWith("tun") || ifaceName.startsWith("ppp") || ifaceName.startsWith("tap")) return
             val caps = cm.getNetworkCapabilities(network)
             val metered = caps != null && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
