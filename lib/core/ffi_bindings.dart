@@ -243,18 +243,6 @@ class LibCoreBindings {
   late final _CoreFlushFakeIP =
       _CoreFlushFakeIPPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> CoreQueryDNS(
-      ffi.Pointer<ffi.Char> name, int qType) {
-    return _CoreQueryDNS(name, qType);
-  }
-
-  late final _CoreQueryDNSPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              ffi.Pointer<ffi.Char>, ffi.Int)>>('CoreQueryDNS');
-  late final _CoreQueryDNS = _CoreQueryDNSPtr.asFunction<
-      ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)>();
-
   ffi.Pointer<ffi.Char> CoreFlushDNSCache() {
     return _CoreFlushDNSCache();
   }

@@ -275,9 +275,6 @@ dynamic _dispatch(LibCoreBindings b, String method, Map<String, dynamic>? args) 
       return _parseResultJson(b.CoreQueryRules(), b);
     case 'CoreFlushFakeIP':
       return _parseResult(b.CoreFlushFakeIP(), b);
-    case 'CoreQueryDNS':
-      return _withCString(args!['name'] as String,
-          (p) => _parseResultJson(b.CoreQueryDNS(p, args['qType'] as int), b));
     case 'CoreFlushDNSCache':
       return _parseResult(b.CoreFlushDNSCache(), b);
     case 'CoreTriggerGC':
