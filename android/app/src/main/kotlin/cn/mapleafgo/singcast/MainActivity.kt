@@ -175,14 +175,9 @@ class MainActivity : FlutterFragmentActivity() {
             "flushDNSCache" -> safeCall(result) { Mobile.flushDNSCache() }
             "triggerGC" -> safeCall(result) { Mobile.triggerGC() }
 
-            // Platform
-            "setIncludeAllNetworks" -> safeCall(result) { Mobile.setIncludeAllNetworks(args?.get("v") as? Boolean ?: false) }
-            "setWIFIState" -> safeCall(result) { Mobile.setWIFIState(args?.str("ssid") ?: "", args?.str("bssid") ?: "") }
-
             // Utilities
             "checkConfig" -> safeReply(result) { Mobile.checkConfig(args?.str("content") ?: "") }
             "getVersion" -> safeReply(result) { Mobile.getVersion() }
-            "requestNotificationPermission" -> safeCall(result) { requestNotificationPermission() }
             "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
             "updateVpnStats" -> safeCall(result) {
                 vpnService?.updateStats(
