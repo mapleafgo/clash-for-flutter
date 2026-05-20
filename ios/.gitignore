@@ -27,6 +27,12 @@ Flutter/flutter_export_environment.sh
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
 
+# XcodeGen
+Runner.xcodeproj/project.pbxproj
+
+# CocoaPods
+Podfile.lock
+
 # Exceptions to above rules.
 !default.mode1v3
 !default.mode2v3

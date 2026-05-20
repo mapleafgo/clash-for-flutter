@@ -70,10 +70,6 @@ class AppDelegate: FlutterAppDelegate {
                     try self.singcast.startWithContent(content, ruleSetProxy: proxy)
                 }
             }
-        case "stopCore":
-            runAsync(result: result) {
-                try self.singcast.stop()
-            }
         case "destroyCore":
             singcast.destroy()
             result(nil)
@@ -81,16 +77,6 @@ class AppDelegate: FlutterAppDelegate {
         case "resetNetwork":
             singcast.resetNetwork()
             result(nil)
-
-        // --- Config ---
-        case "reloadTUN":
-            runAsync(result: result) {
-                try self.singcast.reloadTUN()
-            }
-        case "setOverridePackages":
-            runAsync(result: result) {
-                try self.singcast.setOverridePackages(args["overrideJSON"] as? String ?? "{}")
-            }
 
         // --- Queries ---
         case "queryProxies":
@@ -166,8 +152,13 @@ class AppDelegate: FlutterAppDelegate {
 
         // --- Utilities ---
         case "checkConfig":
-            runAsync(result: result) {
-                try self.singcast.checkConfig(args["content"] as? String ?? "")
+            bgQueue.async {
+                do {
+                    try self.singcast.checkConfig(args["content"] as? String ?? "")
+                    DispatchQueue.main.async { result("") }
+                } catch {
+                    DispatchQueue.main.async { result(error.localizedDescription) }
+                }
             }
         case "getVersion":
             result(singcast.version())
@@ -176,7 +167,8 @@ class AppDelegate: FlutterAppDelegate {
         case "connectVpn":
             let config = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
-            startTunnel(configContent: config, ruleSetProxy: proxy, result: result)
+            let ipv6 = args["ipv6"] as? Bool ?? true
+            startTunnel(configContent: config, ruleSetProxy: proxy, ipv6: ipv6, result: result)
         case "disconnectVpn":
             stopTunnel(result: result)
         case "isVpnRunning":
@@ -210,7 +202,7 @@ class AppDelegate: FlutterAppDelegate {
 
     // MARK: - Network Extension
 
-    private func startTunnel(configContent: String, ruleSetProxy: String, result: @escaping FlutterResult) {
+    private func startTunnel(configContent: String, ruleSetProxy: String, ipv6: Bool = true, result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, error in
             if let error = error {
                 result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
@@ -235,6 +227,7 @@ class AppDelegate: FlutterAppDelegate {
                     try (manager.connection as? NETunnelProviderSession)?.startVPNTunnel(options: [
                         "configContent": configContent as NSObject,
                         "ruleSetProxy": ruleSetProxy as NSObject,
+                        "ipv6": ipv6 as NSObject,
                     ])
                     self.vpnConnected = true
                     result(true)
