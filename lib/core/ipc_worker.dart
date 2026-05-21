@@ -74,12 +74,20 @@ class IpcWorker implements LibCorePlatform {
 
   Future<void> disconnect() async {
     await _logSub?.cancel();
+    _logSub = null;
     await _urlTestSub?.cancel();
+    _urlTestSub = null;
     await _modeUpdateSub?.cancel();
+    _modeUpdateSub = null;
     await _connEventSub?.cancel();
+    _connEventSub = null;
     await _stateUpdateSub?.cancel();
+    _stateUpdateSub = null;
     await _trafficUpdateSub?.cancel();
-    await _client?.disconnect();
+    _trafficUpdateSub = null;
+    try {
+      await _client?.disconnect().timeout(const Duration(seconds: 3));
+    } catch (_) {}
     _client?.dispose();
     _client = null;
   }
@@ -174,7 +182,8 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<String> queryState() async => (await _call('core.queryState')) as String;
+  Future<String> queryState() async =>
+      (await _call('core.queryState')) as String? ?? LibCore.kStateCreated;
 
   @override
   Future<void> flushSystemDNS() => _call('core.flushSystemDNS');
@@ -182,6 +191,7 @@ class IpcWorker implements LibCorePlatform {
   @override
   Future<String> queryMode() async {
     final json = await _call('core.queryMode');
+    if (json == null) return '{}';
     return jsonEncode(json);
   }
 
@@ -234,9 +244,7 @@ class IpcWorker implements LibCorePlatform {
   void updateVpnStats(CoreStats stats) {}
 
   Future<dynamic> _call(String method, [Map<String, dynamic>? params]) {
-    if (_client == null || !_client!.isConnected) {
-      throw StateError('IPC not connected');
-    }
+    if (_client == null || !_client!.isConnected) return Future.value();
     return _client!.call(method, params);
   }
 }

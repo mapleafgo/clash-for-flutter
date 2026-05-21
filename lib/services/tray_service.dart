@@ -74,7 +74,9 @@ class _TrayHandler with DesktopTrayListener {
           await toggleSystemProxy(!(item.checked ?? false));
         }
       case 'exit':
-        await LibCore.instance.stopCore();
+        try {
+          await LibCore.instance.dispose();
+        } catch (_) {}
         await windowManager.close();
         await windowManager.destroy();
       default:

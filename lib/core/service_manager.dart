@@ -141,7 +141,13 @@ class UnixServiceManager extends ServiceManager {
 
   @override
   Future<bool> isRunning() async {
-    return File(ipcPath).existsSync();
+    try {
+      final socket = await ipc.connect(ipcPath).timeout(const Duration(seconds: 1));
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -157,7 +163,8 @@ class UnixServiceManager extends ServiceManager {
         ['ipc', '--home', homeDir],
         mode: ProcessStartMode.detached,
       );
-      return true;
+      // Wait until the IPC endpoint is actually reachable.
+      return await _waitForIpcReady();
     } catch (_) {
       return false;
     }
@@ -167,11 +174,33 @@ class UnixServiceManager extends ServiceManager {
   Future<bool> stop() async {
     _directProcess?.kill();
     _directProcess = null;
-    for (int i = 0; i < 10; i++) {
-      if (!File(ipcPath).existsSync()) return true;
+    // The caller (LibCore.restart) stops the kernel and disconnects IPC
+    // before calling stop(). cff-core self-terminates when kernel is
+    // stopped and all GUI connections close — no need to forcefully kill
+    // a setuid root process from user space.
+    if (await _waitForIpcGone()) return true;
+    // Last resort: signal the process (won't work for root, but harmless).
+    await Process.run('pkill', ['-f', 'singcast-core.*ipc']);
+    await _waitForIpcGone();
+    return true;
+  }
+
+  /// Wait until IPC becomes reachable (after start).
+  Future<bool> _waitForIpcReady() async {
+    for (int i = 0; i < 30; i++) {
+      if (await isRunning()) return true;
       await Future.delayed(const Duration(milliseconds: 500));
     }
-    return true;
+    return false;
+  }
+
+  /// Wait until IPC is no longer reachable (after stop).
+  Future<bool> _waitForIpcGone() async {
+    for (int i = 0; i < 20; i++) {
+      if (!await isRunning()) return true;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
   }
 }
 
@@ -188,14 +217,31 @@ class WindowsServiceManager extends ServiceManager {
   @override
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
 
+  /// Open a handle to the installed service with [access] rights.
+  /// Returns the service handle, or 0 if the service is not installed
+  /// or the caller lacks permission.
+  int _openService(int access) {
+    final nullPtr = Pointer<Utf16>.fromAddress(0);
+    final scm = OpenSCManager(nullPtr, nullPtr, SC_MANAGER_CONNECT);
+    if (scm == 0) return 0;
+    try {
+      final namePtr = _serviceName.toNativeUtf16();
+      try {
+        return OpenService(scm, namePtr, access);
+      } finally {
+        free(namePtr);
+      }
+    } finally {
+      CloseServiceHandle(scm);
+    }
+  }
+
   @override
   Future<bool> isReady() async {
-    try {
-      final result = await Process.run('sc', ['query', _serviceName]);
-      return (result.stdout ?? '').toString().contains(_serviceName);
-    } catch (_) {
-      return false;
-    }
+    final svc = _openService(SERVICE_QUERY_STATUS);
+    if (svc == 0) return false;
+    CloseServiceHandle(svc);
+    return true;
   }
 
   @override
@@ -250,10 +296,16 @@ class WindowsServiceManager extends ServiceManager {
 
   @override
   Future<bool> start() async {
-    if (await isReady()) {
-      // Service installed — start via SCM
-      final result = await Process.run('sc', ['start', _serviceName]);
-      if (result.exitCode != 0) return false;
+    final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_START);
+    if (svc != 0) {
+      // Service installed — start via SCM.
+      final result = StartService(svc, 0, Pointer<Pointer<Utf16>>.fromAddress(0));
+      CloseServiceHandle(svc);
+      // StartService returns non-zero on success.
+      // If already running, GetLastError() == ERROR_SERVICE_ALREADY_RUNNING.
+      if (result == 0 && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
+        return false;
+      }
     } else {
       // No service — direct process (non-TUN, no privileges needed)
       final svcPath = ServiceManager.serviceBinaryPath();
@@ -263,15 +315,31 @@ class WindowsServiceManager extends ServiceManager {
         mode: ProcessStartMode.detached,
       );
     }
+    // Wait until the IPC endpoint is actually reachable.
+    if (!await _waitForIpcReady()) return false;
     return true;
   }
 
   @override
   Future<bool> stop() async {
-    if (await isReady()) {
-      final result = await Process.run('sc', ['stop', _serviceName]);
-      await _waitForIpcGone();
-      return result.exitCode == 0;
+    final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_STOP);
+    if (svc != 0) {
+      try {
+        final status = calloc<SERVICE_STATUS>();
+        try {
+          ControlService(svc, SERVICE_CONTROL_STOP, status);
+        } finally {
+          free(status);
+        }
+      } finally {
+        CloseServiceHandle(svc);
+      }
+      if (!await _waitForIpcGone()) {
+        // Service didn't stop gracefully — force kill the process.
+        await Process.run('taskkill', ['/F', '/IM', 'singcast-core.exe']);
+        await _waitForIpcGone();
+      }
+      return true;
     }
     // Kill direct process
     _directProcess?.kill();
@@ -280,12 +348,23 @@ class WindowsServiceManager extends ServiceManager {
     return true;
   }
 
-  /// Wait until IPC is no longer reachable.
-  Future<void> _waitForIpcGone() async {
-    for (int i = 0; i < 10; i++) {
-      if (!await isRunning()) return;
+  /// Wait until IPC becomes reachable (after start).
+  Future<bool> _waitForIpcReady() async {
+    for (int i = 0; i < 30; i++) {
+      if (await isRunning()) return true;
       await Future.delayed(const Duration(milliseconds: 500));
     }
+    return false;
+  }
+
+  /// Wait until IPC is no longer reachable (after stop).
+  /// Returns true if IPC went away within the timeout.
+  Future<bool> _waitForIpcGone() async {
+    for (int i = 0; i < 20; i++) {
+      if (!await isRunning()) return true;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
   }
 
   /// Wait for the elevated temp process to exit via HANDLE.
