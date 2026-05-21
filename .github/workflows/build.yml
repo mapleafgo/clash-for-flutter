@@ -26,6 +26,15 @@ jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            core_arch: amd64
+            target_platform: ""
+          - arch: arm64
+            core_arch: arm64
+            target_platform: "windows-arm64"
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -41,21 +50,33 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "singcast-core.tar.gz"
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-${{ matrix.core_arch }}.tar.gz" -o "singcast-core.tar.gz"
           tar -zxf singcast-core.tar.gz
-          Move-Item -Force singcast-windows-amd64.exe windows/core/singcast-core.exe
+          Move-Item -Force singcast-windows-${{ matrix.core_arch }}.exe windows/core/singcast-core.exe
 
       - name: Setup Chinese language for Inno Setup
+        if: matrix.arch == 'amd64'
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
-      - name: Build & package
+      - name: Build & package (amd64)
+        if: matrix.arch == 'amd64'
         run: |
           dart pub global activate fastforge
           fastforge package --platform=windows --targets=exe,zip
 
+      - name: Build & package (arm64)
+        if: matrix.arch == 'arm64'
+        run: |
+          flutter build windows --release --target-platform windows-arm64
+          $ver = "${{ env.VERSION }}".TrimStart('v')
+          Compress-Archive -Path "build\windows\arm64\runner\Release\*" -DestinationPath "dist\singcast-$ver-windows-arm64-portable.zip"
+          New-Item -ItemType Directory -Force -Path "dist\$ver"
+          Move-Item -Force "dist\singcast-$ver-windows-arm64-portable.zip" "dist\$ver\"
+
       - name: Rename artifacts
+        if: matrix.arch == 'amd64'
         run: |
           $ver = "${{ env.VERSION }}".TrimStart('v')
           $distDir = "dist\$ver"
