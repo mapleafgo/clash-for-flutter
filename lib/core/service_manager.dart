@@ -163,8 +163,11 @@ class UnixServiceManager extends ServiceManager {
         ['ipc', '--home', homeDir],
         mode: ProcessStartMode.detached,
       );
-      // Wait until the IPC endpoint is actually reachable.
-      return await _waitForIpcReady();
+      // Do NOT probe IPC readiness here — connecting and immediately
+      // disconnecting causes cff-core to self-terminate when the kernel
+      // is not running. The caller (LibCore.init / restart) handles
+      // waiting via _connectWithRetry().
+      return true;
     } catch (_) {
       return false;
     }
@@ -183,15 +186,6 @@ class UnixServiceManager extends ServiceManager {
     await Process.run('pkill', ['-f', 'singcast-core.*ipc']);
     await _waitForIpcGone();
     return true;
-  }
-
-  /// Wait until IPC becomes reachable (after start).
-  Future<bool> _waitForIpcReady() async {
-    for (int i = 0; i < 30; i++) {
-      if (await isRunning()) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    return false;
   }
 
   /// Wait until IPC is no longer reachable (after stop).
@@ -315,8 +309,8 @@ class WindowsServiceManager extends ServiceManager {
         mode: ProcessStartMode.detached,
       );
     }
-    // Wait until the IPC endpoint is actually reachable.
-    if (!await _waitForIpcReady()) return false;
+    // Do NOT probe IPC readiness — same reason as UnixServiceManager.
+    // The caller handles waiting via _connectWithRetry().
     return true;
   }
 
@@ -346,15 +340,6 @@ class WindowsServiceManager extends ServiceManager {
     _directProcess = null;
     await _waitForIpcGone();
     return true;
-  }
-
-  /// Wait until IPC becomes reachable (after start).
-  Future<bool> _waitForIpcReady() async {
-    for (int i = 0; i < 30; i++) {
-      if (await isRunning()) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    return false;
   }
 
   /// Wait until IPC is no longer reachable (after stop).
