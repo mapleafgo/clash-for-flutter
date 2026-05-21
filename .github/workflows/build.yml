@@ -152,7 +152,6 @@ jobs:
           tar -zxf singcast-core.tar.gz
           chmod +x singcast-darwin-${{ matrix.core_arch }}
           mv singcast-darwin-${{ matrix.core_arch }} macos/Frameworks/singcast-core
-          codesign --force --sign - macos/Frameworks/singcast-core
 
       - name: Build
         env:
