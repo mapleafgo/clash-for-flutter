@@ -126,7 +126,7 @@ class MainActivity : FlutterFragmentActivity() {
                     result.error("CORE_ERROR", e.message, null)
                 }
             }
-            "destroyCore" -> safeCall(result) { Mobile.destroyCore() }
+            "stopCore" -> safeCall(result) { Mobile.stopCore() }
             "resetNetwork" -> safeCall(result) { Mobile.resetNetwork() }
 
             // VPN

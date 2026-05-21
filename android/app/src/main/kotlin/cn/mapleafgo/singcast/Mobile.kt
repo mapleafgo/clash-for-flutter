@@ -56,12 +56,12 @@ object Mobile {
         }
     }
 
-    fun destroyCore() {
+    fun stopCore() {
         synchronized(coreLock) {
-            AppLog.i(TAG, "destroyCore: destroying core")
-            singcast.destroy()
+            AppLog.i(TAG, "stopCore: stopping core")
+            singcast.stop()
             coreInitialized = false
-            AppLog.i(TAG, "destroyCore: done")
+            AppLog.i(TAG, "stopCore: done")
         }
     }
 

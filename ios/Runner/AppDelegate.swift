@@ -70,8 +70,8 @@ class AppDelegate: FlutterAppDelegate {
                     try self.singcast.startWithContent(content, ruleSetProxy: proxy)
                 }
             }
-        case "destroyCore":
-            singcast.destroy()
+        case "stopCore":
+            singcast.stop()
             result(nil)
 
         case "resetNetwork":
@@ -167,7 +167,7 @@ class AppDelegate: FlutterAppDelegate {
         case "connectVpn":
             let config = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
-            let ipv6 = args["ipv6"] as? Bool ?? true
+            let ipv6 = args["ipv6"] as? Bool ?? false
             startTunnel(configContent: config, ruleSetProxy: proxy, ipv6: ipv6, result: result)
         case "disconnectVpn":
             stopTunnel(result: result)
