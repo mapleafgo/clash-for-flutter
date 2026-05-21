@@ -19,7 +19,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.41.7"
-  CORE_VERSION: "v1.0.2"
+  CORE_VERSION: "v1.1.0"
   VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
 jobs:
@@ -41,9 +41,9 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/libsingcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "libsingcast.tar.gz"
-          tar -zxf libsingcast.tar.gz
-          Move-Item -Force singcast-windows-amd64.dll windows/core/libsingcast-windows.dll
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "singcast-core.tar.gz"
+          tar -zxf singcast-core.tar.gz
+          Move-Item -Force singcast-windows-amd64.exe windows/core/singcast-core.exe
 
       - name: Setup Chinese language for Inno Setup
         run: |
@@ -97,9 +97,10 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-linux-amd64.tar.gz" -o libsingcast.tar.gz
-          tar -zxf libsingcast.tar.gz
-          mv libsingcast-linux-amd64.so linux/core/libsingcast-linux.so
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-linux-amd64.tar.gz" -o singcast-core.tar.gz
+          tar -zxf singcast-core.tar.gz
+          chmod +x singcast-linux-amd64
+          mv singcast-linux-amd64 linux/core/singcast-core
 
       - name: Build & package
         run: |
@@ -147,9 +148,10 @@ jobs:
       - name: Download core
         run: |
           mkdir -p macos/Frameworks
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
-          tar -zxf libsingcast.tar.gz
-          mv libsingcast-darwin-${{ matrix.core_arch }}.dylib macos/Frameworks/libsingcast-darwin.dylib
+          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o singcast-core.tar.gz
+          tar -zxf singcast-core.tar.gz
+          chmod +x singcast-darwin-${{ matrix.core_arch }}
+          mv singcast-darwin-${{ matrix.core_arch }} macos/Frameworks/singcast-core
 
       - name: Build
         env:
