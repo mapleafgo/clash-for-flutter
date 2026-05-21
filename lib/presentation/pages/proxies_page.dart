@@ -286,12 +286,11 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
               tabs: widget.tags.map((tag) => Tab(text: tag)).toList(),
             ),
           ),
-          if (widget.tags.length > 5)
-            IconButton(
-              icon: const Icon(Icons.unfold_more, size: 20),
-              tooltip: '展开分组',
-              onPressed: widget.onExpand,
-            ),
+          IconButton(
+            icon: const Icon(Icons.unfold_more, size: 20),
+            tooltip: '展开分组',
+            onPressed: widget.onExpand,
+          ),
         ],
       ),
       Expanded(
