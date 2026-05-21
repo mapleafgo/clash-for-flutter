@@ -2,89 +2,77 @@ import 'package:singcast/domain/net_speed.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('TrafficSnapshot', () {
+  group('CoreStats', () {
     test('defaults to zero', () {
-      final speed = TrafficSnapshot();
-      expect(speed.up, 0);
-      expect(speed.down, 0);
-      expect(speed.upTotal, 0);
-      expect(speed.downTotal, 0);
+      final stats = CoreStats();
+      expect(stats.up, 0);
+      expect(stats.down, 0);
+      expect(stats.upTotal, 0);
+      expect(stats.downTotal, 0);
+      expect(stats.memory, 0);
+      expect(stats.connections, 0);
     });
 
     test('creates with values', () {
-      final speed = TrafficSnapshot(up: 1024, down: 2048);
-      expect(speed.up, 1024);
-      expect(speed.down, 2048);
+      final stats = CoreStats(up: 1024, down: 2048, upTotal: 5000, downTotal: 15000);
+      expect(stats.up, 1024);
+      expect(stats.down, 2048);
+      expect(stats.upTotal, 5000);
+      expect(stats.downTotal, 15000);
     });
 
     test('JSON roundtrip with values', () {
-      final speed = TrafficSnapshot(
+      final stats = CoreStats(
         up: 500, down: 1500, upTotal: 5000, downTotal: 15000,
-        memory: 1024, goroutines: 8, connsIn: 3, connsOut: 2,
+        memory: 1024, connections: 8, startedAt: 12345,
       );
-      final json = speed.toJson();
-      final restored = TrafficSnapshot.fromJson(json);
+      final json = stats.toJson();
+      final restored = CoreStats.fromKernelJson(json);
 
-      expect(restored.up, 500);
-      expect(restored.down, 1500);
-      expect(restored.upTotal, 5000);
-      expect(restored.downTotal, 15000);
+      expect(restored.upTotal, 500);
+      expect(restored.downTotal, 1500);
       expect(restored.memory, 1024);
-      expect(restored.goroutines, 8);
-      expect(restored.connsIn, 3);
-      expect(restored.connsOut, 2);
+      expect(restored.connections, 8);
+      expect(restored.startedAt, 12345);
     });
 
     test('JSON roundtrip with defaults', () {
-      final speed = TrafficSnapshot();
-      final json = speed.toJson();
-      final restored = TrafficSnapshot.fromJson(json);
+      final stats = CoreStats();
+      final json = stats.toJson();
+      final restored = CoreStats.fromKernelJson(json);
 
-      expect(restored.up, 0);
-      expect(restored.down, 0);
+      expect(restored.upTotal, 0);
+      expect(restored.downTotal, 0);
     });
 
-    test('fromJson handles missing fields with defaults', () {
-      final restored = TrafficSnapshot.fromJson({});
-      expect(restored.up, 0);
-      expect(restored.down, 0);
+    test('fromKernelJson handles missing fields with defaults', () {
+      final restored = CoreStats.fromKernelJson({});
+      expect(restored.upTotal, 0);
+      expect(restored.downTotal, 0);
     });
 
     test('fromJson parses cff-core snake_case JSON', () {
       final json = {
         'up': 9999,
         'down': 8888,
-        'up_total': 100000,
-        'down_total': 200000,
         'memory': 2048,
-        'goroutines': 16,
-        'connections_in': 5,
-        'connections_out': 4,
+        'connections': 16,
+        'started_at': 1234567890,
       };
-      final speed = TrafficSnapshot.fromJson(json);
-      expect(speed.up, 9999);
-      expect(speed.down, 8888);
-      expect(speed.upTotal, 100000);
-      expect(speed.downTotal, 200000);
-      expect(speed.memory, 2048);
-      expect(speed.goroutines, 16);
-      expect(speed.connsIn, 5);
-      expect(speed.connsOut, 4);
+      final stats = CoreStats.fromKernelJson(json);
+      expect(stats.upTotal, 9999);
+      expect(stats.downTotal, 8888);
+      expect(stats.memory, 2048);
+      expect(stats.connections, 16);
+      expect(stats.startedAt, 1234567890);
     });
 
     test('toJson outputs snake_case keys', () {
-      final speed = TrafficSnapshot(upTotal: 100, downTotal: 200);
-      final json = speed.toJson();
+      final stats = CoreStats(upTotal: 100, downTotal: 200, startedAt: 999);
+      final json = stats.toJson();
       expect(json.containsKey('up_total'), true);
       expect(json.containsKey('down_total'), true);
-      expect(json.containsKey('connections_in'), true);
-      expect(json.containsKey('connections_out'), true);
-    });
-
-    test('NetSpeed is alias for TrafficSnapshot', () {
-      final speed = NetSpeed(up: 100, down: 200);
-      expect(speed.up, 100);
-      expect(speed.down, 200);
+      expect(json.containsKey('started_at'), true);
     });
   });
 }

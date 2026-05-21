@@ -11,8 +11,8 @@ void main() {
       expect(Constants.clashConfig, '/config.yaml');
     });
 
-    test('clashForMe is /cfm.json', () {
-      expect(Constants.clashForMe, '/cfm.json');
+    test('appSettings is /settings.json', () {
+      expect(Constants.appSettings, '/settings.json');
     });
 
     test('localhost is 127.0.0.1', () {

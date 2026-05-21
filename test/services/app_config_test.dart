@@ -41,6 +41,7 @@ void main() {
         mode: Mode.rule,
         logLevel: LogLevel.info,
         tun: TunConfig(enable: false),
+        portEnabled: true,
       );
 
       final result = mergeProfileConfig(_profileWithTun);

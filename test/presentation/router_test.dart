@@ -7,7 +7,6 @@ void main() {
     test('all route paths start with /', () {
       expect(Routes.home, startsWith('/'));
       expect(Routes.proxies, startsWith('/'));
-      expect(Routes.logs, startsWith('/'));
       expect(Routes.profiles, startsWith('/'));
       expect(Routes.settings, startsWith('/'));
     });
@@ -16,7 +15,6 @@ void main() {
       final paths = [
         Routes.home,
         Routes.proxies,
-        Routes.logs,
         Routes.profiles,
         Routes.settings,
       ];
@@ -26,7 +24,6 @@ void main() {
     test('route paths match expected values', () {
       expect(Routes.home, '/home');
       expect(Routes.proxies, '/proxies');
-      expect(Routes.logs, '/logs');
       expect(Routes.profiles, '/profiles');
       expect(Routes.settings, '/settings');
     });
@@ -34,15 +31,14 @@ void main() {
 
   group('NavItem', () {
     test('navItems has correct count', () {
-      expect(navItems.length, 5);
+      expect(navItems.length, 4);
     });
 
     test('navItems paths match Routes constants', () {
       expect(navItems[0].path, Routes.home);
       expect(navItems[1].path, Routes.proxies);
       expect(navItems[2].path, Routes.profiles);
-      expect(navItems[3].path, Routes.logs);
-      expect(navItems[4].path, Routes.settings);
+      expect(navItems[3].path, Routes.settings);
     });
 
     test('navItems labels are not empty', () {
