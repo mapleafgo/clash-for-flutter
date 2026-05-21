@@ -60,7 +60,7 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> destroyCore() => _channel.invokeMethod('destroyCore');
+  Future<void> stopCore() => _channel.invokeMethod('stopCore');
 
   @override
   Future<void> resetNetwork() => _channel.invokeMethod('resetNetwork');

@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/core/tun_elevation.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/presentation/app.dart' show App, appReady;
 import 'package:singcast/services/app_config.dart';
@@ -38,19 +36,12 @@ void main() async {
 
   timeago.setLocaleMessages('zh_cn', TimeagoZhCnMessages());
 
-  // 提权重启时通过文件标记 /tmp/.singcast_pending 恢复状态：
-  // - 文件存在（返回值 != null） → 需要自动启用 TUN
-  // - 返回值非空字符串 → macOS root 场景下的用户数据目录路径
-  final pendingResult = checkAndConsumePending();
-  final tunPending = pendingResult != null;
-  Constants.homeDir = (pendingResult != null && pendingResult.isNotEmpty)
-      ? Directory(pendingResult)
-      : await getApplicationSupportDirectory();
+  Constants.homeDir = await getApplicationSupportDirectory();
   CoreConfigStorage.createDefault();
 
   // 初始化内核和配置
   runApp(const App());
-  await _initApp(tunPending: tunPending);
+  await _initApp();
   appReady.value = true;
 
   if (Constants.isDesktop) {
@@ -59,13 +50,24 @@ void main() async {
   }
 }
 
-Future<void> _initApp({bool tunPending = false}) async {
+Future<void> _initApp() async {
   final sw = Stopwatch()..start();
 
-  await LibCore.instance.init();
+  try {
+    await LibCore.instance.init();
+  } catch (e) {
+    _log('[startup] LibCore.init failed: $e');
+    initError.value = '内核连接失败: $e';
+  }
   _log(
     '[startup] LibCore.init: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',
   );
+
+  // 内核连接失败时跳过后续初始化，让 UI 正常进入首页显示错误
+  if (initError.value != null) {
+    appReady.value = true;
+    return;
+  }
 
   // initCore 是幂等的 — 冷启动时初始化内核，引擎重建时跳过
   try {
@@ -84,7 +86,6 @@ Future<void> _initApp({bool tunPending = false}) async {
   await initCoreConfig();
   _log('[startup] initCoreConfig: ${sw.elapsedMilliseconds}ms');
 
-  watchModeFromCore();
   initAppConfig();
   _log('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
 
@@ -100,18 +101,10 @@ Future<void> _initApp({bool tunPending = false}) async {
       ensureTunEnabled(true);
       _log('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
     }
-  }
-
-  // 提权重启后自动启用 TUN（标记文件由 relaunchSelf/relaunchElevated 写入 /tmp）
-  // 必须在 startWatchingSelectedFile 之前，确保 effect 触发时 clashConfig 已含 TUN 配置
-  _log(
-    '[startup] tunPending=$tunPending executableArguments: ${Platform.executableArguments}',
-  );
-  if (tunPending) {
-    applyStartupTun();
-    _log(
-      '[startup] applyStartupTun: auto-enabling TUN after elevation restart',
-    );
+  } else {
+    // 桌面端：LibCore.init() 已通过 syncKernelState 恢复状态
+    final syncedState = LibCore.instance.stateSignal.peek();
+    _log('[startup] desktop state after syncKernelState: $syncedState');
   }
 
   startWatchingSelectedFile();

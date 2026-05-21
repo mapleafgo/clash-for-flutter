@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'dart:io';
-
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../domain/connection.dart';
@@ -12,15 +10,16 @@ import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 import '../utils/constants.dart';
 import '../utils/log_file.dart';
-import 'ffi_worker.dart';
+import 'ipc_worker.dart';
 import 'lib_core_channel.dart';
 import 'lib_core_exception.dart';
+import 'service_manager.dart';
 
 abstract class LibCorePlatform {
   Future<void> init();
   Future<void> initCore(String homeDir);
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
-  Future<void> destroyCore();
+  Future<void> stopCore();
   Future<void> resetNetwork();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<CoreStats> queryStats();
@@ -59,11 +58,22 @@ class LibCore {
   static const kStateCreated = 'created';
   static const kStateInitialized = 'initialized';
   static const kStateStarting = 'starting';
+  static const kStateStopping = 'stopping';
   static const kStateRunning = 'running';
   static const kStateDestroyed = 'destroyed';
 
+  static const _evtLog = 0;
+  static const _evtUrlTest = 1;
+  static const _evtModeUpdate = 2;
+  static const _evtConnEvent = 3;
+  static const _evtStateUpdate = 4;
+  static const _evtTrafficUpdate = 5;
+
   late final LibCorePlatform _platform;
-  FfiWorker? _worker;
+  IpcWorker? _ipcWorker;
+  ServiceManager? _serviceManager;
+
+  ServiceManager? get serviceManager => _serviceManager;
 
   final statsSignal = signal<CoreStats?>(null);
   final activeConnectionsSignal = signal<int>(0);
@@ -73,31 +83,45 @@ class LibCore {
   Signal<Map<String, int>> get proxyDelaysSignal => _proxyDelays;
   final modeSignal = signal<String>('rule');
   final stateSignal = signal<String>(kStateCreated);
-  final availableModesSignal = signal<List<String>>(['rule', 'global', 'direct']);
+  final availableModesSignal = signal<List<String>>([
+    'rule',
+    'global',
+    'direct',
+  ]);
   final proxyTogglingSignal = signal(false);
 
   int _prevUpTotal = 0;
   int _prevDownTotal = 0;
-  Timer? _pollTimer;
-
-  String get _platformLibPath {
-    final exeDir = File(Platform.resolvedExecutable).parent.path;
-    if (Platform.isLinux) return '$exeDir/lib/libsingcast-linux.so';
-    if (Platform.isMacOS) {
-      return '$exeDir/../Frameworks/libsingcast-darwin.dylib';
-    }
-    if (Platform.isWindows) return '$exeDir/libsingcast-windows.dll';
-    throw UnsupportedError('Unsupported platform');
-  }
+  Timer? _pollTimer; // Only used on mobile
+  bool _reconnecting = false;
+  bool _disposed = false;
 
   LibCorePlatform get platform => _platform;
 
   Future<void> init() async {
     if (Constants.isDesktop) {
-      _worker = FfiWorker();
-      _worker!.onCallback = _handleWorkerCallback;
-      await _worker!.spawn(_platformLibPath);
-      _platform = _FfiWorkerBackend(_worker!);
+      _serviceManager = ServiceManager.create(Constants.homeDir.path);
+      _ipcWorker = IpcWorker(ipcPath: _serviceManager!.ipcPath);
+      _ipcWorker!.onCallback = _handleWorkerCallback;
+      _ipcWorker!.onDisconnect = _onIpcDisconnected;
+
+      // Try connecting to an already-running service first.
+      // Do NOT probe with connect+disconnect (isRunning) before the IPC
+      // worker is connected — cff-core exits when all GUI connections
+      // disconnect and the core is not running.
+      if (!await _connectWithRetry(attempts: 2)) {
+        // Not running — start the service process
+        if (!await _serviceManager!.start()) {
+          throw StateError('Failed to start service process');
+        }
+        if (!await _connectWithRetry(attempts: 20)) {
+          throw StateError('Failed to connect to service process');
+        }
+      }
+      _platform = _ipcWorker!;
+
+      // Recover state from running service (reconnect scenario)
+      await syncKernelState();
     } else {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
@@ -107,24 +131,107 @@ class LibCore {
     await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    _disposed = true;
     stopPolling();
-    _worker?.dispose();
+    try {
+      await stopCore();
+    } catch (_) {}
+    await _ipcWorker?.disconnect();
   }
 
-  // eventType: 0=Log, 1=URLTest, 2=ModeUpdate, 3=ConnEvent, 4=StateUpdate
+  /// Called when IPC connection drops unexpectedly (service process crash, etc.).
+  void _onIpcDisconnected() {
+    if (_disposed || _reconnecting) return;
+    stateSignal.value = kStateDestroyed;
+    _clearRuntimeState();
+    stopPolling();
+    _attemptReconnect();
+  }
+
+  Future<void> _attemptReconnect() async {
+    if (_disposed || _reconnecting) return;
+    _reconnecting = true;
+    LogFileWriter.instance?.log('IPC disconnected, attempting reconnect', name: 'ipc');
+
+    // Try reconnecting to an existing process first
+    try {
+      if (await _connectWithRetry(attempts: 5)) {
+        await syncKernelState();
+        LogFileWriter.instance?.log('IPC reconnected to existing process', name: 'ipc');
+        _reconnecting = false;
+        return;
+      }
+    } catch (_) {}
+
+    // Process is gone — restart it
+    try {
+      if (!await _serviceManager!.start()) {
+        throw StateError('Failed to start service process');
+      }
+      if (!await _connectWithRetry(attempts: 20)) {
+        throw StateError('Failed to connect to service process');
+      }
+      await syncKernelState();
+      LogFileWriter.instance?.log('IPC reconnected via new process', name: 'ipc');
+    } catch (e) {
+      LogFileWriter.instance?.log('IPC reconnect failed: $e', level: LogLevel.error, name: 'ipc');
+    }
+    _reconnecting = false;
+  }
+
+  /// Try to connect IPC with retries. Returns true on success.
+  Future<bool> _connectWithRetry({int attempts = 20}) async {
+    for (int i = 0; i < attempts; i++) {
+      try {
+        await _ipcWorker!.connect();
+        return true;
+      } catch (_) {
+        if (i < attempts - 1) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Disconnect and reconnect IPC to the service process.
+  Future<void> reconnect() async {
+    await _ipcWorker?.disconnect();
+    await _connectWithRetry(attempts: 20);
+    await syncKernelState();
+  }
+
+  /// Stop the service process, start a fresh one, and reconnect.
+  Future<void> restart() async {
+    if (!Constants.isDesktop) return;
+    stateSignal.value = kStateDestroyed;
+    _clearRuntimeState();
+    stopPolling();
+    await stopCore();
+    await _ipcWorker?.disconnect();
+    await _serviceManager?.stop();
+    if (!await _serviceManager!.start()) {
+      throw StateError('Failed to start service process');
+    }
+    if (!await _connectWithRetry(attempts: 20)) {
+      throw StateError('Failed to connect to service process');
+    }
+    await syncKernelState();
+  }
+
   void _handleWorkerCallback(int eventType, String payload) {
     switch (eventType) {
-      case 0: // Log
+      case _evtLog:
         final json = jsonDecode(payload) as Map<String, dynamic>;
         LogFileWriter.instance?.writeAll([LogEntry.fromJson(json)]);
-      case 1: // URLTest
+      case _evtUrlTest:
         _queryAndUpdate();
-      case 2: // ModeUpdate
+      case _evtModeUpdate:
         modeSignal.value = payload.toLowerCase();
-      case 3: // ConnEvent
+      case _evtConnEvent:
         break;
-      case 4: // StateUpdate
+      case _evtStateUpdate:
         final newState = payload;
         final oldState = stateSignal.peek();
         LogFileWriter.instance?.log(
@@ -141,10 +248,11 @@ class LibCore {
             proxyTogglingSignal.value = false;
           }
           stopPolling();
-          statsSignal.value = null;
-          activeConnectionsSignal.value = 0;
-          proxiesSignal.value = [];
-          _proxyDelays.value = {};
+          _clearRuntimeState();
+        }
+      case _evtTrafficUpdate:
+        if (Constants.isDesktop) {
+          _handleTrafficUpdate(payload);
         }
     }
   }
@@ -159,12 +267,23 @@ class LibCore {
     _proxyDelays.value = current;
   }
 
-  void clearStats() { statsSignal.value = null; }
+  void clearStats() {
+    statsSignal.value = null;
+  }
+
+  void _clearRuntimeState() {
+    statsSignal.value = null;
+    activeConnectionsSignal.value = 0;
+    proxiesSignal.value = [];
+    _proxyDelays.value = {};
+  }
 
   void _onKernelRunning() {
     _queryAndUpdate();
     _fetchAvailableModes();
-    startPolling();
+    if (!Constants.isDesktop) {
+      startPolling();
+    }
   }
 
   // --- Polling ---
@@ -186,28 +305,12 @@ class LibCore {
       if (stateSignal.peek() != kStateRunning) return;
 
       final raw = await queryStats();
-      final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
-      final downSpeed = (raw.downTotal - _prevDownTotal).clamp(0, raw.downTotal);
-      _prevUpTotal = raw.upTotal;
-      _prevDownTotal = raw.downTotal;
-
-      final stats = CoreStats(
-        up: upSpeed,
-        down: downSpeed,
-        upTotal: raw.upTotal,
-        downTotal: raw.downTotal,
-        memory: raw.memory,
-        connections: raw.connections,
-        startedAt: raw.startedAt,
-      );
-      statsSignal.value = stats;
-      activeConnectionsSignal.value = stats.connections;
+      final stats = _applyStats(raw);
       _updateVpnStats(stats);
 
-      // 检测异常：有上传无下载 或 内存/连接数异常
-      if (upSpeed > 1024 && downSpeed == 0) {
+      if (stats.up > 1024 && stats.down == 0) {
         LogFileWriter.instance?.log(
-          'traffic anomaly: up=$upSpeed down=$downSpeed conns=${stats.connections} mem=${stats.memory}',
+          'traffic anomaly: up=${stats.up} down=${stats.down} conns=${stats.connections} mem=${stats.memory}',
           level: LogLevel.warning,
           name: 'tun',
         );
@@ -225,14 +328,14 @@ class LibCore {
     }
   }
 
-  /// 同步内核真实状态（移动端引擎重建恢复时调用）
-  Future<void> syncKernelState() async {
+  /// 从后端同步内核真实状态（移动端引擎重建 / 桌面端重连时调用）。
+  Future<void> syncKernelState({String fallback = kStateInitialized}) async {
     try {
       final state = await _platform.queryState();
       stateSignal.value = state;
       if (state == kStateRunning) _onKernelRunning();
-    } catch (e) {
-      stateSignal.value = kStateInitialized;
+    } catch (_) {
+      stateSignal.value = fallback;
     }
   }
 
@@ -246,13 +349,20 @@ class LibCore {
     }
   }
 
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+  Future<void> startCoreWithContent(
+    String content, {
+    String? ruleSetProxy,
+  }) async {
     await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
   }
 
-  Future<void> destroyCore() async {
-    await _platform.destroyCore();
+  Future<void> stopCore() async {
+    if (stateSignal.peek() == kStateRunning) {
+      stateSignal.value = kStateStopping;
+    }
+    await _platform.stopCore();
   }
+
   Future<void> resetNetwork() => _platform.resetNetwork();
   Future<List<ProxyGroup>> queryProxies() async =>
       (await _platform.queryProxies()).$1;
@@ -265,12 +375,13 @@ class LibCore {
     current[group] = tag;
     selectedProxySignal.value = current;
   }
+
   Future<int> testDelay(String name, {int timeoutMs = 3000}) =>
       _platform.testDelay(name, timeoutMs: timeoutMs);
 
   Future<void> setMode(String mode) async {
     await _platform.setMode(mode);
-    // 当前模式由内核回调 (eventType=2) 更新
+    // 当前模式由内核回调 (_evtModeUpdate) 更新
   }
 
   Future<void> setGroupExpand(String group, bool expand) =>
@@ -284,8 +395,10 @@ class LibCore {
   Future<String> getVersion() => _platform.getVersion();
   Future<String> queryMode() => _platform.queryMode();
   Future<String> queryState() => _platform.queryState();
-  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) =>
-      _platform.testGroupDelay(group, timeoutMs: timeoutMs);
+  Future<Map<String, int>> testGroupDelay(
+    String group, {
+    int timeoutMs = 3000,
+  }) => _platform.testGroupDelay(group, timeoutMs: timeoutMs);
   Future<void> flushFakeIP() => _platform.flushFakeIP();
   Future<void> flushDNSCache() => _platform.flushDNSCache();
   Future<void> triggerGC() => _platform.triggerGC();
@@ -310,29 +423,73 @@ class LibCore {
   // --- Proxy query helper ---
 
   void _queryAndUpdate() {
-    _platform.queryProxies().then((result) {
-      proxiesSignal.value = result.$1;
-      final selected = <String, String>{};
-      for (final g in result.$1) {
-        if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
-      }
-      selectedProxySignal.value = selected;
-      if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
-    }).catchError((e) {
-      LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'proxies');
-    });
+    _platform
+        .queryProxies()
+        .then((result) {
+          proxiesSignal.value = result.$1;
+          final selected = <String, String>{};
+          for (final g in result.$1) {
+            if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
+          }
+          selectedProxySignal.value = selected;
+          if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
+        })
+        .catchError((e) {
+          LogFileWriter.instance?.log(
+            '$e',
+            level: LogLevel.warning,
+            name: 'proxies',
+          );
+        });
   }
 
   void _fetchAvailableModes() {
-    _platform.queryMode().then((modeJson) {
-      final decoded = jsonDecode(modeJson) as Map<String, dynamic>;
-      final available = decoded['modes'];
-      if (available is List) {
-        availableModesSignal.value = available
-            .map((e) => (e as String).toLowerCase())
-            .toList();
-      }
-    }).catchError((_) {});
+    _platform
+        .queryMode()
+        .then((modeJson) {
+          final decoded = jsonDecode(modeJson) as Map<String, dynamic>;
+          final available = decoded['modes'];
+          if (available is List) {
+            availableModesSignal.value = available
+                .map((e) => (e as String).toLowerCase())
+                .toList();
+          }
+        })
+        .catchError((_) {});
+  }
+
+  /// Handle traffic update pushed from IPC service (replaces _poll on desktop).
+  void _handleTrafficUpdate(String payload) {
+    try {
+      _applyStats(parseStatsJson(jsonDecode(payload)));
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        '$e',
+        level: LogLevel.warning,
+        name: 'traffic',
+      );
+    }
+  }
+
+  /// Compute per-second speeds and update stat signals.
+  CoreStats _applyStats(CoreStats raw) {
+    final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
+    final downSpeed = (raw.downTotal - _prevDownTotal).clamp(0, raw.downTotal);
+    _prevUpTotal = raw.upTotal;
+    _prevDownTotal = raw.downTotal;
+
+    final stats = CoreStats(
+      up: upSpeed,
+      down: downSpeed,
+      upTotal: raw.upTotal,
+      downTotal: raw.downTotal,
+      memory: raw.memory,
+      connections: raw.connections,
+      startedAt: raw.startedAt,
+    );
+    statsSignal.value = stats;
+    activeConnectionsSignal.value = stats.connections;
+    return stats;
   }
 
   // --- VPN stats ---
@@ -398,148 +555,4 @@ class LibCore {
     }
     return result?.toString() ?? '';
   }
-
-}
-
-/// Desktop FFI backend using FfiWorker.
-class _FfiWorkerBackend implements LibCorePlatform {
-  final FfiWorker _worker;
-  _FfiWorkerBackend(this._worker);
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> initCore(String homeDir) => _worker.invoke('CoreInit', {
-        'optionsJSON': jsonEncode({'home_dir': homeDir, 'log_max_lines': 500}),
-      });
-
-  @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
-      _worker.invoke('CoreStartWithContent', {
-        'content': content,
-        'ruleSetProxy': ruleSetProxy ?? '',
-      });
-
-  @override
-  Future<void> destroyCore() => _worker.invoke('CoreDestroy');
-
-  @override
-  Future<void> resetNetwork() => _worker.invoke('CoreResetNetwork');
-
-  @override
-  Future<(List<ProxyGroup>, Map<String, int>)> queryProxies() async {
-    final json = await _worker.invoke<dynamic>('CoreQueryProxies');
-    return LibCore.parseProxiesJson(json);
-  }
-
-  @override
-  Future<CoreStats> queryStats() async {
-    final json = await _worker.invoke<dynamic>('CoreQueryStats');
-    return LibCore.parseStatsJson(json);
-  }
-
-  @override
-  Future<ConnectionEventsPayload> queryConnections() async {
-    final json = await _worker.invoke<dynamic>('CoreQueryConnections');
-    return LibCore.parseConnectionsJson(json);
-  }
-
-  @override
-  Future<void> selectProxy(String group, String tag) =>
-      _worker.invoke('CoreSelectProxy', {'group': group, 'tag': tag});
-
-  @override
-  Future<int> testDelay(String name, {int timeoutMs = 3000}) =>
-      _worker.invoke<int>('CoreTestDelay', {'name': name, 'timeoutMs': timeoutMs});
-
-  @override
-  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) async {
-    final json = await _worker.invoke<dynamic>(
-        'CoreTestGroupDelay', {'group': group, 'timeoutMs': timeoutMs});
-    return LibCore.parseGroupDelayJson(json);
-  }
-
-  @override
-  Future<void> setMode(String mode) =>
-      _worker.invoke('CoreSetMode', {'mode': mode});
-
-  @override
-  Future<void> setGroupExpand(String group, bool expand) =>
-      _worker.invoke('CoreSetGroupExpand', {'group': group, 'expand': expand});
-
-  @override
-  Future<void> closeConnection(String id) =>
-      _worker.invoke('CoreCloseConnection', {'id': id});
-
-  @override
-  Future<void> closeAllConnections() =>
-      _worker.invoke('CoreCloseAllConnections');
-
-  @override
-  Future<void> setLogLevel(int level) =>
-      _worker.invoke('CoreSetLogLevel', {'level': level});
-
-  @override
-  Future<void> setMemoryLimit(int bytes) =>
-      _worker.invoke('CoreSetMemoryLimit', {'bytes': bytes});
-
-  @override
-  Future<String> queryState() => _worker.invoke<String>('CoreQueryState');
-
-  @override
-  Future<void> flushSystemDNS() => _worker.invoke('CoreFlushSystemDNS');
-
-  @override
-  Future<String> queryMode() async {
-    final json = await _worker.invoke<dynamic>('CoreQueryMode');
-    return jsonEncode(json);
-  }
-
-  @override
-  Future<void> flushFakeIP() => _worker.invoke('CoreFlushFakeIP');
-
-  @override
-  Future<void> flushDNSCache() => _worker.invoke('CoreFlushDNSCache');
-
-  @override
-  Future<void> triggerGC() => _worker.invoke('CoreTriggerGC');
-
-  @override
-  Future<String> checkConfig(String content) async {
-    try {
-      await _worker.invoke('CoreCheckConfig', {'content': content});
-      return '';
-    } on LibCoreException catch (e) {
-      return e.message;
-    }
-  }
-
-  @override
-  Future<String> getVersion() async {
-    final result = await _worker.invoke<String>('CoreGetVersion');
-    return LibCore.parseVersionJson(result);
-  }
-
-  @override
-  Future<void> connectVpn(
-    String configContent, {
-    String? ruleSetProxy,
-    bool? ipv6,
-  }) {
-    throw UnsupportedError('connectVpn is only available on mobile platforms');
-  }
-
-  @override
-  Future<void> disconnectVpn() {
-    throw UnsupportedError(
-      'disconnectVpn is only available on mobile platforms',
-    );
-  }
-
-  @override
-  Future<bool> isVpnRunning() async => false;
-
-  @override
-  void updateVpnStats(CoreStats stats) {}
 }

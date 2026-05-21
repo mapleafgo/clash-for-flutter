@@ -28,6 +28,7 @@ final vpnConnected = signal(false);
 
 bool _activating = false;
 Timer? _saveTimer;
+Timer? _subUpdateTimer;
 String? _lastWorkingConfig; // 用于回滚到最后可用配置
 
 void initAppConfig() {
@@ -43,7 +44,7 @@ void initAppConfig() {
     final mode = _parseThemeMode(stored.themeMode!);
     if (mode != null) themeMode.value = mode;
   }
-  // coreElevated 由 detectElevation() 实时检测，不从存储恢复
+  // 提权状态由 ServiceManager 管理，不从存储恢复
   _startAutoSave();
 }
 
@@ -98,10 +99,9 @@ void _save() {
 }
 
 void _startSubUpdateTimer() {
-  // 启动后首次检查
   _checkSubUpdates();
-  // 之后每小时检查一次
-  Timer.periodic(const Duration(hours: 1), (_) => _checkSubUpdates());
+  _subUpdateTimer?.cancel();
+  _subUpdateTimer = Timer.periodic(const Duration(hours: 1), (_) => _checkSubUpdates());
 }
 
 Future<void> _checkSubUpdates() async {
@@ -223,6 +223,9 @@ Future<bool> _activateProfile(String yamlPath) async {
     }
 
     try {
+      if (LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
+        await LibCore.instance.stopCore();
+      }
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,

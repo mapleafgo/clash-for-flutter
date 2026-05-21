@@ -20,17 +20,18 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _hasInitError = false;
+  final List<VoidCallback> _effectDisposers = [];
 
   @override
   void initState() {
     super.initState();
-    effect(() {
+    _effectDisposers.add(effect(() {
       final err = initError.value;
       if (err != null && !_hasInitError) {
         setState(() => _hasInitError = true);
       }
-    });
-    effect(() {
+    }));
+    _effectDisposers.add(effect(() {
       final err = profileError.value;
       if (err != null && mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -40,7 +41,15 @@ class _HomePageState extends State<HomePage> {
           }
         });
       }
-    });
+    }));
+  }
+
+  @override
+  void dispose() {
+    for (final disposer in _effectDisposers) {
+      disposer();
+    }
+    super.dispose();
   }
 
   @override
@@ -657,7 +666,14 @@ class _InitErrorCard extends StatelessWidget {
               Icon(Icons.error_outline, color: cs.error),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(err, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer)),
+                child: SelectableText(err, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer)),
+              ),
+              IconButton(
+                icon: Icon(Icons.copy, size: 18, color: cs.onErrorContainer),
+                tooltip: '复制',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: err));
+                },
               ),
               IconButton(
                 icon: Icon(Icons.close, size: 18, color: cs.onErrorContainer),

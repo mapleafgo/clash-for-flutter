@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/core/tun_elevation.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
@@ -31,8 +30,6 @@ Future<void> initCoreConfig() async {
     clashConfig.value.logLevel ?? LogLevel.info,
   );
 
-  detectElevation();
-  await elevationReady;
   effect(() {
     clashConfig.value; // 订阅变化
     if (_internalUpdate) {
@@ -131,8 +128,6 @@ void updateClashConfig({
   }
 }
 
-void watchModeFromCore() {}
-
 Future<void> toggleTun(bool enable) async {
   final sw = Stopwatch()..start();
   LogFileWriter.instance?.log('toggleTun($enable) called', name: 'tun');
@@ -211,27 +206,19 @@ Future<void> disableTun() async {
 // --- Desktop TUN ---
 
 Future<void> _enableTunDesktop() async {
-  if (!coreElevated.value) {
-    if (Platform.isLinux) {
-      final ok = await setupTunCapability();
-      if (!ok) {
-        throw TunElevationException('授予网络权限失败，请确认 pkexec 及 patchelf 可用');
-      }
-      writePending();
-      if (await relaunchSelf()) exit(0);
-      clearPending();
-      throw TunElevationException('重启应用失败');
-    } else if (Platform.isMacOS) {
-      writePending(homeDir: Constants.homeDir.path);
-      if (await relaunchElevated()) exit(0);
-      clearPending();
-      throw TunElevationException('提权失败，请重试');
-    } else {
-      writePending();
-      if (await relaunchElevated()) exit(0);
-      clearPending();
-      throw TunElevationException('提权失败，请重试');
+  final svc = LibCore.instance.serviceManager;
+  if (svc != null && !await svc.isReady()) {
+    final ok = await svc.setup();
+    if (!ok) {
+      throw TunElevationException('提权设置失败，请重试');
     }
+    // Gracefully stop the kernel before killing the service process
+    await LibCore.instance.stopCore();
+    await svc.stop();
+    if (!await svc.start()) {
+      throw TunElevationException('特权服务启动失败');
+    }
+    await LibCore.instance.reconnect();
   }
   _applyTunConfig(true);
   asyncProfile();
@@ -252,11 +239,6 @@ void _applyTunConfig(bool enable) {
   );
 }
 
-/// 提权重启后自动启用 TUN（仅内存，不持久化）。
-void applyStartupTun() {
-  clashConfig.value = clashConfig.value.copyWith(tun: TunConfig(enable: true));
-}
-
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
 void ensureTunEnabled(bool enabled) {
   if (clashConfig.value.tunEnabled != enabled) {
@@ -267,4 +249,12 @@ void ensureTunEnabled(bool enabled) {
 String _resolveProfilePath(String file) {
   if (file.startsWith('/')) return file;
   return '${Constants.homeDir.path}${Constants.profilesPath}/$file';
+}
+
+class TunElevationException implements Exception {
+  final String message;
+  TunElevationException(this.message);
+
+  @override
+  String toString() => 'TunElevationException: $message';
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -49,31 +50,84 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
 class _KernelStateIcon extends StatelessWidget {
   const _KernelStateIcon();
 
+  bool _isDisconnected(String state) =>
+      state == LibCore.kStateDestroyed ||
+      state == LibCore.kStateCreated;
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final state = LibCore.instance.stateSignal.value;
+      final disconnected = initError.value != null || _isDisconnected(state);
+      final cs = Theme.of(context).colorScheme;
+
+      final icon = switch (state) {
+        LibCore.kStateCreated || LibCore.kStateStarting || LibCore.kStateStopping => const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        LibCore.kStateInitialized => Icon(
+          Icons.circle,
+          size: 12,
+          color: Colors.grey.shade400,
+        ),
+        LibCore.kStateDestroyed => Icon(
+          Icons.error,
+          size: 16,
+          color: cs.error,
+        ),
+        _ => Icon(Icons.circle, size: 12, color: Colors.green),
+      };
+
       return Padding(
         padding: EdgeInsets.only(right: Constants.isDesktop ? 8 : 12),
-        child: switch (state) {
-          LibCore.kStateCreated || LibCore.kStateStarting => const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          LibCore.kStateInitialized => Icon(
-            Icons.circle,
-            size: 12,
-            color: Colors.grey.shade400,
-          ),
-          LibCore.kStateDestroyed => Icon(
-            Icons.circle,
-            size: 12,
-            color: Colors.red.shade400,
-          ),
-          _ => Icon(Icons.circle, size: 12, color: Colors.green),
-        },
+        child: IconButton(
+          icon: icon,
+          tooltip: disconnected ? '内核未连接，点击重新连接' : '内核状态',
+          onPressed: () => _confirmReconnect(context),
+        ),
       );
     });
+  }
+
+  void _confirmReconnect(BuildContext context) {
+    final state = LibCore.instance.stateSignal.peek();
+    final disconnected = initError.value != null || _isDisconnected(state);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(disconnected ? '重新连接内核' : '重启内核'),
+        content: Text(disconnected ? '内核当前未连接，是否尝试重新连接？' : '是否重启内核服务？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _doReconnect(context);
+            },
+            child: Text(disconnected ? '重新连接' : '重启'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _doReconnect(BuildContext context) async {
+    try {
+      initError.value = null;
+      await LibCore.instance.restart();
+      await LibCore.instance.initCore(Constants.homeDir.path);
+      if (selectedFile.value != null) {
+        await asyncProfile();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        initError.value = '内核连接失败: $e';
+      }
+    }
   }
 }
