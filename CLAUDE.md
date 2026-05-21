@@ -37,19 +37,13 @@ flutter run -d macos
 ### 内核设置
 从 https://github.com/mapleafgo/cff-core/releases/latest 下载自定义内核，并将其放置在以下路径:
 ```
-# Windows
-windows/core/libsingcast-windows.dll
+# 桌面端 (IPC 独立进程)
+windows/core/singcast-core.exe
+linux/core/singcast-core
+macos/Frameworks/singcast-core
 
-# Linux
-linux/core/libsingcast-linux.so
-
-# Android
+# 移动端 (FFI 原生库)
 android/app/libs/libsingcast.aar
-
-# macOS
-macos/Frameworks/libsingcast-darwin.dylib
-
-# iOS
 ios/Frameworks/libsingcast-darwin.xcframework
 ```
 
@@ -58,7 +52,8 @@ ios/Frameworks/libsingcast-darwin.xcframework
 ### 核心组件
 - **Singcast 内核**: 自定义的 sing-box 内核（支持 TUN 模式）
 - **Flutter UI**: 主应用界面
-- **FFI 绑定**: 连接 Dart 和 Singcast 内核的桥梁
+- **桌面端 IPC**: 通过 JSON-RPC 2.0 与 singcast-core 独立进程通信
+- **移动端 FFI**: 通过 MethodChannel 调用原生库
 - **内核控制**: 管理 Singcast 内核的生命周期
 
 ### 主要模块

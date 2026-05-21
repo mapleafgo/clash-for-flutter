@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dart_ipc
   desktop_lifecycle
   desktop_tray
   local_notifier
