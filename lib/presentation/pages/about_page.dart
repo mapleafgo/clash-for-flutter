@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/core/service_manager.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
@@ -36,7 +35,7 @@ class AboutPage extends StatelessWidget {
           onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
         ),
         const _KernelVersionTile(),
-        if (Platform.isWindows) const _UninstallServiceTile(),
+        if (Platform.isWindows || Platform.isMacOS) const _UninstallServiceTile(),
       ]),
     );
   }
@@ -181,8 +180,8 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认卸载服务'),
-        content: const Text('将停止并删除 Windows 服务 (SingcastService)，下次使用 TUN 模式时需要重新提权安装。'),
+        title: const Text('确认移除提权'),
+        content: const Text('将移除 TUN 模式的提权服务，内核将以内置模式重启（TUN 不可用），下次使用 TUN 时需重新提权。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -198,22 +197,32 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _loading = true);
-    final svc = ServiceManager.create(Constants.homeDir.path);
-    await svc.uninstall();
-    if (mounted) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('服务已卸载')),
-      );
+    try {
+      await LibCore.instance.uninstallServiceAndRestart();
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('提权已移除，已切换到内置内核')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('操作失败')),
+        );
+      }
     }
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('卸载系统服务'),
-      subtitle: const Text('删除 TUN 模式安装的 Windows 服务'),
+      title: const Text('移除提权'),
+      subtitle: Text(Platform.isWindows
+          ? '删除 Windows 服务并切换到内置内核'
+          : '删除提权内核并切换到内置内核'),
       trailing: _loading
           ? const SizedBox(
               width: 20,

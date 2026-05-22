@@ -144,7 +144,17 @@ class UnixServiceManager extends ServiceManager {
 
   @override
   Future<void> uninstall() async {
-    // No persistent resources to clean up on Unix.
+    // macOS: delete the setuid copy so start() falls back to bundle binary.
+    if (Platform.isMacOS) {
+      try {
+        if (File(_elevatedBinaryPath).existsSync()) {
+          await File(_elevatedBinaryPath).delete();
+        }
+        final marker = File(_elevatedMarkerPath);
+        if (marker.existsSync()) await marker.delete();
+      } catch (_) {}
+    }
+    // Linux: no persistent resources (setcap modifies the bundle binary in-place).
   }
 
   @override
@@ -161,19 +171,13 @@ class UnixServiceManager extends ServiceManager {
   @override
   Future<bool> start() async {
     try {
-      // macOS: prefer external copy (has setuid for TUN) over bundle binary,
-      // but only if it matches the current app bundle version.
       String svcPath = ServiceManager.serviceBinaryPath();
       if (Platform.isMacOS && File(_elevatedBinaryPath).existsSync()) {
         if (_elevatedUpToDate()) {
           svcPath = _elevatedBinaryPath;
         } else {
-          // Stale — delete so setup() re-creates it on next TUN enable.
-          try {
-            await File(_elevatedBinaryPath).delete();
-            final marker = File(_elevatedMarkerPath);
-            if (marker.existsSync()) await marker.delete();
-          } catch (_) {}
+          // Stale — clean up so we fall through to bundle binary
+          await uninstall();
         }
       }
       _directProcess = await Process.start(
@@ -325,22 +329,18 @@ class WindowsServiceManager extends ServiceManager {
       // Service installed — start via SCM.
       final result = StartService(svc, 0, Pointer<Pointer<Utf16>>.fromAddress(0));
       CloseServiceHandle(svc);
-      // StartService returns non-zero on success.
-      // If already running, GetLastError() == ERROR_SERVICE_ALREADY_RUNNING.
       if (result == 0 && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
         return false;
       }
-    } else {
-      // No service — direct process (non-TUN, no privileges needed)
-      final svcPath = ServiceManager.serviceBinaryPath();
-      _directProcess = await Process.start(
-        svcPath,
-        ['ipc', '--home', homeDir],
-        mode: ProcessStartMode.detached,
-      );
+      return true;
     }
-    // Do NOT probe IPC readiness — same reason as UnixServiceManager.
-    // The caller handles waiting via _connectWithRetry().
+    // No service — start as direct process
+    final svcPath = ServiceManager.serviceBinaryPath();
+    _directProcess = await Process.start(
+      svcPath,
+      ['ipc', '--home', homeDir],
+      mode: ProcessStartMode.detached,
+    );
     return true;
   }
 

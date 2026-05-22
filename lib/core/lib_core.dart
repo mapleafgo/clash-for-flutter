@@ -110,11 +110,8 @@ class LibCore {
       // worker is connected — cff-core exits when all GUI connections
       // disconnect and the core is not running.
       if (!await _connectWithRetry(attempts: 2)) {
-        // Not running — start the service process
-        if (!await _serviceManager!.start()) {
-          throw StateError('Failed to start service process');
-        }
-        if (!await _connectWithRetry(attempts: 20)) {
+        // Not running — start the service process with fallback
+        if (!await _startAndConnectWithFallback()) {
           throw StateError('Failed to connect to service process');
         }
       }
@@ -154,30 +151,31 @@ class LibCore {
     _reconnecting = true;
     LogFileWriter.instance?.log('IPC disconnected, attempting reconnect', name: 'ipc');
 
-    // Try reconnecting to an existing process first
     try {
-      if (await _connectWithRetry(attempts: 5)) {
-        await syncKernelState();
-        LogFileWriter.instance?.log('IPC reconnected to existing process', name: 'ipc');
-        _reconnecting = false;
-        return;
-      }
-    } catch (_) {}
+      // Try reconnecting to an existing process first
+      try {
+        if (await _connectWithRetry(attempts: 5)) {
+          await syncKernelState();
+          LogFileWriter.instance?.log('IPC reconnected to existing process', name: 'ipc');
+          return;
+        }
+      } catch (_) {}
 
-    // Process is gone — restart it
-    try {
-      if (!await _serviceManager!.start()) {
-        throw StateError('Failed to start service process');
+      // Process is gone — restart with fallback
+      try {
+        await _serviceManager!.stop();
+        if (await _startAndConnectWithFallback()) {
+          await syncKernelState();
+          LogFileWriter.instance?.log('IPC reconnected via new process', name: 'ipc');
+        } else {
+          LogFileWriter.instance?.log('IPC reconnect failed', level: LogLevel.error, name: 'ipc');
+        }
+      } catch (e) {
+        LogFileWriter.instance?.log('IPC reconnect failed: $e', level: LogLevel.error, name: 'ipc');
       }
-      if (!await _connectWithRetry(attempts: 20)) {
-        throw StateError('Failed to connect to service process');
-      }
-      await syncKernelState();
-      LogFileWriter.instance?.log('IPC reconnected via new process', name: 'ipc');
-    } catch (e) {
-      LogFileWriter.instance?.log('IPC reconnect failed: $e', level: LogLevel.error, name: 'ipc');
+    } finally {
+      _reconnecting = false;
     }
-    _reconnecting = false;
   }
 
   /// Try to connect IPC with retries. Returns true on success.
@@ -195,29 +193,68 @@ class LibCore {
     return false;
   }
 
-  /// Disconnect and reconnect IPC to the service process.
-  Future<void> reconnect() async {
-    await _ipcWorker?.disconnect();
-    await _connectWithRetry(attempts: 20);
-    await syncKernelState();
+  /// Start the service process and connect IPC.
+  Future<bool> _startAndConnect({int attempts = 20}) async {
+    if (!await _serviceManager!.start()) return false;
+    return await _connectWithRetry(attempts: attempts);
+  }
+
+  /// Start the service process and connect IPC, with fallback to built-in core.
+  Future<bool> _startAndConnectWithFallback() async {
+    // Try privileged/elevated core first
+    if (await _startAndConnect()) return true;
+    // Fallback: uninstall elevated service, then start built-in core
+    await _serviceManager!.stop();
+    await _serviceManager!.uninstall();
+    if (!await _startAndConnect(attempts: 10)) return false;
+    LogFileWriter.instance?.log(
+      'Fallback: started with built-in core (TUN unavailable)',
+      name: 'ipc',
+    );
+    return true;
   }
 
   /// Stop the service process, start a fresh one, and reconnect.
   Future<void> restart() async {
     if (!Constants.isDesktop) return;
-    stateSignal.value = kStateDestroyed;
-    _clearRuntimeState();
-    stopPolling();
-    await stopCore();
-    await _ipcWorker?.disconnect();
-    await _serviceManager?.stop();
-    if (!await _serviceManager!.start()) {
-      throw StateError('Failed to start service process');
+    _reconnecting = true;
+    try {
+      stateSignal.value = kStateDestroyed;
+      _clearRuntimeState();
+      stopPolling();
+      await stopCore();
+      await _ipcWorker?.disconnect();
+      await _serviceManager?.stop();
+      if (!await _startAndConnectWithFallback()) {
+        throw StateError('Failed to connect to service process');
+      }
+      await syncKernelState();
+    } finally {
+      _reconnecting = false;
     }
-    if (!await _connectWithRetry(attempts: 20)) {
-      throw StateError('Failed to connect to service process');
+  }
+
+  /// Uninstall elevated/privileged service, then restart with built-in core.
+  Future<void> uninstallServiceAndRestart() async {
+    if (!Constants.isDesktop) return;
+    _reconnecting = true; // Block automatic reconnect during transition
+    try {
+      stateSignal.value = kStateDestroyed;
+      _clearRuntimeState();
+      stopPolling();
+      try {
+        await stopCore();
+      } catch (_) {}
+      await _ipcWorker?.disconnect();
+      await _serviceManager?.stop();
+      await _serviceManager!.uninstall();
+      if (!await _startAndConnect(attempts: 10)) {
+        throw StateError('Failed to connect to service process');
+      }
+      await syncKernelState();
+    } finally {
+      _reconnecting = false;
     }
-    await syncKernelState();
   }
 
   void _handleWorkerCallback(int eventType, String payload) {
