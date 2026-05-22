@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/core/service_manager.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
@@ -34,6 +36,7 @@ class AboutPage extends StatelessWidget {
           onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
         ),
         const _KernelVersionTile(),
+        if (Platform.isWindows) const _UninstallServiceTile(),
       ]),
     );
   }
@@ -160,6 +163,65 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _UninstallServiceTile extends StatefulWidget {
+  const _UninstallServiceTile();
+
+  @override
+  State<_UninstallServiceTile> createState() => _UninstallServiceTileState();
+}
+
+class _UninstallServiceTileState extends State<_UninstallServiceTile> {
+  bool _loading = false;
+
+  Future<void> _uninstall() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认卸载服务'),
+        content: const Text('将停止并删除 Windows 服务 (SingcastService)，下次使用 TUN 模式时需要重新提权安装。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loading = true);
+    final svc = ServiceManager.create(Constants.homeDir.path);
+    await svc.uninstall();
+    if (mounted) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('服务已卸载')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('卸载系统服务'),
+      subtitle: const Text('删除 TUN 模式安装的 Windows 服务'),
+      trailing: _loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.delete_outline),
+      onTap: _loading ? null : _uninstall,
     );
   }
 }

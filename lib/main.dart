@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/core/service_manager.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/presentation/app.dart' show App, appReady;
 import 'package:singcast/services/app_config.dart';
@@ -13,8 +15,18 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Uninstall cleanup: stop and delete Windows Service, then exit.
+  if (args.contains('--uninstall') && Platform.isWindows) {
+    final svc = ServiceManager.create(
+      (await getApplicationSupportDirectory()).path,
+    );
+    await svc.uninstall();
+    exit(0);
+  }
+
   await Defaults.init();
 
   if (Constants.isDesktop) {

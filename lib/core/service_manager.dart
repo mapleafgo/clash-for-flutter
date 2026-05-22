@@ -20,6 +20,9 @@ abstract class ServiceManager {
   /// Called only when the user enables TUN for the first time.
   Future<bool> setup();
 
+  /// Cleanup persistent resources on app uninstall (e.g., delete Windows Service).
+  Future<void> uninstall();
+
   /// Whether the service process is currently running.
   Future<bool> isRunning();
 
@@ -140,6 +143,11 @@ class UnixServiceManager extends ServiceManager {
   }
 
   @override
+  Future<void> uninstall() async {
+    // No persistent resources to clean up on Unix.
+  }
+
+  @override
   Future<bool> isRunning() async {
     try {
       final socket = await ipc.connect(ipcPath).timeout(const Duration(seconds: 1));
@@ -153,11 +161,21 @@ class UnixServiceManager extends ServiceManager {
   @override
   Future<bool> start() async {
     try {
-      // macOS: prefer external copy (has setuid for TUN) over bundle binary
-      final svcPath =
-          Platform.isMacOS && File(_elevatedBinaryPath).existsSync()
-              ? _elevatedBinaryPath
-              : ServiceManager.serviceBinaryPath();
+      // macOS: prefer external copy (has setuid for TUN) over bundle binary,
+      // but only if it matches the current app bundle version.
+      String svcPath = ServiceManager.serviceBinaryPath();
+      if (Platform.isMacOS && File(_elevatedBinaryPath).existsSync()) {
+        if (_elevatedUpToDate()) {
+          svcPath = _elevatedBinaryPath;
+        } else {
+          // Stale — delete so setup() re-creates it on next TUN enable.
+          try {
+            await File(_elevatedBinaryPath).delete();
+            final marker = File(_elevatedMarkerPath);
+            if (marker.existsSync()) await marker.delete();
+          } catch (_) {}
+        }
+      }
       _directProcess = await Process.start(
         svcPath,
         ['ipc', '--home', homeDir],
@@ -240,41 +258,53 @@ class WindowsServiceManager extends ServiceManager {
 
   @override
   Future<bool> setup() async {
-    // 1. Stop current direct process to free the IPC path for the UAC temp
     await stop();
 
-    // 2. UAC-elevate to start a temporary core ipc process
     final svcPath = ServiceManager.serviceBinaryPath();
     final ok = _shellExecuteRunas(svcPath, ['ipc', '--home', homeDir]);
     if (!ok) return false;
 
-    // 3. Wait for IPC to become ready via connect-retry
-    bool ready = false;
-    for (int i = 0; i < 20; i++) {
+    if (!await _oneShotRpc('service.install', attempts: 20)) return false;
+
+    await _waitForElevatedExit();
+    return true;
+  }
+
+  @override
+  Future<void> uninstall() async {
+    await stop();
+
+    final svcPath = ServiceManager.serviceBinaryPath();
+    await Process.start(
+      svcPath,
+      ['ipc', '--home', homeDir],
+      mode: ProcessStartMode.detached,
+    );
+
+    await _oneShotRpc('service.uninstall', attempts: 5);
+    await _waitForIpcGone();
+  }
+
+  /// Connect IPC with retries, call [method], then disconnect.
+  /// Returns true if the RPC was called successfully.
+  Future<bool> _oneShotRpc(String method, {int attempts = 20}) async {
+    for (int i = 0; i < attempts; i++) {
       await Future.delayed(const Duration(milliseconds: 500));
       try {
         final client = JsonRpcClient(path: ipcPath);
         await client.connect();
-        // Connected — call service.install, then disconnect
         try {
-          await client.call('service.install');
-          ready = true;
+          await client.call(method);
+          return true;
         } on JsonRpcException {
           return false;
         } finally {
           await client.disconnect();
           client.dispose();
         }
-        break;
       } catch (_) {}
     }
-    if (!ready) return false;
-
-    // 4. Wait for the temp process to exit (cff-core exits when GUI
-    //    disconnects and kernel is not running).
-    await _waitForElevatedExit();
-
-    return true;
+    return false;
   }
 
   @override
