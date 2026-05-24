@@ -58,6 +58,10 @@ class AppDelegate: FlutterAppDelegate {
         // --- Lifecycle ---
         case "initCore":
             runAsync(result: result) {
+                let state = self.singcast.state()
+                if state != "created" && state != "destroyed" {
+                    return
+                }
                 try self.singcast.init_(args["optionsJSON"] as? String ?? "")
             }
         case "startCoreWithContent":

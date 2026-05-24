@@ -30,19 +30,17 @@ object Mobile {
         }
     }
 
-    @Volatile private var coreInitialized = false
-
     // --- Lifecycle ---
 
     fun initCore(optionsJSON: String) {
         synchronized(coreLock) {
-            if (coreInitialized) {
-                AppLog.i(TAG, "initCore: already initialized")
+            val state = singcast.state()
+            if (state != "created" && state != "destroyed") {
+                AppLog.i(TAG, "initCore: kernel already active (state=$state), skipping")
                 return
             }
-            AppLog.i(TAG, "initCore: optionsJSON=$optionsJSON")
+            AppLog.i(TAG, "initCore: state=$state, optionsJSON=$optionsJSON")
             singcast.init(optionsJSON)
-            coreInitialized = true
             AppLog.i(TAG, "initCore: done")
         }
     }
@@ -60,7 +58,6 @@ object Mobile {
         synchronized(coreLock) {
             AppLog.i(TAG, "stopCore: stopping core")
             singcast.stop()
-            coreInitialized = false
             AppLog.i(TAG, "stopCore: done")
         }
     }

@@ -43,12 +43,7 @@ class LibCoreChannel implements LibCorePlatform {
       'home_dir': homeDir,
       'debug': true,
     });
-    try {
-      await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
-    } on PlatformException catch (e) {
-      if ((e.message ?? '').contains('already initialized')) return;
-      rethrow;
-    }
+    await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
   }
 
   @override

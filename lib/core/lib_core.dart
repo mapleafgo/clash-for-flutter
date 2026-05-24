@@ -384,11 +384,7 @@ class LibCore {
   // --- Delegated methods ---
 
   Future<void> initCore(String homeDir) async {
-    try {
-      await _platform.initCore(homeDir);
-    } on LibCoreException catch (e) {
-      if (!e.message.contains('already initialized')) rethrow;
-    }
+    await _platform.initCore(homeDir);
   }
 
   Future<void> startCoreWithContent(
