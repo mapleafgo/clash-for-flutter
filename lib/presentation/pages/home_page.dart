@@ -332,7 +332,9 @@ class _ToggleFab extends StatelessWidget {
       final hasProfile = selectedFile.value != null;
       final stats = LibCore.instance.statsSignal.value;
       final cs = Theme.of(context).colorScheme;
-      final disabled = !hasProfile;
+      final noProfile = !hasProfile;
+      final booting = !LibCore.instance.kernelBooted.value;
+      final disabled = noProfile || booting;
 
       return SafeArea(
         child: AnimatedScale(

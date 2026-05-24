@@ -12,7 +12,6 @@ import '../utils/constants.dart';
 import '../utils/log_file.dart';
 import 'ipc_worker.dart';
 import 'lib_core_channel.dart';
-import 'lib_core_exception.dart';
 import 'service_manager.dart';
 
 abstract class LibCorePlatform {
@@ -90,6 +89,8 @@ class LibCore {
     'direct',
   ]);
   final proxyTogglingSignal = signal(false);
+  /// True once the kernel has reached running state at least once since app launch.
+  final kernelBooted = signal(false);
   void Function()? onDisconnectRequested;
 
   int _prevUpTotal = 0;
@@ -280,6 +281,7 @@ class LibCore {
         if (newState == oldState) break;
         stateSignal.value = newState;
         if (newState == kStateRunning) {
+          kernelBooted.value = true;
           proxyTogglingSignal.value = false;
           _onKernelRunning();
         } else {
@@ -375,7 +377,10 @@ class LibCore {
     try {
       final state = await _platform.queryState();
       stateSignal.value = state;
-      if (state == kStateRunning) _onKernelRunning();
+      if (state == kStateRunning) {
+        kernelBooted.value = true;
+        _onKernelRunning();
+      }
     } catch (_) {
       stateSignal.value = fallback;
     }

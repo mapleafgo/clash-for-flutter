@@ -292,12 +292,13 @@ class WindowsServiceManager extends ServiceManager {
   Future<void> uninstall() async {
     await stop();
 
-    final svcPath = ServiceManager.serviceBinaryPath();
-    final ok = _shellExecuteRunas(svcPath, ['ipc', '--home', homeDir]);
-    if (!ok) return;
-
-    await _oneShotRpc('service.uninstall', attempts: 5);
-    await _waitForElevatedExit();
+    final svc = _openService(DELETE);
+    if (svc == 0) return;
+    try {
+      DeleteService(svc);
+    } finally {
+      CloseServiceHandle(svc);
+    }
   }
 
   /// Connect IPC with retries, call [method], then disconnect.
