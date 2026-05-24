@@ -77,6 +77,12 @@ class MainActivity : FlutterFragmentActivity() {
                 flutterChannel.invokeMethod("onEvent", mapOf("eventType" to eventType, "payload" to payload))
             }
         }
+
+        SingcastVpnService.onDisconnectRequested = {
+            runOnUiThread {
+                flutterChannel.invokeMethod("onEvent", mapOf("eventType" to 6, "payload" to ""))
+            }
+        }
     }
 
     private inline fun safeCall(result: MethodChannel.Result, block: () -> Unit) {
@@ -233,6 +239,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        SingcastVpnService.onDisconnectRequested = null
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }

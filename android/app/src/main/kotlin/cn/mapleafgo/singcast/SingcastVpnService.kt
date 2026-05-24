@@ -34,6 +34,8 @@ class SingcastVpnService : VpnService() {
         var isServiceRunning = false
             private set
 
+        var onDisconnectRequested: (() -> Unit)? = null
+
         private const val NETWORK_DEBOUNCE_MS = 500L
     }
 
@@ -90,8 +92,14 @@ class SingcastVpnService : VpnService() {
             }
             ACTION_DISCONNECT_NOTIFY -> {
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (notification button)")
-                disconnect("notification_button")
-                stopSelf()
+                val cb = onDisconnectRequested
+                if (cb != null) {
+                    cb()
+                } else {
+                    AppLog.w(TAG, "onStartCommand: no Flutter callback, fallback to direct disconnect")
+                    disconnect("notification_button")
+                    stopSelf()
+                }
             }
         }
         return START_NOT_STICKY
@@ -253,6 +261,7 @@ class SingcastVpnService : VpnService() {
     }
 
     fun updateStats(up: Long, down: Long, upTotal: Long, downTotal: Long) {
+        if (!running) return
         lastUp = up
         lastDown = down
         lastUpTotal = upTotal

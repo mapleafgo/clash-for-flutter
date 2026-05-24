@@ -32,6 +32,10 @@ abstract class ServiceManager {
   /// Stop the service process.
   Future<bool> stop();
 
+  /// Start as direct process, bypassing any service/privilege mechanism.
+  /// Used for degraded/fallback startup without UAC elevation.
+  Future<bool> startDirect();
+
   /// Create the platform-appropriate ServiceManager.
   static ServiceManager create(String homeDir) {
     if (Platform.isWindows) return WindowsServiceManager(homeDir);
@@ -185,10 +189,20 @@ class UnixServiceManager extends ServiceManager {
         ['ipc', '--home', homeDir],
         mode: ProcessStartMode.detached,
       );
-      // Do NOT probe IPC readiness here — connecting and immediately
-      // disconnecting causes cff-core to self-terminate when the kernel
-      // is not running. The caller (LibCore.init / restart) handles
-      // waiting via _connectWithRetry().
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> startDirect() async {
+    try {
+      _directProcess = await Process.start(
+        ServiceManager.serviceBinaryPath(),
+        ['ipc', '--home', homeDir],
+        mode: ProcessStartMode.detached,
+      );
       return true;
     } catch (_) {
       return false;
@@ -279,14 +293,11 @@ class WindowsServiceManager extends ServiceManager {
     await stop();
 
     final svcPath = ServiceManager.serviceBinaryPath();
-    await Process.start(
-      svcPath,
-      ['ipc', '--home', homeDir],
-      mode: ProcessStartMode.detached,
-    );
+    final ok = _shellExecuteRunas(svcPath, ['ipc', '--home', homeDir]);
+    if (!ok) return;
 
     await _oneShotRpc('service.uninstall', attempts: 5);
-    await _waitForIpcGone();
+    await _waitForElevatedExit();
   }
 
   /// Connect IPC with retries, call [method], then disconnect.
@@ -335,13 +346,24 @@ class WindowsServiceManager extends ServiceManager {
       return true;
     }
     // No service — start as direct process
-    final svcPath = ServiceManager.serviceBinaryPath();
-    _directProcess = await Process.start(
-      svcPath,
-      ['ipc', '--home', homeDir],
-      mode: ProcessStartMode.detached,
-    );
-    return true;
+    return _startDirectProcess();
+  }
+
+  @override
+  Future<bool> startDirect() => _startDirectProcess();
+
+  Future<bool> _startDirectProcess() async {
+    try {
+      final svcPath = ServiceManager.serviceBinaryPath();
+      _directProcess = await Process.start(
+        svcPath,
+        ['ipc', '--home', homeDir],
+        mode: ProcessStartMode.detached,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override

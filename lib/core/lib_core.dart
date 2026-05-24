@@ -68,6 +68,7 @@ class LibCore {
   static const _evtConnEvent = 3;
   static const _evtStateUpdate = 4;
   static const _evtTrafficUpdate = 5;
+  static const _evtDisconnectRequested = 6;
 
   late final LibCorePlatform _platform;
   IpcWorker? _ipcWorker;
@@ -89,6 +90,7 @@ class LibCore {
     'direct',
   ]);
   final proxyTogglingSignal = signal(false);
+  void Function()? onDisconnectRequested;
 
   int _prevUpTotal = 0;
   int _prevDownTotal = 0;
@@ -203,10 +205,10 @@ class LibCore {
   Future<bool> _startAndConnectWithFallback() async {
     // Try privileged/elevated core first
     if (await _startAndConnect()) return true;
-    // Fallback: uninstall elevated service, then start built-in core
+    // Fallback: stop elevated service, start direct process (no UAC)
     await _serviceManager!.stop();
-    await _serviceManager!.uninstall();
-    if (!await _startAndConnect(attempts: 10)) return false;
+    if (!await _serviceManager!.startDirect()) return false;
+    if (!await _connectWithRetry(attempts: 10)) return false;
     LogFileWriter.instance?.log(
       'Fallback: started with built-in core (TUN unavailable)',
       name: 'ipc',
@@ -291,6 +293,9 @@ class LibCore {
         if (Constants.isDesktop) {
           _handleTrafficUpdate(payload);
         }
+      case _evtDisconnectRequested:
+        LogFileWriter.instance?.log('DisconnectRequested: from notification', name: 'tun');
+        onDisconnectRequested?.call();
     }
   }
 

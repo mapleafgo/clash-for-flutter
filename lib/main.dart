@@ -103,6 +103,7 @@ Future<void> _initApp() async {
 
   // 移动端：引擎重建恢复时内核可能仍在运行，同步真实状态
   if (!Constants.isDesktop) {
+    LibCore.instance.onDisconnectRequested = disableTun;
     await LibCore.instance.syncKernelState();
     final syncedState = LibCore.instance.stateSignal.peek();
     _log(
