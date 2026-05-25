@@ -7,7 +7,6 @@ import 'package:win32/win32.dart';
 
 import '../domain/enums.dart';
 import '../utils/log_file.dart';
-import 'ipc/json_rpc_client.dart';
 
 /// Manages the singcast-service process lifecycle.
 abstract class ServiceManager {
@@ -281,22 +280,17 @@ class WindowsServiceManager extends ServiceManager {
     await stop();
 
     final svcPath = ServiceManager.serviceBinaryPath();
-    LogFileWriter.instance?.log('setup: elevating $svcPath', name: 'service');
-    final ok = _shellExecuteRunas(svcPath, ['ipc', '--home', homeDir]);
+    LogFileWriter.instance?.log('setup: elevating $svcPath service install', name: 'service');
+    final ok = _shellExecuteRunas(svcPath, ['service', 'install', '--home', homeDir]);
     if (!ok) {
       LogFileWriter.instance?.log('setup: ShellExecuteEx runas failed (UAC cancelled?)', level: LogLevel.error, name: 'service');
       return false;
     }
 
-    LogFileWriter.instance?.log('setup: calling service.install with home=$homeDir', name: 'service');
-    if (!await _oneShotRpc('service.install', params: {'home': homeDir}, attempts: 30)) {
-      LogFileWriter.instance?.log('setup: service.install RPC failed', level: LogLevel.error, name: 'service');
-      return false;
-    }
-
     await _waitForElevatedExit();
-    LogFileWriter.instance?.log('setup: service installed successfully', name: 'service');
-    return true;
+    final installed = await isReady();
+    LogFileWriter.instance?.log('setup: service install ${installed ? "success" : "failed"}', name: 'service');
+    return installed;
   }
 
   @override
@@ -310,53 +304,6 @@ class WindowsServiceManager extends ServiceManager {
     } finally {
       CloseServiceHandle(svc);
     }
-  }
-
-  /// Connect IPC with retries, call [method], then disconnect.
-  /// Returns true if the RPC was called successfully.
-  Future<bool> _oneShotRpc(String method, {Map<String, dynamic>? params, int attempts = 20}) async {
-    for (int i = 0; i < attempts; i++) {
-      // Early exit: if the elevated process has already terminated, stop retrying.
-      if (_elevatedHandle != null) {
-        final waitResult = WaitForSingleObject(_elevatedHandle!, 0);
-        if (waitResult != WAIT_TIMEOUT) {
-          var exitCode = 0xFFFFFFFF;
-          final pExitCode = calloc<DWORD>();
-          if (GetExitCodeProcess(_elevatedHandle!, pExitCode) != 0) {
-            exitCode = pExitCode.value;
-          }
-          free(pExitCode);
-          LogFileWriter.instance?.log(
-            'RPC $method: elevated process exited early with code $exitCode',
-            level: LogLevel.error,
-            name: 'service',
-          );
-          return false;
-        }
-      }
-
-      await Future.delayed(const Duration(milliseconds: 500));
-      try {
-        final client = JsonRpcClient(path: ipcPath);
-        await client.connect();
-        try {
-          await client.call(method, params);
-          return true;
-        } on JsonRpcException catch (e) {
-          LogFileWriter.instance?.log('RPC $method error: ${e.error.message}', level: LogLevel.error, name: 'service');
-          return false;
-        } finally {
-          await client.disconnect();
-          client.dispose();
-        }
-      } catch (e) {
-        const logEvery = 5;
-        if ((i + 1) % logEvery == 0) {
-          LogFileWriter.instance?.log('RPC $method connect attempt ${i + 1}/$attempts failed: $e', level: LogLevel.warning, name: 'service');
-        }
-      }
-    }
-    return false;
   }
 
   @override
