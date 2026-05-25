@@ -265,7 +265,7 @@ class LibCore {
       await _ipcWorker?.disconnect();
       await _serviceManager?.stop();
       await _serviceManager!.uninstall();
-      if (!await _startAndConnect(attempts: 10)) {
+      if (!await _startAndConnectWithFallback()) {
         throw StateError('Failed to connect to service process');
       }
       await syncKernelState();
