@@ -208,7 +208,7 @@ Future<void> disableTun() async {
 Future<void> _enableTunDesktop() async {
   final svc = LibCore.instance.serviceManager;
   if (svc != null && !await svc.isReady()) {
-    final ok = await svc.setup();
+    final ok = await LibCore.instance.elevateService();
     if (!ok) {
       throw TunElevationException('提权设置失败，请重试');
     }

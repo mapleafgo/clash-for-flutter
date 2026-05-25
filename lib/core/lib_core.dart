@@ -237,6 +237,20 @@ class LibCore {
     }
   }
 
+  /// One-time privilege setup for TUN mode.
+  /// Disconnects IPC and blocks automatic reconnection during elevation
+  /// to prevent _attemptReconnect() from spawning a non-elevated process
+  /// that would race with the elevated service.install RPC.
+  Future<bool> elevateService() async {
+    _reconnecting = true;
+    try {
+      await _ipcWorker?.disconnect();
+      return await _serviceManager!.setup();
+    } finally {
+      _reconnecting = false;
+    }
+  }
+
   /// Uninstall elevated/privileged service, then restart with built-in core.
   Future<void> uninstallServiceAndRestart() async {
     if (!Constants.isDesktop) return;

@@ -421,12 +421,13 @@ class WindowsServiceManager extends ServiceManager {
   /// UAC-elevate via ShellExecuteExW with "runas" verb.
   bool _shellExecuteRunas(String exe, List<String> args) {
     final exePtr = exe.toNativeUtf16();
-    final paramsPtr = args.join(' ').toNativeUtf16();
+    // Quote args that may contain spaces (e.g. homeDir paths)
+    final paramsPtr = args.map((a) => a.contains(' ') ? '"$a"' : a).join(' ').toNativeUtf16();
     final verbPtr = 'runas'.toNativeUtf16();
     final dirPtr = File(exe).parent.path.toNativeUtf16();
 
+    final info = calloc<SHELLEXECUTEINFO>();
     try {
-      final info = calloc<SHELLEXECUTEINFO>();
       info.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
       info.ref.fMask = 0x00000100 | 0x00000040; // NOCLOSEPROCESS | NOASYNC
       info.ref.lpVerb = verbPtr;
@@ -436,9 +437,13 @@ class WindowsServiceManager extends ServiceManager {
       info.ref.nShow = SW_HIDE;
 
       final result = ShellExecuteEx(info);
-      if (result == FALSE) return false;
+      if (result == FALSE) {
+        free(info);
+        return false;
+      }
 
       _elevatedHandle = info.ref.hProcess;
+      free(info);
       return true;
     } finally {
       free(exePtr);
