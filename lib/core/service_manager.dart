@@ -241,7 +241,6 @@ class WindowsServiceManager extends ServiceManager {
 
   final String homeDir;
   Process? _directProcess;
-  int? _elevatedHandle; // HANDLE from ShellExecuteExW
 
   WindowsServiceManager(this.homeDir);
 
@@ -280,13 +279,43 @@ class WindowsServiceManager extends ServiceManager {
     await stop();
 
     final svcPath = ServiceManager.serviceBinaryPath();
-    final ok = _shellExecuteRunas(svcPath, ['service', 'install', '--home', homeDir]);
-    if (!ok) {
-      LogFileWriter.instance?.log('ShellExecuteEx runas failed', level: LogLevel.error, name: 'service');
-      return false;
+    final exePtr = svcPath.toNativeUtf16();
+    final params = ['service', 'install', '--home', homeDir]
+        .map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
+    final paramsPtr = params.toNativeUtf16();
+    final verbPtr = 'runas'.toNativeUtf16();
+    final dirPtr = File(svcPath).parent.path.toNativeUtf16();
+
+    final info = calloc<SHELLEXECUTEINFO>();
+    try {
+      info.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
+      info.ref.fMask = 0x00000100 | 0x00000040; // NOCLOSEPROCESS | NOASYNC
+      info.ref.lpVerb = verbPtr;
+      info.ref.lpFile = exePtr;
+      info.ref.lpParameters = paramsPtr;
+      info.ref.lpDirectory = dirPtr;
+      info.ref.nShow = SW_HIDE;
+
+      final result = ShellExecuteEx(info);
+      if (result == FALSE) {
+        LogFileWriter.instance?.log('ShellExecuteEx runas failed', level: LogLevel.error, name: 'service');
+        return false;
+      }
+
+      final handle = info.ref.hProcess;
+      // Wait for the elevated process to exit
+      while (WaitForSingleObject(handle, 100) == WAIT_TIMEOUT) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      CloseHandle(handle);
+    } finally {
+      free(info);
+      free(exePtr);
+      free(paramsPtr);
+      free(verbPtr);
+      free(dirPtr);
     }
 
-    await _waitForElevatedExit();
     return await isReady();
   }
 
@@ -296,8 +325,7 @@ class WindowsServiceManager extends ServiceManager {
 
     if (!await isReady()) return;
     final svcPath = ServiceManager.serviceBinaryPath();
-    _shellExecuteRunas(svcPath, ['service', 'uninstall']);
-    await _waitForElevatedExit();
+    await Process.run(svcPath, ['service', 'uninstall']);
   }
 
   @override
@@ -380,53 +408,5 @@ class WindowsServiceManager extends ServiceManager {
       await Future.delayed(const Duration(milliseconds: 500));
     }
     return false;
-  }
-
-  /// Wait for the elevated temp process to exit via HANDLE.
-  Future<void> _waitForElevatedExit() async {
-    if (_elevatedHandle != null) {
-      while (WaitForSingleObject(_elevatedHandle!, 100) == WAIT_TIMEOUT) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      CloseHandle(_elevatedHandle!);
-      _elevatedHandle = null;
-    } else {
-      await _waitForIpcGone();
-    }
-  }
-
-  /// UAC-elevate via ShellExecuteExW with "runas" verb.
-  bool _shellExecuteRunas(String exe, List<String> args) {
-    final exePtr = exe.toNativeUtf16();
-    // Quote args that may contain spaces (e.g. homeDir paths)
-    final paramsPtr = args.map((a) => a.contains(' ') ? '"$a"' : a).join(' ').toNativeUtf16();
-    final verbPtr = 'runas'.toNativeUtf16();
-    final dirPtr = File(exe).parent.path.toNativeUtf16();
-
-    final info = calloc<SHELLEXECUTEINFO>();
-    try {
-      info.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
-      info.ref.fMask = 0x00000100 | 0x00000040; // NOCLOSEPROCESS | NOASYNC
-      info.ref.lpVerb = verbPtr;
-      info.ref.lpFile = exePtr;
-      info.ref.lpParameters = paramsPtr;
-      info.ref.lpDirectory = dirPtr;
-      info.ref.nShow = SW_HIDE;
-
-      final result = ShellExecuteEx(info);
-      if (result == FALSE) {
-        free(info);
-        return false;
-      }
-
-      _elevatedHandle = info.ref.hProcess;
-      free(info);
-      return true;
-    } finally {
-      free(exePtr);
-      free(paramsPtr);
-      free(verbPtr);
-      free(dirPtr);
-    }
   }
 }
