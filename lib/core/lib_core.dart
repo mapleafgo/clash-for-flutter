@@ -92,6 +92,9 @@ class LibCore {
   /// True once the kernel has reached running state at least once since app launch.
   final kernelBooted = signal(false);
   void Function()? onDisconnectRequested;
+  /// Called after process restart (restart / uninstall) completes and IPC reconnects.
+  /// The app layer uses this to re-activate the kernel profile.
+  Future<void> Function()? onProcessReady;
 
   int _prevUpTotal = 0;
   int _prevDownTotal = 0;
@@ -152,14 +155,12 @@ class LibCore {
   Future<void> _attemptReconnect() async {
     if (_disposed || _reconnecting) return;
     _reconnecting = true;
-    LogFileWriter.instance?.log('IPC disconnected, attempting reconnect', name: 'ipc');
 
     try {
       // Try reconnecting to an existing process first
       try {
         if (await _connectWithRetry(attempts: 5)) {
           await syncKernelState();
-          LogFileWriter.instance?.log('IPC reconnected to existing process', name: 'ipc');
           return;
         }
       } catch (_) {}
@@ -169,7 +170,6 @@ class LibCore {
         await _serviceManager!.stop();
         if (await _startAndConnectWithFallback()) {
           await syncKernelState();
-          LogFileWriter.instance?.log('IPC reconnected via new process', name: 'ipc');
         } else {
           LogFileWriter.instance?.log('IPC reconnect failed', level: LogLevel.error, name: 'ipc');
         }
@@ -232,6 +232,7 @@ class LibCore {
         throw StateError('Failed to connect to service process');
       }
       await syncKernelState();
+      await onProcessReady?.call();
     } finally {
       _reconnecting = false;
     }
@@ -272,6 +273,7 @@ class LibCore {
         throw StateError('Failed to connect to service process');
       }
       await syncKernelState();
+      await onProcessReady?.call();
     } finally {
       _reconnecting = false;
     }
@@ -291,10 +293,6 @@ class LibCore {
       case _evtStateUpdate:
         final newState = payload;
         final oldState = stateSignal.peek();
-        LogFileWriter.instance?.log(
-          'StateUpdate: $oldState -> $newState',
-          name: 'tun',
-        );
         if (newState == oldState) break;
         stateSignal.value = newState;
         if (newState == kStateRunning) {
@@ -313,7 +311,6 @@ class LibCore {
           _handleTrafficUpdate(payload);
         }
       case _evtDisconnectRequested:
-        LogFileWriter.instance?.log('DisconnectRequested: from notification', name: 'tun');
         onDisconnectRequested?.call();
     }
   }
@@ -368,21 +365,6 @@ class LibCore {
       final raw = await queryStats();
       final stats = _applyStats(raw);
       _updateVpnStats(stats);
-
-      if (stats.up > 1024 && stats.down == 0) {
-        LogFileWriter.instance?.log(
-          'traffic anomaly: up=${stats.up} down=${stats.down} conns=${stats.connections} mem=${stats.memory}',
-          level: LogLevel.warning,
-          name: 'tun',
-        );
-      }
-      if (stats.memory > 100 * 1024 * 1024 || stats.connections > 500) {
-        LogFileWriter.instance?.log(
-          'resource pressure: mem=${(stats.memory / 1024 / 1024).toStringAsFixed(1)}MB conns=${stats.connections}',
-          level: LogLevel.warning,
-          name: 'tun',
-        );
-      }
     } catch (e) {
       LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'poll');
       if (e is StateError) stopPolling();

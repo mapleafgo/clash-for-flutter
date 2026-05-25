@@ -129,17 +129,11 @@ void updateClashConfig({
 }
 
 Future<void> toggleTun(bool enable) async {
-  final sw = Stopwatch()..start();
-  LogFileWriter.instance?.log('toggleTun($enable) called', name: 'tun');
   if (enable) {
     await enableTun();
   } else {
     await disableTun();
   }
-  LogFileWriter.instance?.log(
-    'toggleTun($enable): ${sw.elapsedMilliseconds}ms',
-    name: 'tun',
-  );
 }
 
 Future<void> enableSystemProxy() async {

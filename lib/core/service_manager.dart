@@ -280,30 +280,24 @@ class WindowsServiceManager extends ServiceManager {
     await stop();
 
     final svcPath = ServiceManager.serviceBinaryPath();
-    LogFileWriter.instance?.log('setup: elevating $svcPath service install', name: 'service');
     final ok = _shellExecuteRunas(svcPath, ['service', 'install', '--home', homeDir]);
     if (!ok) {
-      LogFileWriter.instance?.log('setup: ShellExecuteEx runas failed (UAC cancelled?)', level: LogLevel.error, name: 'service');
+      LogFileWriter.instance?.log('ShellExecuteEx runas failed', level: LogLevel.error, name: 'service');
       return false;
     }
 
     await _waitForElevatedExit();
-    final installed = await isReady();
-    LogFileWriter.instance?.log('setup: service install ${installed ? "success" : "failed"}', name: 'service');
-    return installed;
+    return await isReady();
   }
 
   @override
   Future<void> uninstall() async {
     await stop();
 
-    final svc = _openService(DELETE);
-    if (svc == 0) return;
-    try {
-      DeleteService(svc);
-    } finally {
-      CloseServiceHandle(svc);
-    }
+    if (!await isReady()) return;
+    final svcPath = ServiceManager.serviceBinaryPath();
+    _shellExecuteRunas(svcPath, ['service', 'uninstall']);
+    await _waitForElevatedExit();
   }
 
   @override

@@ -120,10 +120,6 @@ class _KernelStateIcon extends StatelessWidget {
     try {
       initError.value = null;
       await LibCore.instance.restart();
-      await LibCore.instance.initCore(Constants.homeDir.path);
-      if (selectedFile.value != null) {
-        await asyncProfile();
-      }
     } catch (e) {
       if (context.mounted) {
         initError.value = '内核连接失败: $e';

@@ -52,10 +52,6 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     _syncing = true;
     try {
       final running = await LibCore.instance.isVpnRunning();
-      LogFileWriter.instance?.log(
-        '_syncVpnState: running=$running vpnConnected=${vpnConnected.value} tunEnabled=${clashConfig.value.tunEnabled}',
-        name: 'tun',
-      );
       if (running != vpnConnected.value) {
         vpnConnected.value = running;
         if (!running && clashConfig.value.tunEnabled) {
@@ -67,7 +63,6 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           await asyncProfile();
         }
       } else if (running && LibCore.instance.proxiesSignal.value.isEmpty) {
-        LogFileWriter.instance?.log('_syncVpnState: VPN running but proxies empty, re-querying', name: 'tun');
         try {
           final proxies = await LibCore.instance.queryProxies();
           LibCore.instance.proxiesSignal.value = proxies;

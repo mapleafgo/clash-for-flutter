@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/core/service_manager.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/presentation/app.dart' show App, appReady;
 import 'package:singcast/services/app_config.dart';
@@ -15,17 +13,8 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
-void main(List<String> args) async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Uninstall cleanup: stop and delete Windows Service, then exit.
-  if (args.contains('--uninstall') && Platform.isWindows) {
-    final svc = ServiceManager.create(
-      (await getApplicationSupportDirectory()).path,
-    );
-    await svc.uninstall();
-    exit(0);
-  }
 
   await Defaults.init();
 
@@ -118,6 +107,10 @@ Future<void> _initApp() async {
     // 桌面端：LibCore.init() 已通过 syncKernelState 恢复状态
     final syncedState = LibCore.instance.stateSignal.peek();
     _log('[startup] desktop state after syncKernelState: $syncedState');
+    // restart / uninstallServiceAndRestart 后统一重新激活内核
+    LibCore.instance.onProcessReady = () async {
+      if (selectedFile.value != null) await asyncProfile();
+    };
   }
 
   startWatchingSelectedFile();

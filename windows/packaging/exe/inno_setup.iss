@@ -62,4 +62,4 @@ Name: "{userstartup}\\{{DISPLAY_NAME}}"; Filename: "{app}\\{{EXECUTABLE_NAME}}";
 Filename: "{app}\\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Flags: {% if PRIVILEGES_REQUIRED == 'admin' %}runascurrentuser{% endif %} nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{app}\\{{EXECUTABLE_NAME}}"; Parameters: "--uninstall"; Flags: runhidden runascurrentuser
+Filename: "{app}\\singcast-core.exe"; Parameters: "service uninstall"; Flags: runhidden

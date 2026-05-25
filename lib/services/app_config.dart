@@ -182,7 +182,6 @@ void startWatchingSelectedFile() {
 /// 3. 状态一致性 - 确保 VPN 状态正确同步
 Future<bool> _activateProfile(String yamlPath) async {
   if (_activating) {
-    LogFileWriter.instance?.log('_activateProfile: already activating, skip', name: 'tun');
     return true;
   }
 
@@ -201,10 +200,6 @@ Future<bool> _activateProfile(String yamlPath) async {
     if (_lastWorkingConfig == null &&
         LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
       _lastWorkingConfig = merged;
-      LogFileWriter.instance?.log(
-        '_activateProfile: engine rebuild, synced _lastWorkingConfig without restart',
-        name: 'tun',
-      );
       return true;
     }
 
