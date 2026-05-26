@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import NetworkExtension
 import Singcast
 
@@ -12,6 +13,7 @@ import Singcast
 class ExtensionProvider: NEPacketTunnelProvider {
 
     private let singcast = FfiSingcast()
+    private var pathMonitor: NWPathMonitor?
 
     override func startTunnel(options: [String: NSObject]?) async throws {
         guard let configContent = options?["configContent"] as? String else {
@@ -39,9 +41,11 @@ class ExtensionProvider: NEPacketTunnelProvider {
 
         singcast.setTunFd(tunFd)
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
+        startDefaultInterfaceMonitor()
     }
 
     override func stopTunnel(with reason: NEProviderStopReason) async {
+        stopDefaultInterfaceMonitor()
         try? singcast.stop()
     }
 
@@ -83,6 +87,38 @@ class ExtensionProvider: NEPacketTunnelProvider {
             }
         }
         return nil
+    }
+
+    // MARK: - Default interface monitor
+
+    private func startDefaultInterfaceMonitor() {
+        let monitor = NWPathMonitor()
+        pathMonitor = monitor
+        let semaphore = DispatchSemaphore(value: 0)
+        monitor.pathUpdateHandler = { [weak self] path in
+            self?.handlePathUpdate(path)
+            semaphore.signal()
+            monitor.pathUpdateHandler = { [weak self] path in
+                self?.handlePathUpdate(path)
+            }
+        }
+        monitor.start(queue: DispatchQueue.global())
+        semaphore.wait()
+    }
+
+    private func handlePathUpdate(_ path: NWPath) {
+        guard path.status != .unsatisfied,
+              let iface = path.availableInterfaces.first
+        else {
+            singcast.updateDefaultInterface("", index: -1, expensive: false)
+            return
+        }
+        singcast.updateDefaultInterface(iface.name, index: Int64(iface.index), expensive: path.isExpensive)
+    }
+
+    private func stopDefaultInterfaceMonitor() {
+        pathMonitor?.cancel()
+        pathMonitor = nil
     }
 }
 

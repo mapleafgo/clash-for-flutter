@@ -109,7 +109,6 @@ class MainActivity : FlutterFragmentActivity() {
             // Lifecycle
             "initCore" -> safeCall(result) {
                 Mobile.initCore(args?.str("optionsJSON") ?: "")
-                Mobile.detectAndReportInterfaces(this@MainActivity)
             }
             "startCoreWithContent" -> {
                 val content = args?.str("content") ?: ""
@@ -122,8 +121,6 @@ class MainActivity : FlutterFragmentActivity() {
                     } else if (isTunEnabled(content)) {
                         requestVpn(content, proxy, true, result)
                     } else {
-                        Mobile.detectAndReportInterfaces(this@MainActivity)
-                        Mobile.detectAndReportDefaultInterface(this@MainActivity)
                         Mobile.startWithContent(content, proxy)
                         result.success(null)
                     }

@@ -173,14 +173,8 @@ object Mobile {
 
     // --- Network (delegated to NetworkMonitor) ---
 
-    fun detectAndReportInterfaces(context: android.content.Context) =
-        NetworkMonitor.detectAndReportInterfaces(context)
-
-    fun detectAndReportDefaultInterface(context: android.content.Context) =
-        NetworkMonitor.detectAndReportDefaultInterface(context)
-
     fun unregisterDefaultNetworkCallback(context: android.content.Context) =
-        NetworkMonitor.unregisterDefaultNetworkCallback(context)
+        NetworkMonitor.stopMonitoring(context)
 
     // --- Callbacks ---
 

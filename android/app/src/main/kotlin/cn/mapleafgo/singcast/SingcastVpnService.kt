@@ -3,18 +3,13 @@ package cn.mapleafgo.singcast
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Binder
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
-import android.os.ParcelFileDescriptor
 import android.os.Build
+import android.os.IBinder
+import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 
 class SingcastVpnService : VpnService() {
@@ -35,29 +30,19 @@ class SingcastVpnService : VpnService() {
             private set
 
         var onDisconnectRequested: (() -> Unit)? = null
-
-        private const val NETWORK_DEBOUNCE_MS = 500L
     }
 
     private val binder = LocalBinder()
-    private val lock = Any()  // protects pfd (fd read/close must be atomic)
+    private val lock = Any()
     private var pfd: ParcelFileDescriptor? = null
     @Volatile private var running = false
     @Volatile private var disconnected = false
-    // dup 后的裸 fd，不经过 ParcelFileDescriptor 包装，避免 fdsan 崩溃
     private var activeTunFd: Int = -1
     private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
     private var lastUpTotal: Long = 0
     private var lastDownTotal: Long = 0
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private val networkHandler = Handler(Looper.getMainLooper())
-    private val networkUpdateRunnable = Runnable {
-        Mobile.detectAndReportInterfaces(this@SingcastVpnService)
-        Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
-        Mobile.resetNetwork()
-    }
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
@@ -138,9 +123,8 @@ class SingcastVpnService : VpnService() {
                 Mobile.startWithContent(configContent, ruleSetProxy)
                 isServiceRunning = true
 
-                Mobile.detectAndReportInterfaces(this@SingcastVpnService)
-                Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
-                registerNetworkCallback()
+                // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
+                NetworkMonitor.startMonitoring(this@SingcastVpnService)
 
                 AppLog.i(TAG, "connect: core started successfully")
             } catch (e: Throwable) {
@@ -160,7 +144,6 @@ class SingcastVpnService : VpnService() {
             .addDnsServer("8.8.8.8")
             .addDnsServer("8.8.4.4")
         if (enableIpv6) {
-            // /126 匹配 sing-box 内核默认 TUN 地址，/128 会导致响应包被丢弃
             builder.addAddress("fdfe:dcba:9876::1", 126)
             builder.addRoute("::", 0)
         }
@@ -193,8 +176,7 @@ class SingcastVpnService : VpnService() {
         }
         AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
-        unregisterNetworkCallback()
-        Mobile.unregisterDefaultNetworkCallback(this)
+        NetworkMonitor.stopMonitoring(this)
         synchronized(lock) {
             try { pfd?.detachFd() } catch (e: Throwable) {
                 AppLog.w(TAG, "disconnect: pfd.detachFd error: ${e.message}")
@@ -209,7 +191,6 @@ class SingcastVpnService : VpnService() {
 
     fun isRunning(): Boolean = running
 
-    // dup 裸 fd：短暂 adopt 触发 dup，立即 detach 释放 fdsan 跟踪
     private fun dupRawFd(fd: Int): Int {
         val tempPfd = ParcelFileDescriptor.adoptFd(fd)
         val dupedPfd = ParcelFileDescriptor.dup(tempPfd.fileDescriptor)
@@ -217,11 +198,6 @@ class SingcastVpnService : VpnService() {
         return dupedPfd.detachFd()
     }
 
-    /**
-     * Hot-reload config while VPN is active. Duplicates the TUN fd so the kernel's
-     * internal stop won't invalidate it, then restarts the core with new config.
-     * Uses raw fd tracking (activeTunFd) to avoid fdsan ownership conflicts.
-     */
     fun refreshConfig(content: String, ruleSetProxy: String) {
         if (!running || disconnected) {
             AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring (running=$running, disconnected=$disconnected)")
@@ -254,9 +230,6 @@ class SingcastVpnService : VpnService() {
             }
         }
         Mobile.startWithContent(content, ruleSetProxy)
-        // 内核重建后接口信息丢失，重新检测
-        Mobile.detectAndReportInterfaces(this@SingcastVpnService)
-        Mobile.detectAndReportDefaultInterface(this@SingcastVpnService)
         AppLog.i(TAG, "refreshConfig: done")
     }
 
@@ -272,7 +245,7 @@ class SingcastVpnService : VpnService() {
     fun protectSocket(fd: Int): Boolean = protect(fd)
 
     private fun buildBaseNotification(): NotificationCompat.Builder {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Singcast VPN 服务状态"
@@ -321,7 +294,7 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun updateNotification() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = buildBaseNotification()
             .setContentTitle("Singcast")
             .setContentText(formatTraffic())
@@ -351,53 +324,4 @@ class SingcastVpnService : VpnService() {
         val gb = mb / 1024.0
         return "%.2f GB".format(gb)
     }
-
-    private fun registerNetworkCallback() {
-        try {
-            val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-            val callback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    AppLog.i(TAG, "NetworkCallback: onAvailable")
-                    scheduleNetworkUpdate()
-                }
-
-                override fun onLost(network: Network) {
-                    AppLog.i(TAG, "NetworkCallback: onLost")
-                    scheduleNetworkUpdate()
-                }
-
-                override fun onLinkPropertiesChanged(network: Network, linkProperties: android.net.LinkProperties) {
-                    AppLog.d(TAG, "NetworkCallback: onLinkPropertiesChanged")
-                    scheduleNetworkUpdate()
-                }
-            }
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-            cm.registerNetworkCallback(request, callback)
-            networkCallback = callback
-            AppLog.i(TAG, "registerNetworkCallback: registered")
-        } catch (e: Exception) {
-            AppLog.e(TAG, "registerNetworkCallback: failed", e)
-        }
-    }
-
-    private fun scheduleNetworkUpdate() {
-        networkHandler.removeCallbacks(networkUpdateRunnable)
-        networkHandler.postDelayed(networkUpdateRunnable, NETWORK_DEBOUNCE_MS)
-    }
-
-    private fun unregisterNetworkCallback() {
-        networkHandler.removeCallbacks(networkUpdateRunnable)
-        val callback = networkCallback ?: return
-        try {
-            val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-            cm.unregisterNetworkCallback(callback)
-            AppLog.i(TAG, "unregisterNetworkCallback: unregistered")
-        } catch (e: Exception) {
-            AppLog.w(TAG, "unregisterNetworkCallback: ${e.message}")
-        }
-        networkCallback = null
-    }
-
 }
