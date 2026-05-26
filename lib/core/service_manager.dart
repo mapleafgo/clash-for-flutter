@@ -40,7 +40,8 @@ abstract class ServiceManager {
   /// Create the platform-appropriate ServiceManager.
   static ServiceManager create(String homeDir) {
     if (Platform.isWindows) return WindowsServiceManager(homeDir);
-    if (Platform.isLinux || Platform.isMacOS) return UnixServiceManager(homeDir);
+    if (Platform.isLinux || Platform.isMacOS)
+      return UnixServiceManager(homeDir);
     throw UnsupportedError('Unsupported platform for ServiceManager');
   }
 
@@ -81,8 +82,7 @@ class UnixServiceManager extends ServiceManager {
       final marker = File(_elevatedMarkerPath);
       if (!marker.existsSync()) return false;
       final markerMtime = marker.readAsStringSync().trim();
-      final bundleStat =
-          FileStat.statSync(ServiceManager.serviceBinaryPath());
+      final bundleStat = FileStat.statSync(ServiceManager.serviceBinaryPath());
       return markerMtime ==
           bundleStat.modified.millisecondsSinceEpoch.toString();
     } catch (_) {
@@ -114,9 +114,11 @@ class UnixServiceManager extends ServiceManager {
       if (Platform.isLinux) {
         final svcPath = ServiceManager.serviceBinaryPath();
         final result = await Process.run('pkexec', [
-          'sh', '-c',
+          'sh',
+          '-c',
           'setcap cap_net_admin+ep "\$1"',
-          'sh', svcPath,
+          'sh',
+          svcPath,
         ]);
         return result.exitCode == 0;
       }
@@ -137,10 +139,10 @@ class UnixServiceManager extends ServiceManager {
       ]);
       if (result.exitCode != 0) return false;
       // Write marker for staleness detection on next launch
-      final bundleStat =
-          FileStat.statSync(ServiceManager.serviceBinaryPath());
-      await File(_elevatedMarkerPath)
-          .writeAsString(bundleStat.modified.millisecondsSinceEpoch.toString());
+      final bundleStat = FileStat.statSync(ServiceManager.serviceBinaryPath());
+      await File(
+        _elevatedMarkerPath,
+      ).writeAsString(bundleStat.modified.millisecondsSinceEpoch.toString());
       return true;
     } catch (_) {
       return false;
@@ -165,7 +167,9 @@ class UnixServiceManager extends ServiceManager {
   @override
   Future<bool> isRunning() async {
     try {
-      final socket = await ipc.connect(ipcPath).timeout(const Duration(seconds: 1));
+      final socket = await ipc
+          .connect(ipcPath)
+          .timeout(const Duration(seconds: 1));
       socket.destroy();
       return true;
     } catch (_) {
@@ -185,11 +189,11 @@ class UnixServiceManager extends ServiceManager {
           await uninstall();
         }
       }
-      _directProcess = await Process.start(
-        svcPath,
-        ['ipc', '--home', homeDir],
-        mode: ProcessStartMode.detached,
-      );
+      _directProcess = await Process.start(svcPath, [
+        'ipc',
+        '--home',
+        homeDir,
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (_) {
       return false;
@@ -199,11 +203,11 @@ class UnixServiceManager extends ServiceManager {
   @override
   Future<bool> startDirect() async {
     try {
-      _directProcess = await Process.start(
-        ServiceManager.serviceBinaryPath(),
-        ['ipc', '--home', homeDir],
-        mode: ProcessStartMode.detached,
-      );
+      _directProcess = await Process.start(ServiceManager.serviceBinaryPath(), [
+        'ipc',
+        '--home',
+        homeDir,
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (_) {
       return false;
@@ -240,9 +244,23 @@ class WindowsServiceManager extends ServiceManager {
   static const _serviceName = 'SingcastService';
 
   final String homeDir;
+  final bool _portable;
+  bool _elevated = false;
   Process? _directProcess;
 
-  WindowsServiceManager(this.homeDir);
+  WindowsServiceManager(this.homeDir) : _portable = _detectPortable();
+
+  /// Portable mode: no Inno uninstaller found in the app directory.
+  static bool _detectPortable() {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    try {
+      for (final entity in Directory(exeDir).listSync()) {
+        final name = entity.path.split(Platform.pathSeparator).last;
+        if (name.startsWith('unins') && name.endsWith('.exe')) return false;
+      }
+    } catch (_) {}
+    return true;
+  }
 
   @override
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
@@ -268,20 +286,18 @@ class WindowsServiceManager extends ServiceManager {
 
   @override
   Future<bool> isReady() async {
+    if (_portable) return _elevated;
     final svc = _openService(SERVICE_QUERY_STATUS);
     if (svc == 0) return false;
     CloseServiceHandle(svc);
     return true;
   }
 
-  @override
-  Future<bool> setup() async {
-    await stop();
-
+  /// UAC-elevate via ShellExecuteExW with "runas" verb.
+  /// Returns the process HANDLE, or 0 on failure.
+  int _runas(String params) {
     final svcPath = ServiceManager.serviceBinaryPath();
     final exePtr = svcPath.toNativeUtf16();
-    final params = ['service', 'install', '--home', homeDir]
-        .map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
     final paramsPtr = params.toNativeUtf16();
     final verbPtr = 'runas'.toNativeUtf16();
     final dirPtr = File(svcPath).parent.path.toNativeUtf16();
@@ -298,16 +314,9 @@ class WindowsServiceManager extends ServiceManager {
 
       final result = ShellExecuteEx(info);
       if (result == FALSE) {
-        LogFileWriter.instance?.log('ShellExecuteEx runas failed', level: LogLevel.error, name: 'service');
-        return false;
+        return 0;
       }
-
-      final handle = info.ref.hProcess;
-      // Wait for the elevated process to exit
-      while (WaitForSingleObject(handle, 100) == WAIT_TIMEOUT) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      CloseHandle(handle);
+      return info.ref.hProcess;
     } finally {
       free(info);
       free(exePtr);
@@ -315,12 +324,39 @@ class WindowsServiceManager extends ServiceManager {
       free(verbPtr);
       free(dirPtr);
     }
+  }
+
+  @override
+  Future<bool> setup() async {
+    await stop();
+    if (_portable) return true;
+
+    final params = [
+      'service',
+      'install',
+      '--home',
+      homeDir,
+    ].map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
+    final handle = _runas(params);
+    if (handle == 0) {
+      LogFileWriter.instance?.log(
+        'ShellExecuteEx runas failed',
+        level: LogLevel.error,
+        name: 'service',
+      );
+      return false;
+    }
+    while (WaitForSingleObject(handle, 100) == WAIT_TIMEOUT) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    CloseHandle(handle);
 
     return await isReady();
   }
 
   @override
   Future<void> uninstall() async {
+    if (_portable) return;
     await stop();
 
     if (!await isReady()) return;
@@ -331,7 +367,9 @@ class WindowsServiceManager extends ServiceManager {
   @override
   Future<bool> isRunning() async {
     try {
-      final socket = await ipc.connect(ipcPath).timeout(const Duration(seconds: 1));
+      final socket = await ipc
+          .connect(ipcPath)
+          .timeout(const Duration(seconds: 1));
       socket.destroy();
       return true;
     } catch (_) {
@@ -343,15 +381,29 @@ class WindowsServiceManager extends ServiceManager {
   Future<bool> start() async {
     final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_START);
     if (svc != 0) {
-      // Service installed — start via SCM.
-      final result = StartService(svc, 0, Pointer<Pointer<Utf16>>.fromAddress(0));
+      final result = StartService(
+        svc,
+        0,
+        Pointer<Pointer<Utf16>>.fromAddress(0),
+      );
       CloseServiceHandle(svc);
       if (result == 0 && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
         return false;
       }
       return true;
     }
-    // No service — start as direct process
+    if (_portable) {
+      final params = [
+        'ipc',
+        '--home',
+        homeDir,
+      ].map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
+      final handle = _runas(params);
+      if (handle == 0) return false;
+      CloseHandle(handle);
+      _elevated = true;
+      return true;
+    }
     return _startDirectProcess();
   }
 
@@ -361,11 +413,11 @@ class WindowsServiceManager extends ServiceManager {
   Future<bool> _startDirectProcess() async {
     try {
       final svcPath = ServiceManager.serviceBinaryPath();
-      _directProcess = await Process.start(
-        svcPath,
-        ['ipc', '--home', homeDir],
-        mode: ProcessStartMode.detached,
-      );
+      _directProcess = await Process.start(svcPath, [
+        'ipc',
+        '--home',
+        homeDir,
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (_) {
       return false;
@@ -397,6 +449,7 @@ class WindowsServiceManager extends ServiceManager {
     _directProcess?.kill();
     _directProcess = null;
     await _waitForIpcGone();
+    _elevated = false;
     return true;
   }
 

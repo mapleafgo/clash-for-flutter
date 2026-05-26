@@ -206,11 +206,6 @@ Future<void> _enableTunDesktop() async {
     if (!ok) {
       throw TunElevationException('提权设置失败，请重试');
     }
-    // Restart the service with the newly privileged binary.
-    // Flow: stopCore → disconnect IPC → stop → start → connect.
-    // cff-core self-terminates when kernel is stopped and all connections
-    // close, so stop() just waits for the socket to disappear — no need
-    // to forcefully kill a setuid root process from user space.
     try {
       await LibCore.instance.restart();
     } on StateError catch (e) {
