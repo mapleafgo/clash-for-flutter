@@ -8,9 +8,12 @@ import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_reload.dart' show asyncProfile;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 final clashConfig = signal(ClashConfig.defaults());
 
@@ -249,4 +252,88 @@ class TunElevationException implements Exception {
 
   @override
   String toString() => 'TunElevationException: $message';
+}
+
+/// Overlay [ClashConfig] values onto the profile YAML string.
+String mergeProfileConfig(String yamlContent) {
+  final config = clashConfig.value;
+  final editor = YamlEditor(yamlContent);
+
+  // 系统代理依赖 mixed-port，开启时隐式需要端口
+  final portOn = config.userPortEnabled || config.systemProxyEnabled;
+  if (portOn && config.mixedPort != null) {
+    editor.update(['mixed-port'], config.mixedPort);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('mixed-port')) {
+      editor.remove(['mixed-port']);
+    }
+  }
+  if (config.allowLan != null) {
+    editor.update(['allow-lan'], config.allowLan);
+  }
+  if (config.mode != null) {
+    editor.update(['mode'], config.mode!.name);
+  }
+  if (config.logLevel != null) {
+    editor.update(['log-level'], config.logLevel!.name);
+  }
+  if (config.ipv6 != null) {
+    editor.update(['ipv6'], config.ipv6);
+  }
+  if (config.tun != null) {
+    if (config.tun!.enable == true) {
+      var doc = loadYaml(editor.toString());
+      if (doc is YamlMap && !doc.containsKey('tun')) {
+        editor.update(['tun'], {});
+      }
+      editor.update(['tun', 'enable'], true);
+      doc = loadYaml(editor.toString()) as YamlMap;
+      final tun = doc['tun'];
+      if (tun is! YamlMap || !tun.containsKey('auto-route')) {
+        editor.update(['tun', 'auto-route'], true);
+      }
+      if (tun is! YamlMap || !tun.containsKey('strict-route')) {
+        editor.update(['tun', 'strict-route'], true);
+      }
+      if (tun is! YamlMap || !tun.containsKey('device')) {
+        // macOS utun 不接受自定义名称，由内核自动分配
+        if (!Platform.isMacOS) {
+          editor.update(['tun', 'device'], 'singcast');
+        }
+      }
+      // 移动端使用 gvisor 栈，避免 mixed/system 栈在 Android 上
+      // SO_BINDTODEVICE 权限不足导致 "bind forwarder to interface" 失败
+      if (!Constants.isDesktop) {
+        if (tun is! YamlMap || !tun.containsKey('stack')) {
+          editor.update(['tun', 'stack'], 'gvisor');
+        }
+      }
+    } else {
+      final doc = loadYaml(editor.toString());
+      if (doc is YamlMap && doc.containsKey('tun')) {
+        editor.remove(['tun']);
+      }
+    }
+  }
+
+  if (config.apiEnabled) {
+    editor.update(['external-controller'], config.apiAddr);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('external-controller')) {
+      editor.remove(['external-controller']);
+    }
+  }
+
+  if (config.systemProxyEnabled) {
+    editor.update(['mixed-system-proxy'], true);
+  } else {
+    final doc = loadYaml(editor.toString());
+    if (doc is YamlMap && doc.containsKey('mixed-system-proxy')) {
+      editor.remove(['mixed-system-proxy']);
+    }
+  }
+
+  return editor.toString();
 }

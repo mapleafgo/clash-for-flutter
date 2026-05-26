@@ -5,15 +5,13 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/app_settings_storage.dart';
 import 'package:singcast/domain/profile.dart';
-import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/services/core_config.dart' show themeMode;
 import 'package:singcast/services/subscription.dart';
-import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 final selectedFile = signal<String?>(null);
 final profiles = signal<List<Profile>>([]);
@@ -23,13 +21,10 @@ final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
 final initError = signal<String?>(null);
-final coreActivating = signal(false);
 final vpnConnected = signal(false);
 
-bool _activating = false;
 Timer? _saveTimer;
 Timer? _subUpdateTimer;
-String? _lastWorkingConfig; // 用于回滚到最后可用配置
 
 void initAppConfig() {
   final config = AppSettingsStorage.load();
@@ -44,7 +39,6 @@ void initAppConfig() {
     final mode = _parseThemeMode(stored.themeMode!);
     if (mode != null) themeMode.value = mode;
   }
-  // 提权状态由 ServiceManager 管理，不从存储恢复
   _startAutoSave();
 }
 
@@ -156,194 +150,6 @@ Future<Profile> refreshProfile(Profile old) async {
   return updated;
 }
 
-void startWatchingSelectedFile() {
-  effect(() {
-    final file = selectedFile.value;
-    if (file == null) return;
-    final path = p.isAbsolute(file)
-        ? file
-        : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
-    if (!File(path).existsSync()) return;
-    LogFileWriter.instance?.log(
-      'startWatchingSelectedFile: activating profile $file (state=${LibCore.instance.stateSignal.peek()})',
-      name: 'tun',
-    );
-    profileError.value = null;
-    _activateProfile(path);
-  });
-}
-
-/// Merge the profile YAML with the app's [ClashConfig] overrides,
-/// then start the core with the merged content.
-///
-/// 使用社区最佳实践：
-/// 1. 配置预验证 - 在断开 VPN 前验证新配置
-/// 2. 原子性操作 - 失败时回滚到上次工作配置
-/// 3. 状态一致性 - 确保 VPN 状态正确同步
-Future<bool> _activateProfile(String yamlPath) async {
-  if (_activating) {
-    return true;
-  }
-
-  _activating = true;
-  coreActivating.value = true;
-
-  // 保存当前配置用于回滚
-  final previousConfig = _lastWorkingConfig;
-
-  try {
-    final yamlContent = await File(yamlPath).readAsString();
-    final merged = mergeProfileConfig(yamlContent);
-
-    // 引擎重建恢复：内核仍在运行但 _lastWorkingConfig 为空（新 isolate），
-    // 同步 _lastWorkingConfig 但不重启内核，避免流量计数器归零
-    if (_lastWorkingConfig == null &&
-        LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
-      _lastWorkingConfig = merged;
-      return true;
-    }
-
-    // 即将重启内核，清除旧统计数据避免短暂显示上次运行时长
-    LibCore.instance.clearStats();
-
-    // 步骤 1: 预验证新配置（配置未变时跳过，仅配置变更时验证）
-    if (_lastWorkingConfig != null && merged != _lastWorkingConfig) {
-      try {
-        final validationResult = await LibCore.instance.checkConfig(merged);
-        if (validationResult.isNotEmpty) {
-          profileError.value = validationResult;
-          return false;
-        }
-      } catch (_) {}
-    }
-
-    try {
-      if (LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
-        await LibCore.instance.stopCore();
-      }
-      await LibCore.instance.startCoreWithContent(
-        merged,
-        ruleSetProxy: ruleSetProxy.value,
-      );
-    } catch (e) {
-      LogFileWriter.instance?.log('_activateProfile: startCoreWithContent failed: $e', level: LogLevel.error, name: 'tun');
-      // 回滚到上次工作配置
-      if (previousConfig != null) {
-        try {
-          await LibCore.instance.startCoreWithContent(
-            previousConfig,
-            ruleSetProxy: ruleSetProxy.value,
-          );
-          profileError.value = e.toString();
-        } catch (_) {
-          profileError.value = e.toString();
-        }
-      } else {
-        profileError.value = e.toString();
-      }
-      return false;
-    }
-
-    // 配置成功，保存为最后工作配置
-    _lastWorkingConfig = merged;
-    profileError.value = null;
-    return true;
-  } catch (e) {
-    profileError.value = e.toString();
-    LogFileWriter.instance?.log('_activateProfile: unexpected error: $e', level: LogLevel.error, name: 'tun');
-    return false;
-  } finally {
-    _activating = false;
-    coreActivating.value = false;
-  }
-}
-
-/// Overlay [ClashConfig] values onto the profile YAML string.
-String mergeProfileConfig(String yamlContent) {
-  final config = clashConfig.value;
-  final editor = YamlEditor(yamlContent);
-
-  // 系统代理依赖 mixed-port，开启时隐式需要端口
-  final portOn = config.userPortEnabled || config.systemProxyEnabled;
-  if (portOn && config.mixedPort != null) {
-    editor.update(['mixed-port'], config.mixedPort);
-  } else {
-    final doc = loadYaml(editor.toString());
-    if (doc is YamlMap && doc.containsKey('mixed-port')) {
-      editor.remove(['mixed-port']);
-    }
-  }
-  if (config.allowLan != null) {
-    editor.update(['allow-lan'], config.allowLan);
-  }
-  if (config.mode != null) {
-    editor.update(['mode'], config.mode!.name);
-  }
-  if (config.logLevel != null) {
-    editor.update(['log-level'], config.logLevel!.name);
-  }
-  if (config.ipv6 != null) {
-    editor.update(['ipv6'], config.ipv6);
-  }
-  if (config.tun != null) {
-    if (config.tun!.enable == true) {
-      var doc = loadYaml(editor.toString());
-      if (doc is YamlMap && !doc.containsKey('tun')) {
-        editor.update(['tun'], {});
-      }
-      editor.update(['tun', 'enable'], true);
-      // 补充 TUN 路由参数，地址由内核使用默认值
-      doc = loadYaml(editor.toString()) as YamlMap;
-      final tun = doc['tun'];
-      if (tun is! YamlMap || !tun.containsKey('auto-route')) {
-        editor.update(['tun', 'auto-route'], true);
-      }
-      if (tun is! YamlMap || !tun.containsKey('strict-route')) {
-        editor.update(['tun', 'strict-route'], true);
-      }
-      if (tun is! YamlMap || !tun.containsKey('device')) {
-        // macOS utun 不接受自定义名称，不设置 device 让内核自动分配 utun0/utun1
-        if (!Platform.isMacOS) {
-          editor.update(['tun', 'device'], 'singcast');
-        }
-      }
-      // 移动端使用 gvisor 栈，避免 mixed/system 栈在 Android 上
-      // SO_BINDTODEVICE 权限不足导致 "bind forwarder to interface" 失败
-      if (!Constants.isDesktop) {
-        if (tun is! YamlMap || !tun.containsKey('stack')) {
-          editor.update(['tun', 'stack'], 'gvisor');
-        }
-      }
-    } else {
-      // 完全移除 tun 段，避免内核在无 VPN fd 时尝试配置 TUN
-      final doc = loadYaml(editor.toString());
-      if (doc is YamlMap && doc.containsKey('tun')) {
-        editor.remove(['tun']);
-      }
-    }
-  }
-
-  if (config.apiEnabled) {
-    editor.update(['external-controller'], config.apiAddr);
-  } else {
-    final doc = loadYaml(editor.toString());
-    if (doc is YamlMap && doc.containsKey('external-controller')) {
-      editor.remove(['external-controller']);
-    }
-  }
-
-  if (config.systemProxyEnabled) {
-    editor.update(['mixed-system-proxy'], true);
-  } else {
-    final doc = loadYaml(editor.toString());
-    if (doc is YamlMap && doc.containsKey('mixed-system-proxy')) {
-      editor.remove(['mixed-system-proxy']);
-    }
-  }
-
-  return editor.toString();
-}
-
 Profile? get activeProfile {
   final file = selectedFile.value;
   if (file == null) return null;
@@ -352,15 +158,6 @@ Profile? get activeProfile {
   } catch (_) {
     return null;
   }
-}
-
-Future<bool> asyncProfile() async {
-  final file = selectedFile.value;
-  if (file == null) return true;
-  final path = p.isAbsolute(file)
-      ? file
-      : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
-  return _activateProfile(path);
 }
 
 String get profilesPath =>

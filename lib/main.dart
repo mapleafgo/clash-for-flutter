@@ -6,6 +6,7 @@ import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/presentation/app.dart' show App, appReady;
 import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';

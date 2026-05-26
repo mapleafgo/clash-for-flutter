@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
