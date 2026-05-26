@@ -6,7 +6,7 @@ import 'package:singcast/utils/constants.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 
 class CoreConfigStorage {
-  static final _path =
+  static String get _path =>
       '${Constants.homeDir.path}${Constants.clashConfig}';
 
   static bool exists() => File(_path).existsSync();

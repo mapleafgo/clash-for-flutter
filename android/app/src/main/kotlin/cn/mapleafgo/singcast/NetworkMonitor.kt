@@ -146,3 +146,4 @@ object NetworkMonitor {
             AppLog.e(TAG, "reportPhysicalDefaultInterface: failed", e)
         }
     }
+}

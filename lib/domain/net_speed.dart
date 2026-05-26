@@ -25,6 +25,20 @@ class CoreStats {
     startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
   );
 
+  factory CoreStats.withSpeed({
+    required int upSpeed,
+    required int downSpeed,
+    required CoreStats raw,
+  }) => CoreStats(
+    up: upSpeed,
+    down: downSpeed,
+    upTotal: raw.upTotal,
+    downTotal: raw.downTotal,
+    memory: raw.memory,
+    connections: raw.connections,
+    startedAt: raw.startedAt,
+  );
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'up': up,
     'down': down,

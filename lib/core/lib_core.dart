@@ -517,14 +517,10 @@ class LibCore {
     _prevUpTotal = raw.upTotal;
     _prevDownTotal = raw.downTotal;
 
-    final stats = CoreStats(
-      up: upSpeed,
-      down: downSpeed,
-      upTotal: raw.upTotal,
-      downTotal: raw.downTotal,
-      memory: raw.memory,
-      connections: raw.connections,
-      startedAt: raw.startedAt,
+    final stats = CoreStats.withSpeed(
+      upSpeed: upSpeed,
+      downSpeed: downSpeed,
+      raw: raw,
     );
     statsSignal.value = stats;
     activeConnectionsSignal.value = stats.connections;

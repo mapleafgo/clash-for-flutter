@@ -5,7 +5,7 @@ import 'package:singcast/domain/profile.dart';
 import 'package:singcast/utils/constants.dart';
 
 class AppSettingsStorage {
-  static final _file = File('${Constants.homeDir.path}${Constants.appSettings}');
+  static File get _file => File('${Constants.homeDir.path}${Constants.appSettings}');
 
   static Map<String, dynamic> load() {
     _migrateFromCfm();
