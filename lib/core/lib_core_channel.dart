@@ -12,6 +12,7 @@ class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
 
   void Function(int eventType, String payload)? onCallback;
+  void Function()? onVpnDisconnected;
 
   @override
   Future<void> init() async {
@@ -26,6 +27,8 @@ class LibCoreChannel implements LibCorePlatform {
         final payload = args['payload'] as String? ?? '';
         onCallback?.call(eventType, payload);
       }
+    } else if (call.method == 'onVpnDisconnected') {
+      onVpnDisconnected?.call();
     }
   }
 

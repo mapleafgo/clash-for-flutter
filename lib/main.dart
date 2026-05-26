@@ -93,7 +93,6 @@ Future<void> _initApp() async {
 
   // 移动端：引擎重建恢复时内核可能仍在运行，同步真实状态
   if (!Constants.isDesktop) {
-    LibCore.instance.onDisconnectRequested = disableTun;
     await LibCore.instance.syncKernelState();
     final syncedState = LibCore.instance.stateSignal.peek();
     _log(
@@ -118,14 +117,6 @@ Future<void> _initApp() async {
   _log(
     '[startup] startWatchingSelectedFile: ${sw.elapsedMilliseconds}ms file=${selectedFile.value} state=${LibCore.instance.stateSignal.peek()}',
   );
-
-  // 有配置文件且内核未运行时，直接激活 profile（不 await，内核后台启动，UI 先渲染）
-  final state = LibCore.instance.stateSignal.peek();
-  if (selectedFile.value != null &&
-      state != LibCore.kStateRunning &&
-      state != LibCore.kStateStarting) {
-    asyncProfile();
-  }
 
   // 无配置文件时内核不会启动，手动将状态设为"就绪"
   if (selectedFile.value == null &&

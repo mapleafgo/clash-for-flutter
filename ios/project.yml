@@ -30,6 +30,7 @@ targets:
     type: application
     platform: iOS
     sources:
+      - path: Shared
       - path: Runner
         excludes:
           - "**/.DS_Store"
@@ -77,6 +78,7 @@ targets:
     type: application.extension
     platform: iOS
     sources:
+      - path: Shared
       - path: ExtensionProvider
         excludes:
           - "**/.DS_Store"

@@ -71,6 +71,7 @@ class AppDelegate: FlutterAppDelegate {
                 reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
             } else {
                 runAsync(result: result) {
+                    InterfaceReporter.report(self.singcast)
                     try self.singcast.startWithContent(content, ruleSetProxy: proxy)
                 }
             }

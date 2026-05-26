@@ -40,6 +40,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
 
         singcast.setTunFd(tunFd)
+        InterfaceReporter.report(singcast)
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         startDefaultInterfaceMonitor()
     }
@@ -61,6 +62,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
             singcast.setTunFd(tunFd)
         }
+        InterfaceReporter.report(singcast)
         try? singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         completionHandler?(nil)
     }

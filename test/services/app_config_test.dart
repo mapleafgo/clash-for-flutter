@@ -1,6 +1,5 @@
 import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
-import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 

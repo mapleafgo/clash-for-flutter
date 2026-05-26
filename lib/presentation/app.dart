@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_svg/flutter_svg.dart';
@@ -27,14 +28,22 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver {
+  StreamSubscription<void>? _vpnDisconnectSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _vpnDisconnectSub = vpnDisconnected.stream.listen((_) {
+      if (!mounted) return;
+      vpnConnected.value = false;
+      ensureTunEnabled(false);
+    });
   }
 
   @override
   void dispose() {
+    _vpnDisconnectSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

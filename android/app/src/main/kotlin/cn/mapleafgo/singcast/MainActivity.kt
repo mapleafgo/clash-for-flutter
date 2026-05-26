@@ -63,6 +63,7 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         AppLog.init(filesDir)
+        NetworkMonitor.init(this)
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
@@ -78,9 +79,9 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        SingcastVpnService.onDisconnectRequested = {
+        SingcastVpnService.onNotificationDisconnect = {
             runOnUiThread {
-                flutterChannel.invokeMethod("onEvent", mapOf("eventType" to 6, "payload" to ""))
+                flutterChannel.invokeMethod("onVpnDisconnected", null)
             }
         }
     }
@@ -124,6 +125,7 @@ class MainActivity : FlutterFragmentActivity() {
                         Mobile.startWithContent(content, proxy)
                         result.success(null)
                     }
+                    if (!isTunEnabled(content)) SingcastVpnService.cacheNonTunConfig(content, proxy)
                 } catch (e: Throwable) {
                     AppLog.e(tag, "method call failed", e)
                     result.error("CORE_ERROR", e.message, null)
@@ -236,7 +238,6 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
-        SingcastVpnService.onDisconnectRequested = null
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }

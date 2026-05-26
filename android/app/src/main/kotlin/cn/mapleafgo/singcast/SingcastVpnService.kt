@@ -20,6 +20,16 @@ class SingcastVpnService : VpnService() {
         const val EXTRA_CONFIG = "configContent"
         const val EXTRA_PROXY = "ruleSetProxy"
         const val EXTRA_IPV6 = "ipv6"
+        @Volatile private var lastNonTunConfig: String? = null
+        @Volatile private var lastNonTunProxy: String = ""
+
+        fun cacheNonTunConfig(content: String, proxy: String) {
+            lastNonTunConfig = content
+            lastNonTunProxy = proxy
+        }
+
+        var onNotificationDisconnect: (() -> Unit)? = null
+
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
@@ -28,8 +38,6 @@ class SingcastVpnService : VpnService() {
         @Volatile
         var isServiceRunning = false
             private set
-
-        var onDisconnectRequested: (() -> Unit)? = null
     }
 
     private val binder = LocalBinder()
@@ -77,14 +85,18 @@ class SingcastVpnService : VpnService() {
             }
             ACTION_DISCONNECT_NOTIFY -> {
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (notification button)")
-                val cb = onDisconnectRequested
-                if (cb != null) {
-                    cb()
-                } else {
-                    AppLog.w(TAG, "onStartCommand: no Flutter callback, fallback to direct disconnect")
+                val config = lastNonTunConfig
+                val proxy = lastNonTunProxy
+                Thread({
                     disconnect("notification_button")
+                    if (config != null) {
+                        Mobile.startWithContent(config, proxy)
+                    } else {
+                        Mobile.stopCore()
+                    }
+                    onNotificationDisconnect?.invoke()
                     stopSelf()
-                }
+                }, "vpn-disconnect").start()
             }
         }
         return START_NOT_STICKY
@@ -178,11 +190,14 @@ class SingcastVpnService : VpnService() {
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
         synchronized(lock) {
-            try { pfd?.detachFd() } catch (e: Throwable) {
-                AppLog.w(TAG, "disconnect: pfd.detachFd error: ${e.message}")
+            try { pfd?.close() } catch (e: Throwable) {
+                AppLog.w(TAG, "disconnect: pfd.close error: ${e.message}")
             }
             pfd = null
-            activeTunFd = -1
+            if (activeTunFd >= 0) {
+                try { ParcelFileDescriptor.adoptFd(activeTunFd).close() } catch (_: Throwable) {}
+                activeTunFd = -1
+            }
         }
         Mobile.setVpnService(null)
         stopForeground(STOP_FOREGROUND_REMOVE)

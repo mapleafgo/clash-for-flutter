@@ -49,6 +49,7 @@ object Mobile {
         synchronized(coreLock) {
             val hasTun = content.contains("tun:") && content.contains("enable: true")
             AppLog.i(TAG, "startWithContent: content=${content.length} chars, hasTun=$hasTun")
+            NetworkMonitor.reportInterfaces()
             singcast.startWithContent(content, ruleSetProxy)
             AppLog.i(TAG, "startWithContent: done")
         }

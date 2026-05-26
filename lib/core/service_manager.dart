@@ -40,8 +40,9 @@ abstract class ServiceManager {
   /// Create the platform-appropriate ServiceManager.
   static ServiceManager create(String homeDir) {
     if (Platform.isWindows) return WindowsServiceManager(homeDir);
-    if (Platform.isLinux || Platform.isMacOS)
+    if (Platform.isLinux || Platform.isMacOS) {
       return UnixServiceManager(homeDir);
+    }
     throw UnsupportedError('Unsupported platform for ServiceManager');
   }
 

@@ -67,7 +67,6 @@ class LibCore {
   static const _evtConnEvent = 3;
   static const _evtStateUpdate = 4;
   static const _evtTrafficUpdate = 5;
-  static const _evtDisconnectRequested = 6;
 
   late final LibCorePlatform _platform;
   IpcWorker? _ipcWorker;
@@ -91,7 +90,6 @@ class LibCore {
   final proxyTogglingSignal = signal(false);
   /// True once the kernel has reached running state at least once since app launch.
   final kernelBooted = signal(false);
-  void Function()? onDisconnectRequested;
   /// Called after process restart (restart / uninstall) completes and IPC reconnects.
   /// The app layer uses this to re-activate the kernel profile.
   Future<void> Function()? onProcessReady;
@@ -128,6 +126,7 @@ class LibCore {
     } else {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
+      channel.onVpnDisconnected = _onVpnDisconnected;
       _platform = channel;
       await _platform.init();
     }
@@ -310,8 +309,6 @@ class LibCore {
         if (Constants.isDesktop) {
           _handleTrafficUpdate(payload);
         }
-      case _evtDisconnectRequested:
-        onDisconnectRequested?.call();
     }
   }
 
@@ -597,4 +594,11 @@ class LibCore {
     }
     return result?.toString() ?? '';
   }
+
+  void _onVpnDisconnected() {
+    vpnDisconnected.add(null);
+  }
 }
+
+/// VPN 通知栏断开事件，由 app.dart 监听并更新 UI 状态。
+final vpnDisconnected = StreamController<void>.broadcast();
