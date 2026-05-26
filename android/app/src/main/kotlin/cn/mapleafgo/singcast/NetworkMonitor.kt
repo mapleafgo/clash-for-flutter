@@ -142,4 +142,7 @@ object NetworkMonitor {
             val metered = caps != null && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
             Mobile.native.updateDefaultInterface(ifaceName, index, metered)
-}
+        } catch (e: Exception) {
+            AppLog.e(TAG, "reportPhysicalDefaultInterface: failed", e)
+        }
+    }
