@@ -38,7 +38,7 @@ class SettingsPage extends StatelessWidget {
       body: Watch((context) {
         final config = clashConfig.value;
         return ListView(children: [
-          const _Section('核心配置'),
+          const _Section('内核'),
           SwitchListTile(
             title: const Text('代理服务'),
             subtitle: const Text('开启后提供 HTTP/SOCKS5 混合代理端口'),
@@ -117,16 +117,7 @@ class SettingsPage extends StatelessWidget {
             labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
             onChanged: (l) => updateClashConfig(logLevel: l),
           ),
-          const _Section('外观'),
-          Watch((context) => _ChoiceTile<ThemeMode>(
-                title: '主题',
-                description: '切换应用外观风格',
-                value: themeMode.value ?? ThemeMode.system,
-                items: ThemeMode.values,
-                labelBuilder: (m) => _themeModeLabels[m] ?? m.name,
-                onChanged: (m) => themeMode.value = m,
-              )),
-          const _Section('高级'),
+          const _Section('普通'),
           const _UaTile(),
           _UrlTile(
             label: '延迟测试 Url',
@@ -140,6 +131,15 @@ class SettingsPage extends StatelessWidget {
             value: ruleSetProxy.value,
             onChanged: (v) => ruleSetProxy.value = v,
           ),
+          const _Section('外观'),
+          Watch((context) => _ChoiceTile<ThemeMode>(
+                title: '主题',
+                description: '切换应用外观风格',
+                value: themeMode.value ?? ThemeMode.system,
+                items: ThemeMode.values,
+                labelBuilder: (m) => _themeModeLabels[m] ?? m.name,
+                onChanged: (m) => themeMode.value = m,
+              )),
           const _Section('其他'),
           ListTile(
             title: const Text('关于'),
