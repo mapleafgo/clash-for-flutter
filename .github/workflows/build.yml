@@ -201,7 +201,23 @@ jobs:
       - name: Sync version
         run: |
           v="${VERSION#v}"
-          sed -i "s/^version:.*/version: $v/" pubspec.yaml
+          ver="${v%%-*}"
+          IFS='.' read -r major minor patch <<< "$ver"
+          base=$((major * 10000000 + minor * 100000 + patch * 1000))
+          pre="${v#*-}"
+          if [[ "$pre" == "$v" ]]; then
+            vc=$((base + 999))
+          elif [[ "$pre" == beta* ]]; then
+            n="${pre//[!0-9]/}"
+            vc=$((base + 500 + ${n:-0}))
+          elif [[ "$pre" == rc* ]]; then
+            n="${pre//[!0-9]/}"
+            vc=$((base + ${n:-0}))
+          else
+            n="${pre//[!0-9]/}"
+            vc=$((base + ${n:-0}))
+          fi
+          sed -i "s/^version:.*/version: $v+$vc/" pubspec.yaml
 
       - name: Setup Android signing
         run: |
