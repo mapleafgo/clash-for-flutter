@@ -172,12 +172,11 @@ class SingcastVpnService : VpnService() {
 
     fun disconnect(reason: String = "unknown") {
         if (disconnected) {
-                AppLog.d(TAG, "disconnect: already disconnected (reason=$reason), skip")
-                return
-            }
-            disconnected = true
-            running = false
+            AppLog.d(TAG, "disconnect: already disconnected (reason=$reason), skip")
+            return
         }
+        disconnected = true
+        running = false
         AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
@@ -196,12 +195,8 @@ class SingcastVpnService : VpnService() {
         val hasTun = content.contains("tun:") && content.contains("enable: true")
         AppLog.i(TAG, "refreshConfig: config=${content.length} chars, hasTun=$hasTun")
         if (hasTun) {
-            synchronized(lock) {
-                val fd = establishTun(ipv6Enabled)
-                Mobile.setTunFd(fd)
-                pfd?.detachFd()
-                pfd = null
-            }
+            val fd = establishTun(ipv6Enabled)
+            Mobile.setTunFd(fd)
         }
         Mobile.startWithContent(content, ruleSetProxy)
         AppLog.i(TAG, "refreshConfig: done")
