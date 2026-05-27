@@ -46,7 +46,25 @@ class AppDelegate: FlutterAppDelegate {
         callbackHandler = SingcastCallbackHandler(channel: methodChannel)
         singcast.setOnEvent(callbackHandler)
 
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(vpnStatusDidChange),
+            name: .NEVPNStatusDidChange, object: nil
+        )
+
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+
+    @objc private func vpnStatusDidChange(_ notification: Notification) {
+        guard let session = notification.object as? NETunnelProviderSession else { return }
+        let connected = session.status == .connected
+        let wasConnected = vpnConnected
+        vpnConnected = connected
+
+        if wasConnected && !connected {
+            DispatchQueue.main.async {
+                self.methodChannel.invokeMethod("onVpnDisconnected", arguments: nil)
+            }
+        }
     }
 
     // MARK: - MethodChannel dispatch
@@ -77,10 +95,6 @@ class AppDelegate: FlutterAppDelegate {
             }
         case "stopCore":
             singcast.stop()
-            result(nil)
-
-        case "resetNetwork":
-            singcast.resetNetwork()
             result(nil)
 
         // --- Queries ---
@@ -234,7 +248,6 @@ class AppDelegate: FlutterAppDelegate {
                         "ruleSetProxy": ruleSetProxy as NSObject,
                         "ipv6": ipv6 as NSObject,
                     ])
-                    self.vpnConnected = true
                     result(true)
                 } catch {
                     result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
@@ -246,7 +259,6 @@ class AppDelegate: FlutterAppDelegate {
     private func stopTunnel(result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, _ in
             (managers?.first?.connection as? NETunnelProviderSession)?.stopVPNTunnel()
-            self.vpnConnected = false
             result(true)
         }
     }

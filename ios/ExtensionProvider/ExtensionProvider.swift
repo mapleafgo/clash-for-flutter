@@ -35,11 +35,11 @@ class ExtensionProvider: NEPacketTunnelProvider {
         settings.mtu = 9000
         try await setTunnelNetworkSettings(settings)
 
-        guard let tunFd = extractTunFd() ?? getTunnelFileDescriptor() else {
+        guard let rawFd = extractTunFd() ?? getTunnelFileDescriptor() else {
             throw ExtensionError.tunnelSetupFailed
         }
 
-        singcast.setTunFd(tunFd)
+        singcast.setTunFd(dup(rawFd))
         InterfaceReporter.report(singcast)
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         startDefaultInterfaceMonitor()
@@ -58,9 +58,9 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
         let ruleSetProxy = payload["ruleSetProxy"] ?? ""
 
-        // StartWithContent destroys old TUN fd, must re-extract a fresh one
+        // Kernel closes the fd during hot reload; dup so packetFlow's original stays valid.
         if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
-            singcast.setTunFd(tunFd)
+            singcast.setTunFd(dup(tunFd))
         }
         InterfaceReporter.report(singcast)
         try? singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
