@@ -7,17 +7,19 @@ import 'package:singcast/domain/log.dart';
 class LogFileWriter {
   static LogFileWriter? _instance;
 
+  final String _path;
   IOSink? _sink;
   static const _maxSize = 5 * 1024 * 1024;
 
   LogLevel _minLevel = LogLevel.info;
 
-  LogFileWriter._();
+  LogFileWriter._(this._path);
 
   static LogFileWriter? get instance => _instance;
+  static String? get logFilePath => _instance?._path;
 
   static Future<void> init(String path) async {
-    final writer = LogFileWriter._();
+    final writer = LogFileWriter._(path);
     final file = File(path);
     try {
       if (await file.exists() && await file.length() > _maxSize) {

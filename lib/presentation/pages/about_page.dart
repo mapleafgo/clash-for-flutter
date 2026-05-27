@@ -10,7 +10,11 @@ import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/utils/log_file.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -35,6 +39,7 @@ class AboutPage extends StatelessWidget {
           onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
         ),
         const _KernelVersionTile(),
+        const _ExportLogTile(),
         if (Platform.isWindows || Platform.isMacOS) const _UninstallServiceTile(),
       ]),
     );
@@ -307,6 +312,82 @@ class _AboutHeaderState extends State<_AboutHeader>
           ]),
         ),
       ),
+    );
+  }
+}
+
+class _ExportLogTile extends StatefulWidget {
+  const _ExportLogTile();
+
+  @override
+  State<_ExportLogTile> createState() => _ExportLogTileState();
+}
+
+class _ExportLogTileState extends State<_ExportLogTile> {
+  bool _loading = false;
+
+  Future<void> _export() async {
+    setState(() => _loading = true);
+    try {
+      await LogFileWriter.instance?.flush();
+      final path = LogFileWriter.logFilePath;
+      if (path == null) {
+        _showMessage('日志未初始化');
+        return;
+      }
+      final logFile = File(path);
+      if (!await logFile.exists()) {
+        _showMessage('日志文件不存在');
+        return;
+      }
+
+      final name = _exportFileName();
+      if (Platform.isAndroid || Platform.isIOS) {
+        await Share.shareXFiles([XFile(path, name: name)], text: 'Singcast 日志');
+      } else {
+        final savePath = await FilePicker.saveFile(
+          dialogTitle: '导出日志',
+          fileName: name,
+        );
+        if (savePath == null) return;
+        await logFile.copy(savePath);
+        _showMessage('日志已导出');
+      }
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        '导出日志失败: $e',
+        level: LogLevel.error,
+        name: 'export',
+      );
+      _showMessage('导出失败');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _exportFileName() {
+    final t = DateTime.now();
+    String p(int n) => n.toString().padLeft(2, '0');
+    return 'singcast-${t.year}${p(t.month)}${p(t.day)}-${p(t.hour)}${p(t.minute)}${p(t.second)}.log';
+  }
+
+  void _showMessage(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('导出日志'),
+      trailing: _loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.file_download_outlined),
+      onTap: _loading ? null : _export,
     );
   }
 }
