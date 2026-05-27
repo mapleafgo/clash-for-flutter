@@ -132,7 +132,6 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
             "stopCore" -> safeCall(result) { Mobile.stopCore() }
-            "resetNetwork" -> safeCall(result) { Mobile.resetNetwork() }
 
             // VPN
             "connectVpn" -> {

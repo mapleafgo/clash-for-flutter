@@ -114,9 +114,6 @@ class IpcWorker implements LibCorePlatform {
   Future<void> stopCore() => _call('core.stop');
 
   @override
-  Future<void> resetNetwork() => _call('core.resetNetwork');
-
-  @override
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies() async {
     final json = await _call('core.queryProxies');
     return LibCore.parseProxiesJson(json);

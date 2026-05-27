@@ -19,7 +19,6 @@ abstract class LibCorePlatform {
   Future<void> initCore(String homeDir);
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
   Future<void> stopCore();
-  Future<void> resetNetwork();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<CoreStats> queryStats();
   Future<ConnectionEventsPayload> queryConnections();
@@ -402,7 +401,6 @@ class LibCore {
     await _platform.stopCore();
   }
 
-  Future<void> resetNetwork() => _platform.resetNetwork();
   Future<List<ProxyGroup>> queryProxies() async =>
       (await _platform.queryProxies()).$1;
   Future<CoreStats> queryStats() => _platform.queryStats();

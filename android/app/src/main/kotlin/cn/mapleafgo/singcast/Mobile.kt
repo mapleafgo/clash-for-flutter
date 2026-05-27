@@ -45,10 +45,14 @@ object Mobile {
         }
     }
 
-    fun startWithContent(content: String, ruleSetProxy: String) {
+    fun startWithContent(content: String, ruleSetProxy: String, onPrepare: (() -> Int)? = null) {
         synchronized(coreLock) {
             val hasTun = content.contains("tun:") && content.contains("enable: true")
-            AppLog.i(TAG, "startWithContent: content=${content.length} chars, hasTun=$hasTun")
+            val tunFd = onPrepare?.invoke() ?: -1
+            AppLog.i(TAG, "startWithContent: content=${content.length} chars, hasTun=$hasTun, tunFd=$tunFd")
+            if (tunFd >= 0) {
+                singcast.setTunFd(tunFd)
+            }
             NetworkMonitor.reportInterfaces()
             singcast.startWithContent(content, ruleSetProxy)
             AppLog.i(TAG, "startWithContent: done")
@@ -63,17 +67,7 @@ object Mobile {
         }
     }
 
-    fun resetNetwork() {
-        AppLog.i(TAG, "resetNetwork")
-        singcast.resetNetwork()
-    }
-
     // --- Queries ---
-
-    fun setTunFd(fd: Int) {
-        AppLog.i(TAG, "setTunFd: fd=$fd")
-        singcast.setTunFd(fd)
-    }
 
     fun queryProxies(): String = singcast.queryProxies()
 

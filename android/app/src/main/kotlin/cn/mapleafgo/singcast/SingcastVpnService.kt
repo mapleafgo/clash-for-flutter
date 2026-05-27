@@ -110,25 +110,20 @@ class SingcastVpnService : VpnService() {
         ipv6Enabled = enableIpv6
 
         Thread({
-            if (disconnected) {
-                AppLog.w(TAG, "connect: disconnected before thread started, aborting")
-                return@Thread
-            }
             try {
-                Mobile.setVpnService(this@SingcastVpnService)
-
-                val fd = establishTun(enableIpv6)
-                Mobile.setTunFd(fd)
-                AppLog.i(TAG, "connect: TUN established and handed to core, fd=$fd")
-
                 if (disconnected) {
-                    AppLog.w(TAG, "connect: disconnected after setTunFd, aborting")
+                    AppLog.w(TAG, "connect: disconnected before start, aborting")
                     return@Thread
                 }
 
                 showNotification()
 
-                Mobile.startWithContent(configContent, ruleSetProxy)
+                Mobile.startWithContent(configContent, ruleSetProxy, onPrepare = {
+                    Mobile.setVpnService(this@SingcastVpnService)
+                    val fd = establishTun(enableIpv6)
+                    AppLog.i(TAG, "connect: TUN established, fd=$fd")
+                    fd
+                })
                 isServiceRunning = true
 
                 // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
@@ -195,10 +190,10 @@ class SingcastVpnService : VpnService() {
         val hasTun = content.contains("tun:") && content.contains("enable: true")
         AppLog.i(TAG, "refreshConfig: config=${content.length} chars, hasTun=$hasTun")
         if (hasTun) {
-            val fd = establishTun(ipv6Enabled)
-            Mobile.setTunFd(fd)
+            Mobile.startWithContent(content, ruleSetProxy, onPrepare = { establishTun(ipv6Enabled) })
+        } else {
+            Mobile.startWithContent(content, ruleSetProxy)
         }
-        Mobile.startWithContent(content, ruleSetProxy)
         AppLog.i(TAG, "refreshConfig: done")
     }
 
