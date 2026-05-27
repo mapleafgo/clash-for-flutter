@@ -27,24 +27,32 @@ object NetworkMonitor {
     @Volatile private var defaultNetwork: android.net.Network? = null
     @Volatile private var appContext: Context? = null
 
-    fun reportInterfaces() {
+    fun init(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    /// 按需回调：内核通过 InterfaceProvider.GetInterfaces() 调用，返回当前所有网络接口的 JSON 数组。
+    fun getInterfacesJSON(): String {
         try {
-            val cm = appContext!!.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            reportInterfacesWithConnectivity(cm)
+            val ctx = appContext ?: return "[]"
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            return buildInterfacesJSON(cm)
         } catch (e: Exception) {
-            AppLog.e(TAG, "reportInterfaces: failed", e)
+            AppLog.e(TAG, "getInterfacesJSON: failed", e)
+            return "[]"
         }
     }
 
-    fun init(context: Context) {
-        appContext = context.applicationContext
+    /// 按需回调：内核通过 WiFiStateProvider.GetWiFiState() 调用，返回 WiFi 状态 JSON。
+    fun getWiFiStateJSON(): String {
+        // Android 端暂无 WiFi SSID/BSSID 追踪，返回空对象
+        return "{}"
     }
 
     fun startMonitoring(context: Context) {
         try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-            // Report interfaces and current default immediately
             reportPhysicalDefaultInterface(context, cm.activeNetwork)
 
             val callback = object : ConnectivityManager.NetworkCallback() {
@@ -59,8 +67,7 @@ object NetworkMonitor {
                 override fun onLost(network: android.net.Network) {
                     if (defaultNetwork == network) {
                         defaultNetwork = null
-                        reportInterfaces()
-                        Mobile.native.updateDefaultInterface("", -1, false)
+                        Mobile.updateDefaultInterface("", -1, false)
                     }
                 }
             }
@@ -83,7 +90,7 @@ object NetworkMonitor {
         }
     }
 
-    private fun reportInterfacesWithConnectivity(cm: ConnectivityManager) {
+    private fun buildInterfacesJSON(cm: ConnectivityManager): String {
         val allNetworks = cm.allNetworks
         val networkInterfaces = try {
             java.net.NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList()
@@ -126,7 +133,7 @@ object NetworkMonitor {
                 put("type", type)
             })
         }
-        Mobile.native.setInterfacesJSON(arr.toString())
+        return arr.toString()
     }
 
     private fun reportPhysicalDefaultInterface(context: Context, network: android.net.Network?) {
@@ -137,11 +144,10 @@ object NetworkMonitor {
         if (ifaceName.isEmpty()) return
         defaultNetwork = network
         try {
-            reportInterfaces()
             val caps = cm.getNetworkCapabilities(network)
             val metered = caps != null && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
-            Mobile.native.updateDefaultInterface(ifaceName, index, metered)
+            Mobile.updateDefaultInterface(ifaceName, index, metered)
         } catch (e: Exception) {
             AppLog.e(TAG, "reportPhysicalDefaultInterface: failed", e)
         }

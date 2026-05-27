@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 
 import 'lib_core.dart';
 import '../domain/connection.dart';
-import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 
 class LibCoreChannel implements LibCorePlatform {
@@ -66,12 +65,6 @@ class LibCoreChannel implements LibCorePlatform {
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies() async {
     final json = await _invokeJson('queryProxies');
     return LibCore.parseProxiesJson(json);
-  }
-
-  @override
-  Future<CoreStats> queryStats() async {
-    final json = await _invokeJson('queryStats');
-    return LibCore.parseStatsJson(json);
   }
 
   @override
@@ -191,18 +184,6 @@ class LibCoreChannel implements LibCorePlatform {
     } catch (_) {
       return false;
     }
-  }
-
-  @override
-  void updateVpnStats(CoreStats stats) {
-    try {
-      _channel.invokeMethod('updateVpnStats', {
-        'up': stats.up,
-        'down': stats.down,
-        'upTotal': stats.upTotal,
-        'downTotal': stats.downTotal,
-      });
-    } catch (_) {}
   }
 
 }

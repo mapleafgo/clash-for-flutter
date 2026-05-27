@@ -73,7 +73,21 @@ class MainActivity : FlutterFragmentActivity() {
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
+        Mobile.registerProviders()
         Mobile.registerCallbacks { eventType, payload ->
+            // Stats 事件：Native 端直接更新通知栏，不绕 Flutter
+            if (eventType == Mobile.EVT_STATS) {
+                val svc = vpnService
+                if (svc != null && svc.isRunning()) {
+                    try {
+                        val json = org.json.JSONObject(payload)
+                        svc.updateStatsFromRaw(
+                            upTotal = json.optLong("up", 0),
+                            downTotal = json.optLong("down", 0),
+                        )
+                    } catch (_: Exception) {}
+                }
+            }
             runOnUiThread {
                 flutterChannel.invokeMethod("onEvent", mapOf("eventType" to eventType, "payload" to payload))
             }
@@ -114,21 +128,33 @@ class MainActivity : FlutterFragmentActivity() {
             "startCoreWithContent" -> {
                 val content = args?.str("content") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
-                try {
-                    val svc = vpnService
-                    if (svc != null && svc.isRunning()) {
-                        svc.refreshConfig(content, proxy)
-                        result.success(null)
-                    } else if (isTunEnabled(content)) {
-                        requestVpn(content, proxy, true, result)
-                    } else {
-                        Mobile.startWithContent(content, proxy)
-                        result.success(null)
-                    }
-                    if (!isTunEnabled(content)) SingcastVpnService.cacheNonTunConfig(content, proxy)
-                } catch (e: Throwable) {
-                    AppLog.e(tag, "method call failed", e)
-                    result.error("CORE_ERROR", e.message, null)
+                val svc = vpnService
+                if (svc != null && svc.isRunning()) {
+                    // refreshConfig 会阻塞（JNI 同步调用内核热重载），
+                    // 在独立线程执行避免阻塞串行任务队列导致 queryStats 无法响应。
+                    Thread({
+                        try {
+                            svc.refreshConfig(content, proxy)
+                            if (!isTunEnabled(content)) SingcastVpnService.cacheNonTunConfig(content, proxy)
+                            result.success(null)
+                        } catch (e: Throwable) {
+                            AppLog.e(tag, "refreshConfig failed", e)
+                            result.error("CORE_ERROR", e.message, null)
+                        }
+                    }, "core-reload").start()
+                } else if (isTunEnabled(content)) {
+                    requestVpn(content, proxy, true, result)
+                } else {
+                    Thread({
+                        try {
+                            Mobile.startWithContent(content, proxy)
+                            SingcastVpnService.cacheNonTunConfig(content, proxy)
+                            result.success(null)
+                        } catch (e: Throwable) {
+                            AppLog.e(tag, "startWithContent failed", e)
+                            result.error("CORE_ERROR", e.message, null)
+                        }
+                    }, "core-reload").start()
                 }
             }
             "stopCore" -> safeCall(result) { Mobile.stopCore() }
@@ -147,7 +173,6 @@ class MainActivity : FlutterFragmentActivity() {
 
             // Queries
             "queryProxies" -> safeReply(result) { Mobile.queryProxies() }
-            "queryStats" -> safeReply(result) { Mobile.queryStats() }
             "queryConnections" -> safeReply(result) { Mobile.queryConnections() }
             "queryMode" -> safeReply(result) { Mobile.queryMode() }
             "queryState" -> safeReply(result) { Mobile.queryState() }
@@ -183,14 +208,6 @@ class MainActivity : FlutterFragmentActivity() {
             "checkConfig" -> safeReply(result) { Mobile.checkConfig(args?.str("content") ?: "") }
             "getVersion" -> safeReply(result) { Mobile.getVersion() }
             "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
-            "updateVpnStats" -> safeCall(result) {
-                vpnService?.updateStats(
-                    up = args?.getLong("up") ?: 0,
-                    down = args?.getLong("down") ?: 0,
-                    upTotal = args?.getLong("upTotal") ?: 0,
-                    downTotal = args?.getLong("downTotal") ?: 0,
-                )
-            }
             else -> result.notImplemented()
         }
     }

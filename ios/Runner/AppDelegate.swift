@@ -18,6 +18,20 @@ class SingcastCallbackHandler: NSObject, FfiEventListener {
     }
 }
 
+// MARK: - gomobile provider adapters
+
+class InterfaceProviderAdapter: NSObject, FfiInterfaceProvider {
+    func GetInterfaces() -> String {
+        return InterfaceReporter.getInterfacesJSON()
+    }
+}
+
+class WiFiStateProviderAdapter: NSObject, FfiWiFiStateProvider {
+    func GetWiFiState() -> String {
+        return InterfaceReporter.getWiFiStateJSON()
+    }
+}
+
 @main
 class AppDelegate: FlutterAppDelegate {
 
@@ -45,6 +59,10 @@ class AppDelegate: FlutterAppDelegate {
 
         callbackHandler = SingcastCallbackHandler(channel: methodChannel)
         singcast.setOnEvent(callbackHandler)
+
+        // 注册按需回调 provider（内核通过回调获取网络接口和 WiFi 状态）
+        singcast.setInterfaceProvider(InterfaceProviderAdapter())
+        singcast.setWiFiStateProvider(WiFiStateProviderAdapter())
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(vpnStatusDidChange),
@@ -89,7 +107,6 @@ class AppDelegate: FlutterAppDelegate {
                 reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
             } else {
                 runAsync(result: result) {
-                    InterfaceReporter.report(self.singcast)
                     try self.singcast.startWithContent(content, ruleSetProxy: proxy)
                 }
             }
@@ -100,8 +117,6 @@ class AppDelegate: FlutterAppDelegate {
         // --- Queries ---
         case "queryProxies":
             result(singcast.queryProxies())
-        case "queryStats":
-            result(singcast.queryStats())
         case "queryConnections":
             result(singcast.queryConnections())
         case "queryMode":

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../domain/connection.dart';
-import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 import 'ipc/json_rpc_client.dart';
 import 'lib_core.dart';
@@ -120,12 +119,6 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<CoreStats> queryStats() async {
-    final json = await _call('core.queryStats');
-    return LibCore.parseStatsJson(json);
-  }
-
-  @override
   Future<ConnectionEventsPayload> queryConnections() async {
     final json = await _call('core.queryConnections');
     return LibCore.parseConnectionsJson(json);
@@ -236,9 +229,6 @@ class IpcWorker implements LibCorePlatform {
 
   @override
   Future<bool> isVpnRunning() async => false;
-
-  @override
-  void updateVpnStats(CoreStats stats) {}
 
   Future<dynamic> _call(String method, [Map<String, dynamic>? params]) {
     if (_client == null || !_client!.isConnected) return Future.value();

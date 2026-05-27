@@ -1,12 +1,15 @@
 package cn.mapleafgo.singcast
 
 import cn.mapleafgo.mobile.EventListener
+import cn.mapleafgo.mobile.InterfaceProvider
 import cn.mapleafgo.mobile.Mobile as NativeMobile
 import cn.mapleafgo.mobile.Singcast
 import cn.mapleafgo.mobile.SocketProtector
+import cn.mapleafgo.mobile.WiFiStateProvider
 
 object Mobile {
     private const val TAG = "SingcastVpn"
+    const val EVT_STATS = 5
     private val coreLock = Any()
     private val singcast = NativeMobile.create()
     @Volatile private var vpnService: SingcastVpnService? = null
@@ -15,6 +18,10 @@ object Mobile {
         val svc = vpnService ?: return@SocketProtector false
         svc.protectSocket(fd)
     }
+
+    private val interfaceProvider = InterfaceProvider { NetworkMonitor.getInterfacesJSON() }
+
+    private val wifiStateProvider = WiFiStateProvider { NetworkMonitor.getWiFiStateJSON() }
 
     fun setVpnService(svc: SingcastVpnService?) {
         vpnService = svc
@@ -26,6 +33,13 @@ object Mobile {
             singcast.setSocketProtector(null)
             AppLog.w(TAG, "setVpnService: cleared (svc=null), socket protector removed")
         }
+    }
+
+    /// 注册按需回调 provider（内核启动时通过回调获取网络接口和 WiFi 状态）。
+    fun registerProviders() {
+        singcast.setInterfaceProvider(interfaceProvider)
+        singcast.setWiFiStateProvider(wifiStateProvider)
+        AppLog.i(TAG, "registerProviders: interface + WiFi state providers registered")
     }
 
     // --- Lifecycle ---
@@ -51,7 +65,6 @@ object Mobile {
             if (tunFd >= 0) {
                 singcast.setTunFd(tunFd)
             }
-            NetworkMonitor.reportInterfaces()
             singcast.startWithContent(content, ruleSetProxy)
             AppLog.i(TAG, "startWithContent: done")
         }
@@ -68,8 +81,6 @@ object Mobile {
     // --- Queries ---
 
     fun queryProxies(): String = singcast.queryProxies()
-
-    fun queryStats(): String = singcast.queryStats()
 
     fun queryConnections(): String = singcast.queryConnections()
 
@@ -143,10 +154,6 @@ object Mobile {
         singcast.setIncludeAllNetworks(v)
     }
 
-    fun setWIFIState(ssid: String, bssid: String) {
-        singcast.setWIFIState(ssid, bssid)
-    }
-
     // --- Utilities ---
 
     fun checkConfig(content: String): String {
@@ -161,8 +168,9 @@ object Mobile {
 
     fun getVersion(): String = singcast.version()
 
-    // Expose singcast instance for NetworkMonitor
-    val native: Singcast get() = singcast
+    fun updateDefaultInterface(name: String, index: Long, metered: Boolean) {
+        singcast.updateDefaultInterface(name, index, metered)
+    }
 
     // --- Network (delegated to NetworkMonitor) ---
 

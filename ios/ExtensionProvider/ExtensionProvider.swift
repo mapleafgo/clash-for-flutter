@@ -40,7 +40,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
 
         singcast.setTunFd(dup(rawFd))
-        InterfaceReporter.report(singcast)
+        registerProviders()
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         startDefaultInterfaceMonitor()
     }
@@ -62,9 +62,15 @@ class ExtensionProvider: NEPacketTunnelProvider {
         if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
             singcast.setTunFd(dup(tunFd))
         }
-        InterfaceReporter.report(singcast)
         try? singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         completionHandler?(nil)
+    }
+
+    // MARK: - Provider registration
+
+    private func registerProviders() {
+        singcast.setInterfaceProvider(InterfaceProviderAdapter())
+        singcast.setWiFiStateProvider(WiFiStateProviderAdapter())
     }
 
     // MARK: - TUN fd extraction
@@ -127,4 +133,18 @@ class ExtensionProvider: NEPacketTunnelProvider {
 enum ExtensionError: Error {
     case missingConfig
     case tunnelSetupFailed
+}
+
+// MARK: - gomobile provider adapters
+
+class InterfaceProviderAdapter: NSObject, FfiInterfaceProvider {
+    func GetInterfaces() -> String {
+        return InterfaceReporter.getInterfacesJSON()
+    }
+}
+
+class WiFiStateProviderAdapter: NSObject, FfiWiFiStateProvider {
+    func GetWiFiState() -> String {
+        return InterfaceReporter.getWiFiStateJSON()
+    }
 }

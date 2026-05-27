@@ -10,9 +10,10 @@ enum InterfaceReporter {
     private static let TYPE_CELLULAR = 3
     private static let TYPE_ETHERNET = 4
 
-    static func report(_ singcast: FfiSingcast) {
+    /// 按需回调：内核通过 InterfaceProvider.GetInterfaces() 调用。
+    static func getInterfacesJSON() -> String {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return }
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return "[]" }
         defer { freeifaddrs(ifaddr) }
 
         let typeMap = buildTypeMap()
@@ -40,8 +41,13 @@ enum InterfaceReporter {
         }
 
         guard let data = try? JSONSerialization.data(withJSONObject: arr),
-              let json = String(data: data, encoding: .utf8) else { return }
-        singcast.setInterfacesJSON(json)
+              let json = String(data: data, encoding: .utf8) else { return "[]" }
+        return json
+    }
+
+    /// 按需回调：内核通过 WiFiStateProvider.GetWiFiState() 调用。
+    static func getWiFiStateJSON() -> String {
+        return "{}"
     }
 
     // MARK: - Type detection

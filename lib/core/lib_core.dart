@@ -20,7 +20,6 @@ abstract class LibCorePlatform {
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
   Future<void> stopCore();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
-  Future<CoreStats> queryStats();
   Future<ConnectionEventsPayload> queryConnections();
   Future<String> queryMode();
   Future<String> queryState();
@@ -46,7 +45,6 @@ abstract class LibCorePlatform {
   });
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
-  void updateVpnStats(CoreStats stats);
 }
 
 class LibCore {
@@ -95,7 +93,6 @@ class LibCore {
 
   int _prevUpTotal = 0;
   int _prevDownTotal = 0;
-  Timer? _pollTimer; // Only used on mobile
   bool _reconnecting = false;
   bool _disposed = false;
 
@@ -134,7 +131,6 @@ class LibCore {
 
   Future<void> dispose() async {
     _disposed = true;
-    stopPolling();
     try {
       await stopCore();
     } catch (_) {}
@@ -146,7 +142,6 @@ class LibCore {
     if (_disposed || _reconnecting) return;
     stateSignal.value = kStateDestroyed;
     _clearRuntimeState();
-    stopPolling();
     _attemptReconnect();
   }
 
@@ -222,7 +217,6 @@ class LibCore {
     try {
       stateSignal.value = kStateDestroyed;
       _clearRuntimeState();
-      stopPolling();
       await stopCore();
       await _ipcWorker?.disconnect();
       await _serviceManager?.stop();
@@ -257,7 +251,6 @@ class LibCore {
     try {
       stateSignal.value = kStateDestroyed;
       _clearRuntimeState();
-      stopPolling();
       try {
         await stopCore();
       } catch (_) {}
@@ -301,13 +294,10 @@ class LibCore {
           if (newState == kStateInitialized || newState == kStateDestroyed) {
             proxyTogglingSignal.value = false;
           }
-          stopPolling();
           _clearRuntimeState();
         }
       case _evtTrafficUpdate:
-        if (Constants.isDesktop) {
-          _handleTrafficUpdate(payload);
-        }
+        _handleTrafficUpdate(payload);
     }
   }
 
@@ -330,41 +320,13 @@ class LibCore {
     activeConnectionsSignal.value = 0;
     proxiesSignal.value = [];
     _proxyDelays.value = {};
+    _prevUpTotal = 0;
+    _prevDownTotal = 0;
   }
 
   void _onKernelRunning() {
     _queryAndUpdate();
     _fetchAvailableModes();
-    if (!Constants.isDesktop) {
-      startPolling();
-    }
-  }
-
-  // --- Polling ---
-
-  void startPolling() {
-    if (_pollTimer != null) return;
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
-  }
-
-  void stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
-    _prevUpTotal = 0;
-    _prevDownTotal = 0;
-  }
-
-  Future<void> _poll() async {
-    try {
-      if (stateSignal.peek() != kStateRunning) return;
-
-      final raw = await queryStats();
-      final stats = _applyStats(raw);
-      _updateVpnStats(stats);
-    } catch (e) {
-      LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'poll');
-      if (e is StateError) stopPolling();
-    }
   }
 
   /// 从后端同步内核真实状态（移动端引擎重建 / 桌面端重连时调用）。
@@ -403,7 +365,6 @@ class LibCore {
 
   Future<List<ProxyGroup>> queryProxies() async =>
       (await _platform.queryProxies()).$1;
-  Future<CoreStats> queryStats() => _platform.queryStats();
   Future<ConnectionEventsPayload> queryConnections() =>
       _platform.queryConnections();
   Future<void> selectProxy(String group, String tag) async {
@@ -495,7 +456,7 @@ class LibCore {
         .catchError((_) {});
   }
 
-  /// Handle traffic update pushed from IPC service (replaces _poll on desktop).
+  /// Handle traffic stats pushed from kernel (both desktop IPC and mobile FFI).
   void _handleTrafficUpdate(String payload) {
     try {
       _applyStats(parseStatsJson(jsonDecode(payload)));
@@ -509,7 +470,7 @@ class LibCore {
   }
 
   /// Compute per-second speeds and update stat signals.
-  CoreStats _applyStats(CoreStats raw) {
+  void _applyStats(CoreStats raw) {
     final upSpeed = (raw.upTotal - _prevUpTotal).clamp(0, raw.upTotal);
     final downSpeed = (raw.downTotal - _prevDownTotal).clamp(0, raw.downTotal);
     _prevUpTotal = raw.upTotal;
@@ -522,14 +483,6 @@ class LibCore {
     );
     statsSignal.value = stats;
     activeConnectionsSignal.value = stats.connections;
-    return stats;
-  }
-
-  // --- VPN stats ---
-
-  void _updateVpnStats(CoreStats stats) {
-    if (Constants.isDesktop) return;
-    _platform.updateVpnStats(stats);
   }
 
   // --- Shared response parsers ---

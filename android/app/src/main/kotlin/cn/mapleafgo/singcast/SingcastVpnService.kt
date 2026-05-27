@@ -45,10 +45,13 @@ class SingcastVpnService : VpnService() {
     private val running = AtomicBoolean(false)
     private val disconnected = AtomicBoolean(false)
     private var ipv6Enabled = true
-    private var lastUp: Long = 0
-    private var lastDown: Long = 0
+    private var upSpeed: Long = 0
+    private var downSpeed: Long = 0
     private var lastUpTotal: Long = 0
     private var lastDownTotal: Long = 0
+    private var prevUpTotal: Long = 0
+    private var prevDownTotal: Long = 0
+    private var notificationBuilder: NotificationCompat.Builder? = null
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
@@ -106,6 +109,7 @@ class SingcastVpnService : VpnService() {
             return
         }
         disconnected.set(false)
+        resetStats()
         AppLog.i(TAG, "connect: starting VPN connection thread (config=${configContent.length} chars)")
         ipv6Enabled = enableIpv6
 
@@ -175,6 +179,7 @@ class SingcastVpnService : VpnService() {
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
         Mobile.setVpnService(null)
+        notificationBuilder = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
@@ -196,18 +201,28 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "refreshConfig: done")
     }
 
-    fun updateStats(up: Long, down: Long, upTotal: Long, downTotal: Long) {
+    /// 内核推送原始统计数据时直接调用，Native 端计算速度并更新通知。
+    fun updateStatsFromRaw(upTotal: Long, downTotal: Long) {
         if (!running.get()) return
-        lastUp = up
-        lastDown = down
+        upSpeed = (upTotal - prevUpTotal).coerceIn(0, upTotal)
+        downSpeed = (downTotal - prevDownTotal).coerceIn(0, downTotal)
+        prevUpTotal = upTotal
+        prevDownTotal = downTotal
         lastUpTotal = upTotal
         lastDownTotal = downTotal
         updateNotification()
     }
 
+    fun resetStats() {
+        prevUpTotal = 0
+        prevDownTotal = 0
+    }
+
     fun protectSocket(fd: Int): Boolean = protect(fd)
 
-    private fun buildBaseNotification(): NotificationCompat.Builder {
+    private fun ensureNotificationBuilder(): NotificationCompat.Builder {
+        notificationBuilder?.let { return it }
+
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_LOW).apply {
@@ -216,65 +231,52 @@ class SingcastVpnService : VpnService() {
             }
         )
 
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
         val openPending = PendingIntent.getActivity(
-            this, 0, openIntent,
+            this, 0,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        val disconnectIntent = Intent(this, SingcastVpnService::class.java).apply {
-            action = ACTION_DISCONNECT_NOTIFY
-        }
         val disconnectPending = PendingIntent.getService(
-            this, 1, disconnectIntent,
+            this, 1,
+            Intent(this, SingcastVpnService::class.java).apply { action = ACTION_DISCONNECT_NOTIFY },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setContentIntent(openPending)
             .addAction(R.mipmap.ic_launcher, "断开", disconnectPending)
+        return notificationBuilder!!
     }
 
-    private fun showNotification() {
-        val notification = buildBaseNotification()
-            .setContentTitle("Singcast")
-            .setContentText(formatTraffic())
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(formatTrafficDetail())
-            )
-            .build()
+    private fun buildNotification() = ensureNotificationBuilder()
+        .setContentTitle("Singcast")
+        .setContentText(formatTraffic())
+        .setStyle(NotificationCompat.BigTextStyle().bigText(formatTrafficDetail()))
+        .build()
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFY_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+    private fun showNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFY_ID, buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(NOTIFY_ID, notification)
+            startForeground(NOTIFY_ID, buildNotification())
         }
     }
 
     private fun updateNotification() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notification = buildBaseNotification()
-            .setContentTitle("Singcast")
-            .setContentText(formatTraffic())
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(formatTrafficDetail())
-            )
-            .build()
-        nm.notify(NOTIFY_ID, notification)
+        nm.notify(NOTIFY_ID, buildNotification())
     }
 
     private fun formatTraffic(): String {
-        return "↑ ${formatBytes(lastUp)}/s  ↓ ${formatBytes(lastDown)}/s"
+        return "↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s"
     }
 
     private fun formatTrafficDetail(): String {
-        return "网速: ↑ ${formatBytes(lastUp)}/s  ↓ ${formatBytes(lastDown)}/s\n" +
+        return "网速: ↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s\n" +
                "流量: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
     }
 
