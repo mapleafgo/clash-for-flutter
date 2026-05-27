@@ -10,7 +10,7 @@ import android.system.Os
 import android.system.OsConstants
 
 object NetworkMonitor {
-    private const val TAG = "NetworkMonitor"
+    private const val TAG = "SingcastVpn"
 
     private const val TYPE_LOOPBACK = 0
     private const val TYPE_OTHER = 1

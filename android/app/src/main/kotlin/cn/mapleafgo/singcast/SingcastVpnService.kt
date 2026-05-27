@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.atomic.AtomicBoolean
 
 class SingcastVpnService : VpnService() {
 
@@ -41,8 +42,8 @@ class SingcastVpnService : VpnService() {
     }
 
     private val binder = LocalBinder()
-    @Volatile private var running = false
-    @Volatile private var disconnected = false
+    private val running = AtomicBoolean(false)
+    private val disconnected = AtomicBoolean(false)
     private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
@@ -100,18 +101,17 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun connect(configContent: String, ruleSetProxy: String, enableIpv6: Boolean = true) {
-        if (running) {
+        if (!running.compareAndSet(false, true)) {
             AppLog.w(TAG, "connect: already running, ignoring duplicate start")
             return
         }
-        running = true
-        disconnected = false
+        disconnected.set(false)
         AppLog.i(TAG, "connect: starting VPN connection thread (config=${configContent.length} chars)")
         ipv6Enabled = enableIpv6
 
         Thread({
             try {
-                if (disconnected) {
+                if (disconnected.get()) {
                     AppLog.w(TAG, "connect: disconnected before start, aborting")
                     return@Thread
                 }
@@ -166,12 +166,11 @@ class SingcastVpnService : VpnService() {
     }
 
     fun disconnect(reason: String = "unknown") {
-        if (disconnected) {
+        if (!disconnected.compareAndSet(false, true)) {
             AppLog.d(TAG, "disconnect: already disconnected (reason=$reason), skip")
             return
         }
-        disconnected = true
-        running = false
+        running.set(false)
         AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
@@ -180,10 +179,10 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
 
-    fun isRunning(): Boolean = running
+    fun isRunning(): Boolean = running.get()
 
     fun refreshConfig(content: String, ruleSetProxy: String) {
-        if (!running || disconnected) {
+        if (!running.get() || disconnected.get()) {
             AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring (running=$running, disconnected=$disconnected)")
             return
         }
@@ -198,7 +197,7 @@ class SingcastVpnService : VpnService() {
     }
 
     fun updateStats(up: Long, down: Long, upTotal: Long, downTotal: Long) {
-        if (!running) return
+        if (!running.get()) return
         lastUp = up
         lastDown = down
         lastUpTotal = upTotal

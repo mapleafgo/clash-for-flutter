@@ -11,11 +11,9 @@ object Mobile {
     private val singcast = NativeMobile.create()
     @Volatile private var vpnService: SingcastVpnService? = null
 
-    private val socketProtector = object : SocketProtector {
-        override fun protect(fd: Int): Boolean {
-            val svc = vpnService ?: return false
-            return svc.protectSocket(fd)
-        }
+    private val socketProtector = SocketProtector { fd ->
+        val svc = vpnService ?: return@SocketProtector false
+        svc.protectSocket(fd)
     }
 
     fun setVpnService(svc: SingcastVpnService?) {
