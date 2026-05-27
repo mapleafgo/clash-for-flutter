@@ -41,11 +41,8 @@ class SingcastVpnService : VpnService() {
     }
 
     private val binder = LocalBinder()
-    private val lock = Any()
-    private var pfd: ParcelFileDescriptor? = null
     @Volatile private var running = false
     @Volatile private var disconnected = false
-    private var activeTunFd: Int = -1
     private var ipv6Enabled = true
     private var lastUp: Long = 0
     private var lastDown: Long = 0
@@ -121,9 +118,8 @@ class SingcastVpnService : VpnService() {
                 Mobile.setVpnService(this@SingcastVpnService)
 
                 val fd = establishTun(enableIpv6)
-                AppLog.i(TAG, "connect: TUN established, fd=$fd")
-
                 Mobile.setTunFd(fd)
+                AppLog.i(TAG, "connect: TUN established and handed to core, fd=$fd")
 
                 if (disconnected) {
                     AppLog.w(TAG, "connect: disconnected after setTunFd, aborting")
@@ -168,18 +164,14 @@ class SingcastVpnService : VpnService() {
             AppLog.e(TAG, "establishTun: builder.establish() returned null - VPN permission may be revoked")
             throw IllegalStateException("VPN establish failed - check VPN permission")
         }
-        synchronized(lock) {
-            try { pfd?.close() } catch (_: Exception) {}
-            pfd = result
-        }
         val fd = result.fd
+        result.detachFd()
         AppLog.i(TAG, "establishTun: TUN interface created, fd=$fd")
         return fd
     }
 
     fun disconnect(reason: String = "unknown") {
-        synchronized(lock) {
-            if (disconnected) {
+        if (disconnected) {
                 AppLog.d(TAG, "disconnect: already disconnected (reason=$reason), skip")
                 return
             }
@@ -189,29 +181,12 @@ class SingcastVpnService : VpnService() {
         AppLog.i(TAG, "disconnect: reason=$reason")
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
-        synchronized(lock) {
-            try { pfd?.close() } catch (e: Throwable) {
-                AppLog.w(TAG, "disconnect: pfd.close error: ${e.message}")
-            }
-            pfd = null
-            if (activeTunFd >= 0) {
-                try { ParcelFileDescriptor.adoptFd(activeTunFd).close() } catch (_: Throwable) {}
-                activeTunFd = -1
-            }
-        }
         Mobile.setVpnService(null)
         stopForeground(STOP_FOREGROUND_REMOVE)
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
 
     fun isRunning(): Boolean = running
-
-    private fun dupRawFd(fd: Int): Int {
-        val tempPfd = ParcelFileDescriptor.adoptFd(fd)
-        val dupedPfd = ParcelFileDescriptor.dup(tempPfd.fileDescriptor)
-        tempPfd.detachFd()
-        return dupedPfd.detachFd()
-    }
 
     fun refreshConfig(content: String, ruleSetProxy: String) {
         if (!running || disconnected) {
@@ -221,27 +196,11 @@ class SingcastVpnService : VpnService() {
         val hasTun = content.contains("tun:") && content.contains("enable: true")
         AppLog.i(TAG, "refreshConfig: config=${content.length} chars, hasTun=$hasTun")
         if (hasTun) {
-            try {
-                val dupFd = synchronized(lock) {
-                    val currentPfd = pfd
-                    if (currentPfd != null) {
-                        val dupedPfd = ParcelFileDescriptor.dup(currentPfd.fileDescriptor)
-                        val fd = dupedPfd.detachFd()
-                        try { currentPfd.detachFd() } catch (_: Exception) {}
-                        pfd = null
-                        activeTunFd = fd
-                        fd
-                    } else if (activeTunFd >= 0) {
-                        val fd = dupRawFd(activeTunFd)
-                        activeTunFd = fd
-                        fd
-                    } else {
-                        throw IllegalStateException("TUN not established")
-                    }
-                }
-                Mobile.setTunFd(dupFd)
-            } catch (e: Throwable) {
-                AppLog.e(TAG, "refreshConfig: failed to dup TUN fd: ${e.message}")
+            synchronized(lock) {
+                val fd = establishTun(ipv6Enabled)
+                Mobile.setTunFd(fd)
+                pfd?.detachFd()
+                pfd = null
             }
         }
         Mobile.startWithContent(content, ruleSetProxy)

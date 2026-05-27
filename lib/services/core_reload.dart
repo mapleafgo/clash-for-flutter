@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/services/app_config.dart';
-import 'package:singcast/services/core_config.dart' show mergeProfileConfig;
+import 'package:singcast/services/core_config.dart' show clashConfig, mergeProfileConfig;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/domain/enums.dart' show LogLevel;
 import 'package:singcast/utils/log_file.dart';
@@ -110,6 +110,8 @@ Future<bool> _activateProfile(String yamlPath) async {
 Future<bool> asyncProfile() async {
   final file = selectedFile.value;
   if (file == null) return true;
+  // 快速开关防竞态：如果 TUN 已被重新启用，跳过这次无 TUN 的热重载
+  if (!Constants.isDesktop && clashConfig.value.tunEnabled) return true;
   final path = p.isAbsolute(file)
       ? file
       : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
