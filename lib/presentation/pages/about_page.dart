@@ -343,7 +343,11 @@ class _ExportLogTileState extends State<_ExportLogTile> {
 
       final name = _exportFileName();
       if (Platform.isAndroid || Platform.isIOS) {
-        await Share.shareXFiles([XFile(path, name: name)], text: 'Singcast 日志');
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: 'Singcast 日志',
+          fileNameOverrides: [name],
+        );
       } else {
         final savePath = await FilePicker.saveFile(
           dialogTitle: '导出日志',

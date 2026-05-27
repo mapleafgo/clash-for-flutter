@@ -23,6 +23,8 @@ object NetworkMonitor {
         .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
         .build()
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     @Volatile private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var defaultNetwork: android.net.Network? = null
     @Volatile private var appContext: Context? = null
@@ -71,8 +73,8 @@ object NetworkMonitor {
                     }
                 }
             }
-            cm.registerBestMatchingNetworkCallback(defaultNetworkRequest, callback, Handler(Looper.getMainLooper()))
             defaultNetworkCallback = callback
+            cm.registerBestMatchingNetworkCallback(defaultNetworkRequest, callback, mainHandler)
         } catch (e: Exception) {
             AppLog.e(TAG, "startMonitoring: failed", e)
         }
