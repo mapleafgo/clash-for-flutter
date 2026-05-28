@@ -133,20 +133,31 @@ Future<Profile> refreshProfile(Profile old) async {
     interval: old.interval,
   );
   final path = p.join(dir, updated.file);
-  final validation = await LibCore.instance.checkConfig(
-    await File(path).readAsString(),
-  );
-  if (validation.isNotEmpty) {
+  try {
+    final validation = await LibCore.instance.checkConfig(
+      await File(path).readAsString(),
+    );
+    if (validation.isNotEmpty) {
+      throw Exception('配置校验失败: $validation');
+    }
+  } catch (e) {
     await File(path).delete();
-    throw Exception('配置校验失败: $validation');
+    rethrow;
   }
+
   final isActive = selectedFile.value == old.file;
-  profiles.value = profiles.value
-      .map((p) => p.file == old.file ? updated : p)
-      .toList();
+  final idx = profiles.value.indexWhere((p) => p.file == old.file);
+  if (idx >= 0) {
+    profiles.value = [...profiles.value]..[idx] = updated;
+  } else {
+    profiles.value = [...profiles.value, updated];
+  }
   if (isActive) selectedFile.value = updated.file;
+
   final oldPath = p.join(dir, old.file);
-  if (File(oldPath).existsSync()) await File(oldPath).delete();
+  if (File(oldPath).existsSync()) {
+    await File(oldPath).delete();
+  }
   return updated;
 }
 
