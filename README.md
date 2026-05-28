@@ -1,76 +1,80 @@
-# Singcast
+<div align="center">
+  <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
+  <h1>Singcast</h1>
+  <p><strong>Multi-platform proxy client powered by sing-box, with Clash config support</strong></p>
+</div>
 
 <p align="center">
-  <img src="assets/logo.svg" width="128">
+  <a href="README.md">English</a> | <a href="README_zh.md">中文</a>
 </p>
 
-基于 [sing-box](https://github.com/SagerNet/sing-box) 高性能内核的多平台代理客户端，通过 sing-box 支持 Clash 配置，简单易用。
+A multi-platform proxy client powered by the [sing-box](https://github.com/SagerNet/sing-box) high-performance core. Currently supports Clash configuration only. Simple and easy to use.
 
-支持 Windows、Linux、macOS、Android。
+Supports Windows, Linux, macOS, and Android.
 
-> [使用说明](https://mapleafgo.github.io/clash-for-flutter)
+> [Documentation](https://mapleafgo.github.io/clash-for-flutter)
 
-## 预览
+## Preview
 
-![主页](./docs/images/home_page.png)
+![Home](./docs/images/home_page.png)
 
-## 功能
+## Features
 
-- 支持 Clash 订阅和配置文件
-- 支持系统代理和 TUN 模式（全局透明代理）
-- 代理节点选择与延迟测速
-- 实时流量统计
-- 订阅管理，支持导入和更新订阅链接
-- 日志查看与导出
-- 桌面端系统托盘
+- Support Clash subscriptions and configuration files
+- System proxy and TUN mode (transparent proxy)
+- Proxy node selection and latency testing
+- Real-time traffic statistics
+- Subscription management, import and update subscription links
+- Log viewer with export
+- System tray on desktop
 
-## 使用
+## Usage
 
 ### Linux
 
-使用前请确保安装以下依赖
+Make sure to install the following dependencies before using
 
 ```bash
 sudo apt-get install libayatana-appindicator3-dev
 ```
 
-### 下载
+### Download
 
 [GitHub Releases](https://github.com/mapleafgo/clash-for-flutter/releases/latest)
 
-## 构建
+## Build
 
-1. 安装 `Flutter v3.41+` 环境
+1. Install `Flutter v3.41+`
 
-   > 针对目标平台时，需要参照 Flutter 官方文档进行对应平台的环境搭建。如 Android 开发时，需要 Android SDK
+   > Follow the Flutter official documentation to set up the environment for your target platform. For example, Android development requires Android SDK.
 
-2. 下载内核
+2. Download core
 
-   从 [cff-core Releases](https://github.com/mapleafgo/cff-core/releases/latest) 下载对应平台的内核，放置到以下路径：
+   Download the core for your platform from [cff-core Releases](https://github.com/mapleafgo/cff-core/releases/latest) and place it at:
 
    ```shell
-   # 桌面端 (IPC 独立进程)
+   # Desktop (IPC standalone process)
    windows/core/singcast-core.exe
    linux/core/singcast-core
    macos/Frameworks/singcast-core
 
-   # 移动端 (FFI 原生库)
+   # Mobile (FFI native library)
    android/app/libs/libsingcast.aar
    ios/Frameworks/libsingcast-darwin.xcframework
    ```
 
-3. 编译运行
+3. Build and run
 
    ```shell
-   # 获取依赖
+   # Install dependencies
    flutter pub get
-   # 生成代码
+   # Generate code
    dart run build_runner build --delete-conflicting-outputs
-   # 运行
+   # Run
    flutter run -d linux
    ```
 
-## 主要技术
+## Tech Stack
 
 - [sing-box](https://github.com/SagerNet/sing-box)
 - [Flutter](https://flutter.dev)
