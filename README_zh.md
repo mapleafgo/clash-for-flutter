@@ -14,7 +14,13 @@
   </a>
 </p>
 
-支持 Windows、Linux、macOS、Android。
+Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核的开源多平台代理客户端。开箱即用支持 Clash 订阅链接和配置文件，导入即用。
+
+支持 **Windows**、**Linux**、**macOS** 和 **Android**。
+
+- **桌面端**：内核以独立特权进程运行，通过 JSON-RPC（IPC）与 UI 通信，确保界面稳定可靠。
+- **移动端**：内核以原生库形式通过 FFI 加载，与平台 VPN 服务深度集成。
+- **TUN 模式**：透明代理，自动管理路由，无需手动配置系统代理。
 
 > [使用说明](https://mapleafgo.github.io/clash-for-flutter)
 
