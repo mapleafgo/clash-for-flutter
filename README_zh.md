@@ -1,20 +1,15 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>基于 sing-box 高性能内核的多平台代理客户端，支持 Clash 配置</strong></p>
+  <p><strong>基于 <a href="https://github.com/SagerNet/sing-box">sing-box</a> 高性能内核的多平台代理客户端，支持 Clash 配置</strong></p>
 </div>
 
 <p align="center">
   <a href="README.md">English</a> | <a href="README_zh.md">中文</a>
-</p>
-
-<p align="center">
   <a href="https://t.me/+xcHAK5RADfY4NmZl">
     <img src="https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&logoColor=white" alt="Telegram">
   </a>
 </p>
-
-基于 [sing-box](https://github.com/SagerNet/sing-box) 高性能内核的多平台代理客户端，通过 sing-box 支持 Clash 配置，简单易用。
 
 支持 Windows、Linux、macOS、Android。
 

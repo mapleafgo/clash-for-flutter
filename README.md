@@ -1,20 +1,15 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>Multi-platform proxy client powered by sing-box, with Clash config support</strong></p>
+  <p><strong>Multi-platform proxy client powered by <a href="https://github.com/SagerNet/sing-box">sing-box</a>, with Clash config support</strong></p>
 </div>
 
 <p align="center">
   <a href="README.md">English</a> | <a href="README_zh.md">中文</a>
-</p>
-
-<p align="center">
   <a href="https://t.me/+xcHAK5RADfY4NmZl">
     <img src="https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&logoColor=white" alt="Telegram">
   </a>
 </p>
-
-A multi-platform proxy client powered by the [sing-box](https://github.com/SagerNet/sing-box) high-performance core. Currently supports Clash configuration only. Simple and easy to use.
 
 Supports Windows, Linux, macOS, and Android.
 
