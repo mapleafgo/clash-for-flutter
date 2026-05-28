@@ -2,7 +2,7 @@
 
 > 版本基准：**mihomo v1.19.24** (2026-04-20) ↔ **sing-box v1.13.11** (2026-04-23)
 >
-> 本文档用于指导 cff-core 配置翻译器的开发。翻译方向：mihomo YAML → sing-box JSON。
+> 本文档用于指导 singcast-cli 配置翻译器的开发。翻译方向：mihomo YAML → sing-box JSON。
 
 ---
 

@@ -41,7 +41,7 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "singcast-core.tar.gz"
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "singcast-core.tar.gz"
           tar -zxf singcast-core.tar.gz
           Move-Item -Force singcast-windows-amd64.exe windows/core/singcast-core.exe
 
@@ -97,7 +97,7 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-linux-amd64.tar.gz" -o singcast-core.tar.gz
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-linux-amd64.tar.gz" -o singcast-core.tar.gz
           tar -zxf singcast-core.tar.gz
           chmod +x singcast-linux-amd64
           mv singcast-linux-amd64 linux/core/singcast-core
@@ -148,7 +148,7 @@ jobs:
       - name: Download core
         run: |
           mkdir -p macos/Frameworks
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o singcast-core.tar.gz
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-darwin-${{ matrix.core_arch }}.tar.gz" -o singcast-core.tar.gz
           tar -zxf singcast-core.tar.gz
           chmod +x singcast-darwin-${{ matrix.core_arch }}
           mv singcast-darwin-${{ matrix.core_arch }} macos/Frameworks/singcast-core
@@ -233,7 +233,7 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/cff-core/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-android-${{ matrix.core_arch }}.tar.gz" -o libsingcast.tar.gz
           tar -zxf libsingcast.tar.gz
           mv libsingcast-android-${{ matrix.core_arch }}.aar android/app/libs/libsingcast.aar
 

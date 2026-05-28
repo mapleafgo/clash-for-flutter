@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ConnectionEvent', () {
-    test('fromJson parses cff-core JSON', () {
+    test('fromJson parses singcast-cli JSON', () {
       final json = {'event_type': 0, 'id': 'conn-123'};
       final event = ConnectionEvent.fromJson(json);
       expect(event.eventType, 0);

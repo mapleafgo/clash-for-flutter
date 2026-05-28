@@ -1,4 +1,4 @@
-/// cff-core returns: {"event_type": int32, "id": string}
+/// singcast-cli returns: {"event_type": int32, "id": string}
 class ConnectionEvent {
   final int eventType;
   final String id;
@@ -16,7 +16,7 @@ class ConnectionEvent {
   };
 }
 
-/// cff-core connection events payload:
+/// singcast-cli connection events payload:
 /// {"reset": bool, "items": [ConnectionEvent, ...]}
 class ConnectionEventsPayload {
   final bool reset;

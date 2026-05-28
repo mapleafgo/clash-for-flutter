@@ -25,11 +25,11 @@ void main() {
 
     test('sourceUrl points to GitHub', () {
       expect(Constants.sourceUrl, contains('github.com'));
-      expect(Constants.sourceUrl, contains('clash-for-flutter'));
+      expect(Constants.sourceUrl, contains('singcast'));
     });
 
     test('homeUrl is valid', () {
-      expect(Constants.homeUrl, contains('clash-for-flutter'));
+      expect(Constants.homeUrl, contains('singcast'));
     });
 
     test('releaseUrl is GitHub API', () {

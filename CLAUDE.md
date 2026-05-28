@@ -35,7 +35,7 @@ flutter run -d macos
 ```
 
 ### 内核设置
-从 https://github.com/mapleafgo/cff-core/releases/latest 下载自定义内核，并将其放置在以下路径:
+从 https://github.com/mapleafgo/singcast-cli/releases/latest 下载自定义内核，并将其放置在以下路径:
 ```
 # 桌面端 (IPC 独立进程)
 windows/core/singcast-core.exe

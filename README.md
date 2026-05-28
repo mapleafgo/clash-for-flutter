@@ -22,7 +22,7 @@ Available on **Windows**, **Linux**, **macOS**, and **Android**.
 - **Mobile**: Core is loaded as a native library via FFI, integrated tightly with the platform VPN service.
 - **TUN mode**: Transparent proxy with automatic route management — no manual system proxy setup needed.
 
-> [Documentation](https://mapleafgo.github.io/clash-for-flutter)
+> [Documentation](https://mapleafgo.github.io/singcast)
 
 ## Preview
 
@@ -50,7 +50,7 @@ sudo apt-get install libayatana-appindicator3-dev
 
 ### Download
 
-[GitHub Releases](https://github.com/mapleafgo/clash-for-flutter/releases/latest)
+[GitHub Releases](https://github.com/mapleafgo/singcast/releases/latest)
 
 ## Build
 
@@ -60,7 +60,7 @@ sudo apt-get install libayatana-appindicator3-dev
 
 2. Download core
 
-   Download the core for your platform from [cff-core Releases](https://github.com/mapleafgo/cff-core/releases/latest) and place it at:
+   Download the core for your platform from [singcast-cli Releases](https://github.com/mapleafgo/singcast-cli/releases/latest) and place it at:
 
    ```shell
    # Desktop (IPC standalone process)

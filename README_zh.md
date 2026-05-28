@@ -22,7 +22,7 @@ Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://git
 - **移动端**：内核以原生库形式通过 FFI 加载，与平台 VPN 服务深度集成。
 - **TUN 模式**：透明代理，自动管理路由，无需手动配置系统代理。
 
-> [使用说明](https://mapleafgo.github.io/clash-for-flutter)
+> [使用说明](https://mapleafgo.github.io/singcast)
 
 ## 预览
 
@@ -50,7 +50,7 @@ sudo apt-get install libayatana-appindicator3-dev
 
 ### 下载
 
-[GitHub Releases](https://github.com/mapleafgo/clash-for-flutter/releases/latest)
+[GitHub Releases](https://github.com/mapleafgo/singcast/releases/latest)
 
 ## 构建
 
@@ -60,7 +60,7 @@ sudo apt-get install libayatana-appindicator3-dev
 
 2. 下载内核
 
-   从 [cff-core Releases](https://github.com/mapleafgo/cff-core/releases/latest) 下载对应平台的内核，放置到以下路径：
+   从 [singcast-cli Releases](https://github.com/mapleafgo/singcast-cli/releases/latest) 下载对应平台的内核，放置到以下路径：
 
    ```shell
    # 桌面端 (IPC 独立进程)

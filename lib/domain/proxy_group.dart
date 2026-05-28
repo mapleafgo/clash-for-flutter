@@ -1,4 +1,4 @@
-/// cff-core returns: {"tag": string, "type": string}
+/// singcast-cli returns: {"tag": string, "type": string}
 class ProxyGroupItem {
   final String tag;
   final String type;
@@ -16,7 +16,7 @@ class ProxyGroupItem {
   };
 }
 
-/// cff-core returns:
+/// singcast-cli returns:
 /// {"tag": string, "type": string, "selectable": bool, "selected": string,
 ///  "items": [ProxyGroupItem, ...]}
 class ProxyGroup {

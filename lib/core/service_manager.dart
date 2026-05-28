@@ -46,7 +46,7 @@ abstract class ServiceManager {
     throw UnsupportedError('Unsupported platform for ServiceManager');
   }
 
-  /// IPC path matching cff-core's ipc.IpcPath(homeDir).
+  /// IPC path matching singcast-cli's ipc.IpcPath(homeDir).
   static String defaultIpcPath(String homeDir) {
     if (Platform.isWindows) return r'\\.\pipe\singcast';
     return '$homeDir/command.sock';
@@ -220,7 +220,7 @@ class UnixServiceManager extends ServiceManager {
     _directProcess?.kill();
     _directProcess = null;
     // The caller (LibCore.restart) stops the kernel and disconnects IPC
-    // before calling stop(). cff-core self-terminates when kernel is
+    // before calling stop(). singcast-cli self-terminates when kernel is
     // stopped and all GUI connections close — no need to forcefully kill
     // a setuid root process from user space.
     if (await _waitForIpcGone()) return true;

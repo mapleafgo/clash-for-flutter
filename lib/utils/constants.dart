@@ -6,9 +6,9 @@ class Constants {
   static final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
   static late final Directory homeDir;
 
-  static const sourceUrl = "https://github.com/mapleafgo/clash-for-flutter";
-  static const homeUrl = "https://mapleafgo.github.io/clash-for-flutter";
-  static const releaseUrl = "https://api.github.com/repos/mapleafgo/clash-for-flutter/releases/latest";
+  static const sourceUrl = "https://github.com/mapleafgo/singcast";
+  static const homeUrl = "https://mapleafgo.github.io/singcast";
+  static const releaseUrl = "https://api.github.com/repos/mapleafgo/singcast/releases/latest";
 
   static const profilesPath = "/profiles";
   static const clashConfig = "/config.yaml";

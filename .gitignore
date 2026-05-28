@@ -49,7 +49,7 @@ app.*.map.json
 
 libclash.*
 
-# Native core binaries & headers (downloaded by CI from cff-core releases)
+# Native core binaries & headers (downloaded by CI from singcast-cli releases)
 linux/core/libsingcast-*
 linux/core/singcast-core
 windows/core/libsingcast-*

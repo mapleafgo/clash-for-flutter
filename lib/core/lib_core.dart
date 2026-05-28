@@ -107,7 +107,7 @@ class LibCore {
 
       // Try connecting to an already-running service first.
       // Do NOT probe with connect+disconnect (isRunning) before the IPC
-      // worker is connected — cff-core exits when all GUI connections
+      // worker is connected — singcast-cli exits when all GUI connections
       // disconnect and the core is not running.
       if (!await _connectWithRetry(attempts: 2)) {
         // Not running — start the service process with fallback

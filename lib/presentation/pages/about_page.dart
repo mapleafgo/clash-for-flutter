@@ -77,7 +77,7 @@ class _KernelVersionTileState extends State<_KernelVersionTile> {
       title: const Text('内核版本'),
       subtitle: Text(_version.isEmpty ? '加载中...' : _version),
       trailing: const Icon(Icons.open_in_new),
-      onTap: () => launchUrl(Uri.parse('https://github.com/mapleafgo/cff-core')),
+      onTap: () => launchUrl(Uri.parse('https://github.com/mapleafgo/singcast-cli')),
     );
   }
 }

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LogEntry', () {
-    test('fromJson parses cff-core JSON', () {
+    test('fromJson parses singcast-cli JSON', () {
       final json = {'level': 4, 'message': 'test log message'};
       final entry = LogEntry.fromJson(json);
       expect(entry.type, LogLevel.info);

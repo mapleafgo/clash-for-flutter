@@ -1,7 +1,7 @@
 script_template: inno_setup.iss
 app_id: B3039CF4-E394-42B6-971C-4BE97F322DE8
 publisher: mapleafgo
-publisher_url: https://github.com/mapleafgo/clash-for-flutter
+publisher_url: https://github.com/mapleafgo/singcast
 display_name: Singcast
 executable_name: singcast.exe
 create_desktop_icon: true

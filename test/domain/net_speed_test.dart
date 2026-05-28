@@ -51,7 +51,7 @@ void main() {
       expect(restored.downTotal, 0);
     });
 
-    test('fromJson parses cff-core snake_case JSON', () {
+    test('fromJson parses singcast-cli snake_case JSON', () {
       final json = {
         'up': 9999,
         'down': 8888,

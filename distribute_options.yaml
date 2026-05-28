@@ -10,7 +10,7 @@ releases:
           target: github
           args:
             repo-owner: mapleafgo
-            repo-name: clash-for-flutter
+            repo-name: singcast
   - name: linux-dev
     jobs:
       - name: release-dev-linux
@@ -21,7 +21,7 @@ releases:
           target: github
           args:
             repo-owner: mapleafgo
-            repo-name: clash-for-flutter
+            repo-name: singcast
   - name: macos-dev
     jobs:
       - name: release-dev-macos
@@ -32,4 +32,4 @@ releases:
           target: github
           args:
             repo-owner: mapleafgo
-            repo-name: clash-for-flutter
+            repo-name: singcast

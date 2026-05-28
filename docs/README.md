@@ -4,7 +4,7 @@
 
 ### 下载
 
-当前下载页面都只提供了 64 位的安装包[releases](https://github.com/mapleafgo/clash-for-flutter/releases/latest)
+当前下载页面都只提供了 64 位的安装包[releases](https://github.com/mapleafgo/singcast/releases/latest)
 ，由于当前是我自己手动在各个平台打包，所以做不到每个版本都提供的了安装包
 
 - Linux:
