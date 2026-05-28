@@ -45,7 +45,7 @@ Available on **Windows**, **Linux**, **macOS**, and **Android**.
 Make sure to install the following dependencies before using
 
 ```bash
-sudo apt-get install libayatana-appindicator3-dev
+sudo apt-get install libayatana-appindicator3
 ```
 
 ### Download

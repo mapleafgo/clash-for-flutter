@@ -1,92 +1,73 @@
-# Clash for Flutter
+# Singcast 使用说明
 
-> 该软件是 Clash 的多平台端实现，使用[Flutter](https://flutter.dev/)开发。支持 Windows、Linux、MacOS、Android、~~IOS~~
+> Singcast 是一款基于 Flutter 开发的多平台代理客户端，使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核，支持 Clash 订阅链接和配置文件。
 
-### 下载
+支持 **Windows**、**Linux**、**macOS** 和 **Android**。
 
-当前下载页面都只提供了 64 位的安装包[releases](https://github.com/mapleafgo/singcast/releases/latest)
-，由于当前是我自己手动在各个平台打包，所以做不到每个版本都提供的了安装包
+## 下载
 
-- Linux:
+前往 [GitHub Releases](https://github.com/mapleafgo/singcast/releases/latest) 下载最新版本。所有安装包均为 64 位。
 
-  linux 安装包目前打包的为`appimage`的，这种包各个发行版都能直接使用
+| 平台 | 格式 | 说明 |
+|------|------|------|
+| Windows | `.exe` (Inno Setup) | 安装版，支持便携模式 |
+| Linux | `.AppImage` | 免安装，各发行版通用 |
+| macOS | `.dmg` | 拖入 Applications 即可 |
+| Android | `.apk` | arm64 / x86_64 |
 
-- Windows:
+> Linux 使用前需安装系统托盘依赖：`sudo apt-get install libayatana-appindicator3`
 
-  windows 提供的是`msi`包
+## 快速上手
 
-- MacOS:
+### 1. 添加订阅
 
-  macos 提供的是`dmg`包
+订阅是获取代理节点的前提。进入**订阅页**，点击右下角 `+` 按钮，在弹出的窗口中输入订阅地址或选择本地 Clash 配置文件。
 
-### 开始使用
+![订阅页](./images/profile_page.png)
 
-该软件目前主要操作就三个，订阅、开启代理、切换代理节点。如下
+添加后点击订阅条目即可选中并更新节点。**必须选中一个订阅后才能开启代理**。
 
-- #### 订阅
+### 2. 开启代理
 
-  订阅页可以说是一切的源头，因为所有的代理节点地址都得通过订阅获取。
+回到**主页**，开启代理总开关。默认使用系统代理模式，桌面端可切换为 TUN 模式实现透明代理。
 
-  ![profile_page](./images/profile_page.png)
+![主页](./images/home_page.png)
 
-  这是已有订阅的界面，**在没有订阅或未选择订阅时是无法开启代理的**，添加订阅只需点击右下角的`+`
-  按钮。在弹出的窗口中输入订阅地址或选择本地文件
+- **系统代理**：设置系统 HTTP/SOCKS5 代理，浏览器和大部分应用自动生效
+- **TUN 模式**：创建虚拟网卡接管全局流量，所有应用均走代理，无需逐个配置
 
-  > 需要说明的是，当前**暂时不未支持自动更新订阅**，需手动在此页更新订阅
+### 3. 切换节点
 
-- #### 开启代理
+进入**代理页**，页面顶部列出订阅配置中的代理组（如"节点选择"、"自动选择"等），点击组内节点即可切换。右下角按钮可对当前组所有节点进行延迟测试。
 
-  在已选择订阅的情况下，只需在本页点击开启即可。
+![代理页](./images/proxy_page.png)
 
-  ![home_page](./images/home_page.png)
+## 设置
 
-  > 当前代理使用的是 PAC 自动设置代理的方式，在各平台通用。这种方式有一定的局限性，因为不是所有程序都会走代理，浏览器是没问题
+![设置页](./images/settings_page.png)
 
-- #### 切换代理节点
+### 内核设置
 
-  ![proxy_page](./images/proxy_page.png)
+| 选项 | 说明 |
+|------|------|
+| 代理服务 | 开启 HTTP/SOCKS5 混合代理端口 |
+| 允许局域网 | 允许局域网内其他设备通过本机代理上网 |
+| 端口号 | 代理服务监听的本地端口（默认 7890） |
+| IPv6 | 代理连接支持 IPv6 网络协议 |
+| 出站模式 | 规则 / 全局 / 直连，控制流量路由策略（仅桌面端） |
+| Clash API | 对外提供代理状态查询和控制接口 |
+| 日志等级 | 调试 / 信息 / 警告 / 错误，等级越低记录越详细 |
 
-  此页就是最常用的页面了，经常使用的 **切换节点、测延迟(右下角按钮)** 都在此页。
+### 普通设置
 
-  可能很多人对页面头的几个列表有疑问，这个的话，是订阅配置带过来的。是 Clash 的代理组，它是与规则搭配使用，可以做到对每个
-  IP、每个地址进行代理配置，具体可查看[Clash 的文档](https://github.com/Dreamacro/clash/wiki/configuration#proxy-groups)
-  。这个功能我们软件当前不负责维护，只提供基本的节点切换
+| 选项 | 说明 |
+|------|------|
+| 订阅 User-Agent | 更新订阅时使用的 UA 标识 |
+| 延迟测试 URL | 测速时请求的目标地址 |
+| Rule-Set 代理 | 下载规则集时使用的代理地址 |
 
-- #### 设置
+### 外观
 
-  ![settings_page](./images/settings_page.png)
-
-  设置页主要提供切换端口、和几个 Clash 的设置，后期可能会加入软件的一些功能
-
-  - 代理端口
-  
-    对于代理端口，默认为 7890 (设置为 0 表示不开启)
-  
-    至于 Redir 和 Tproxy 的代理，目前我没用到过，都是默认为 0 的状态，这里就引入 Clash 官方的话来解释这两个吧
-    ```yaml
-    # Transparent proxy server port for Linux and macOS (Redirect TCP and TProxy UDP)
-    redir-port: 7892
-    
-    # Transparent proxy server port for Linux (TProxy TCP and TProxy UDP)
-    tproxy-port: 7893
-    ```
-
-  - 允许局域网访问
-
-    这个可以让服务暴露在局域网中，局域网中的其它设备可以接入当前的代理
-
-  - IPv6
-
-    开启 IPv6 的支持
-
-  ```yaml
-  # 代理模式
-  # rule: rule-based packet routing
-  # global: all packets will be forwarded to a single endpoint
-  # direct: directly forward the packets to the Internet
-  mode: rule
-  
-  # 输出日志等级
-  # info / warning / error / debug / silent
-  log-level: info
-  ```
+| 选项 | 说明 |
+|------|------|
+| 主题 | 跟随系统 / 浅色 / 深色 |

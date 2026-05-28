@@ -45,7 +45,7 @@ Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://git
 使用前请确保安装以下依赖
 
 ```bash
-sudo apt-get install libayatana-appindicator3-dev
+sudo apt-get install libayatana-appindicator3
 ```
 
 ### 下载
