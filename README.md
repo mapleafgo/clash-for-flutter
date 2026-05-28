@@ -8,6 +8,12 @@
   <a href="README.md">English</a> | <a href="README_zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://t.me/+xcHAK5RADfY4NmZl">
+    <img src="https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&logoColor=white" alt="Telegram">
+  </a>
+</p>
+
 A multi-platform proxy client powered by the [sing-box](https://github.com/SagerNet/sing-box) high-performance core. Currently supports Clash configuration only. Simple and easy to use.
 
 Supports Windows, Linux, macOS, and Android.
