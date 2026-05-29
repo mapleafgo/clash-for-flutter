@@ -84,6 +84,12 @@ sudo apt-get install libayatana-appindicator3
    flutter run -d linux
    ```
 
+## 常见问题
+
+### 订阅无法拉取 / 更新失败
+
+如果订阅更新时一直加载或返回错误，可能是订阅服务提供方对 User-Agent 做了限制。可以尝试在 **设置 → 普通设置 → 订阅 User-Agent** 中切换为其他 UA（如 `clash-verge/v2.0.0`、`clash-meta` 等），然后重新更新订阅。
+
 ## 主要技术
 
 - [sing-box](https://github.com/SagerNet/sing-box)

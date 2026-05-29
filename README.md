@@ -84,6 +84,12 @@ sudo apt-get install libayatana-appindicator3
    flutter run -d linux
    ```
 
+## FAQ
+
+### Subscription fetch / update failed
+
+If the subscription keeps loading or returns an error, the provider may be restricting certain User-Agent strings. Try changing the UA in **Settings → General → Subscription User-Agent** (e.g. `clash-verge/v2.0.0`, `clash-meta`), then update the subscription again.
+
 ## Tech Stack
 
 - [sing-box](https://github.com/SagerNet/sing-box)
