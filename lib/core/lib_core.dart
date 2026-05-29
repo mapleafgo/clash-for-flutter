@@ -100,8 +100,8 @@ class LibCore {
   /// open but the kernel stopped pushing events.
   Timer? _watchdogTimer;
   DateTime _lastEventTime = DateTime.now();
-  static const _watchdogInterval = Duration(seconds: 15);
-  static const _watchdogTimeout = Duration(seconds: 30);
+  static const _watchdogInterval = Duration(seconds: 5);
+  static const _watchdogTimeout = Duration(seconds: 10);
 
   LibCorePlatform get platform => _platform;
 
