@@ -96,6 +96,13 @@ class LibCore {
   bool _reconnecting = false;
   bool _disposed = false;
 
+  /// Watchdog: detect zombie IPC connections where the pipe is technically
+  /// open but the kernel stopped pushing events.
+  Timer? _watchdogTimer;
+  DateTime _lastEventTime = DateTime.now();
+  static const _watchdogInterval = Duration(seconds: 15);
+  static const _watchdogTimeout = Duration(seconds: 30);
+
   LibCorePlatform get platform => _platform;
 
   Future<void> init() async {
@@ -119,6 +126,7 @@ class LibCore {
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
+      _startWatchdog();
     } else {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
@@ -131,6 +139,7 @@ class LibCore {
 
   Future<void> dispose() async {
     _disposed = true;
+    _watchdogTimer?.cancel();
     try {
       await stopCore();
     } catch (_) {}
@@ -148,12 +157,16 @@ class LibCore {
   Future<void> _attemptReconnect() async {
     if (_disposed || _reconnecting) return;
     _reconnecting = true;
+    _watchdogTimer?.cancel();
 
     try {
-      // Try reconnecting to an existing process first
+      // Quick probe: 1 attempt to see if the existing process is still alive.
+      // If the kernel is frozen, connect succeeds but syncKernelState will
+      // timeout — fall through to restart the process.
       try {
-        if (await _connectWithRetry(attempts: 5)) {
+        if (await _connectWithRetry(attempts: 1)) {
           await syncKernelState();
+          _startWatchdog();
           return;
         }
       } catch (_) {}
@@ -163,6 +176,8 @@ class LibCore {
         await _serviceManager!.stop();
         if (await _startAndConnectWithFallback()) {
           await syncKernelState();
+          await onProcessReady?.call();
+          _startWatchdog();
         } else {
           LogFileWriter.instance?.log('IPC reconnect failed', level: LogLevel.error, name: 'ipc');
         }
@@ -172,6 +187,28 @@ class LibCore {
     } finally {
       _reconnecting = false;
     }
+  }
+
+  /// Start the IPC watchdog timer.
+  void _startWatchdog() {
+    _lastEventTime = DateTime.now();
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer.periodic(_watchdogInterval, (_) {
+      if (_disposed || _reconnecting) return;
+      if (stateSignal.value != kStateRunning) return;
+      if (DateTime.now().difference(_lastEventTime) > _watchdogTimeout) {
+        _watchdogTimer?.cancel();
+        LogFileWriter.instance?.log(
+          'IPC watchdog: no events for ${_watchdogTimeout.inSeconds}s, reconnecting',
+          level: LogLevel.warning,
+          name: 'ipc',
+        );
+        // Disconnect the zombie before reconnect — the pipe is technically
+        // open but unresponsive, so _ipcWorker.connect() would short-circuit
+        // to true without actually reconnecting.
+        _ipcWorker?.disconnect().then((_) => _onIpcDisconnected());
+      }
+    });
   }
 
   /// Try to connect IPC with retries. Returns true on success.
@@ -271,6 +308,7 @@ class LibCore {
   }
 
   void _handleWorkerCallback(int eventType, String payload) {
+    _lastEventTime = DateTime.now();
     switch (eventType) {
       case _evtLog:
         final json = jsonDecode(payload) as Map<String, dynamic>;
