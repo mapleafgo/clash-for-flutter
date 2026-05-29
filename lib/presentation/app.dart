@@ -14,7 +14,7 @@ import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-const _windowsEmojiFallback = ['NotoColorEmoji', 'Segoe UI Emoji'];
+const _windowsCJKFallback = ['Microsoft YaHei', 'SimSun', 'NotoColorEmoji', 'Segoe UI Emoji'];
 
 final appReady = signal(false);
 
@@ -94,13 +94,13 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.light,
-          fontFamilyFallback: Platform.isWindows ? _windowsEmojiFallback : null,
+          fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
         ),
         darkTheme: ThemeData(
           colorSchemeSeed: Colors.blue,
           useMaterial3: true,
           brightness: Brightness.dark,
-          fontFamilyFallback: Platform.isWindows ? _windowsEmojiFallback : null,
+          fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
         ),
         themeMode: resolvedThemeMode,
         routerConfig: ready ? router : _splashRouter,
