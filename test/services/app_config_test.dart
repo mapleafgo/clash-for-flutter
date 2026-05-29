@@ -79,7 +79,7 @@ void main() {
       expect(result.contains('enable: true'), isTrue);
     });
 
-    test('no-op on tun when config has no tun override', () {
+    test('removes tun section when config has no tun override', () {
       clashConfig.value = ClashConfig(
         mixedPort: 7890,
         mode: Mode.rule,
@@ -88,9 +88,10 @@ void main() {
 
       final result = mergeProfileConfig(_profileWithTun);
 
-      // tun section should remain untouched
-      expect(result.contains('tun:'), isTrue);
-      expect(result.contains('auto-route: true'), isTrue);
+      // TUN is app-managed — always stripped when not explicitly enabled
+      expect(result.contains('tun:'), isFalse);
+      expect(result.contains('auto-route'), isFalse);
+      expect(result.contains('dns-hijack'), isFalse);
     });
   });
 }
