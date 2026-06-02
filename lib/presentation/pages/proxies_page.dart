@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/proxy_group.dart';
@@ -398,7 +399,13 @@ class _ProxyTile extends StatelessWidget {
               return _delayWidget(delay, testing, item.tag);
             }),
             onTap: () async {
-              await LibCore.instance.selectProxy(groupName, item.tag);
+              try {
+                await LibCore.instance.selectProxy(groupName, item.tag);
+              } catch (e) {
+                if (context.mounted) {
+                  showErrorDialog(context, '切换代理失败: $e');
+                }
+              }
             },
           ),
         ),
