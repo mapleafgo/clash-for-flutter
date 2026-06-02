@@ -143,13 +143,21 @@ class _ProfilesPageState extends State<ProfilesPage> {
     final destPath = p.join(profilesPath, fileName);
     await File(sourcePath).copy(destPath);
 
-    final validation = await LibCore.instance.checkConfig(
-      await File(destPath).readAsString(),
-    );
-    if (validation.isNotEmpty) {
+    try {
+      final validation = await LibCore.instance.checkConfig(
+        await File(destPath).readAsString(),
+      );
+      if (validation.isNotEmpty) {
+        await File(destPath).delete();
+        if (context.mounted) {
+          showErrorDialog(context, '配置校验失败: $validation');
+        }
+        return;
+      }
+    } catch (e) {
       await File(destPath).delete();
       if (context.mounted) {
-        showErrorDialog(context, '配置校验失败: $validation');
+        showErrorDialog(context, '配置校验失败: $e');
       }
       return;
     }
@@ -450,14 +458,23 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
         profilesDir: profilesPath,
       );
 
-      final validation = await LibCore.instance.checkConfig(
-        await File(p.join(profilesPath, profile.file)).readAsString(),
-      );
-      if (validation.isNotEmpty) {
+      try {
+        final validation = await LibCore.instance.checkConfig(
+          await File(p.join(profilesPath, profile.file)).readAsString(),
+        );
+        if (validation.isNotEmpty) {
+          await File(p.join(profilesPath, profile.file)).delete();
+          if (mounted) {
+            setState(() => _loading = false);
+            showErrorDialog(context, '配置校验失败: $validation');
+          }
+          return;
+        }
+      } catch (e) {
         await File(p.join(profilesPath, profile.file)).delete();
         if (mounted) {
           setState(() => _loading = false);
-          showErrorDialog(context, '配置校验失败: $validation');
+          showErrorDialog(context, '配置校验失败: $e');
         }
         return;
       }

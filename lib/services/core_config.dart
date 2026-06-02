@@ -73,6 +73,7 @@ Future<void> _syncModeToCore(Mode? mode) async {
       level: LogLevel.error,
       name: 'core_config',
     );
+    profileError.value = '切换模式失败: $e';
   }
 }
 
