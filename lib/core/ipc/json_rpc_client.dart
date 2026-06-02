@@ -23,7 +23,7 @@ class JsonRpcClient {
   /// Timeout for normal requests.
   final Duration normalTimeout;
 
-  /// Timeout for heavy requests (core.start, urlTest, etc.).
+  /// Timeout for heavy requests (urlTest, etc.).
   final Duration heavyTimeout;
 
   /// Set of method names that use [heavyTimeout].

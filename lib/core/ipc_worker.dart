@@ -231,7 +231,9 @@ class IpcWorker implements LibCorePlatform {
   Future<bool> isVpnRunning() async => false;
 
   Future<dynamic> _call(String method, [Map<String, dynamic>? params]) {
-    if (_client == null || !_client!.isConnected) return Future.value();
+    if (_client == null || !_client!.isConnected) {
+      throw StateError('IPC not connected');
+    }
     return _client!.call(method, params);
   }
 }
