@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -33,7 +34,9 @@ Future<Profile> downloadSubscription({
     await dir.create(recursive: true);
   }
 
-  final client = HttpClient()..userAgent = subUA.value;
+  final client = HttpClient()
+    ..userAgent = subUA.value
+    ..connectionTimeout = const Duration(seconds: 15);
   try {
     final req = await client.getUrl(Uri.parse(url));
     final resp = await req.close();
@@ -41,7 +44,9 @@ Future<Profile> downloadSubscription({
       throw HttpException('HTTP ${resp.statusCode}');
     }
 
-    final bytes = await resp.fold<List<int>>([], (acc, chunk) => acc..addAll(chunk));
+    final bytes = await resp
+        .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk))
+        .timeout(const Duration(minutes: 3));
     final raw = utf8.decode(bytes);
     final content = isBase64Content(raw) ? decodeBase64Subscription(raw) : raw;
     await File(savePath).writeAsString(content);

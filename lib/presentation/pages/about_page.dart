@@ -132,7 +132,10 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   Future<void> _check() async {
     setState(() => _state = 1);
     try {
-      final resp = await Dio().get<Map<String, dynamic>>(Constants.releaseUrl);
+      final resp = await Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+      )).get<Map<String, dynamic>>(Constants.releaseUrl);
       final tagName = resp.data?['tag_name'] as String? ?? '';
       _latestVersion = tagName.replaceFirst('v', '');
 
