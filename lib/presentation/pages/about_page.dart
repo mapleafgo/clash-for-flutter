@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,7 +10,7 @@ import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
-import 'package:dio/dio.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -132,12 +133,24 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   Future<void> _check() async {
     setState(() => _state = 1);
     try {
-      final resp = await Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-      )).get<Map<String, dynamic>>(Constants.releaseUrl);
-      final tagName = resp.data?['tag_name'] as String? ?? '';
-      _latestVersion = tagName.replaceFirst('v', '');
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 10);
+      try {
+        final req = await client.getUrl(Uri.parse(Constants.releaseUrl));
+        final resp = await req.close();
+        if (resp.statusCode != HttpStatus.ok) {
+          throw HttpException('HTTP ${resp.statusCode}');
+        }
+        final body = await resp
+            .transform(utf8.decoder)
+            .join()
+            .timeout(const Duration(seconds: 15));
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final tagName = data['tag_name'] as String? ?? '';
+        _latestVersion = tagName.replaceFirst('v', '');
+      } finally {
+        client.close();
+      }
 
       if (_currentVersion == _latestVersion) {
         if (mounted) setState(() => _state = 2);

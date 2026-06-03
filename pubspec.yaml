@@ -16,9 +16,6 @@ dependencies:
   # 路由
   go_router: ^17.2.2
 
-  # 网络
-  dio: ^5.9.0
-
   # JSON
   json_annotation: ^4.11.0
 
