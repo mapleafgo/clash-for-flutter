@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/domain/subscription_info.dart';
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml_edit/yaml_edit.dart';
@@ -45,10 +46,15 @@ Future<Profile> downloadSubscription({
     }
 
     final bytes = await resp
-        .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk))
-        .timeout(const Duration(minutes: 3));
+        .timeout(const Duration(minutes: 3), onTimeout: (sink) => sink.close())
+        .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk));
     final raw = utf8.decode(bytes);
-    final content = isBase64Content(raw) ? decodeBase64Subscription(raw) : raw;
+    String content;
+    try {
+      content = isBase64Content(raw) ? decodeBase64Subscription(raw) : raw;
+    } catch (_) {
+      content = raw;
+    }
     await File(savePath).writeAsString(content);
 
     return Profile(
@@ -209,6 +215,17 @@ Map<String, dynamic>? parseTrojan(String body, String name) {
     };
   } catch (_) {
     return null;
+  }
+}
+
+/// 校验配置文件内容，不通过时删除文件并抛出异常。
+Future<void> validateConfigFile(String filePath) async {
+  final validation = await LibCore.instance.checkConfig(
+    await File(filePath).readAsString(),
+  );
+  if (validation.isNotEmpty) {
+    await File(filePath).delete();
+    throw Exception('配置校验失败: $validation');
   }
 }
 

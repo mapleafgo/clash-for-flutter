@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/app_settings_storage.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/utils/constants.dart';
@@ -82,7 +81,7 @@ void _startAutoSave() {
 }
 
 void _save() {
-  AppSettingsStorage.save(AppStoredConfig(
+  AppSettingsStorage.saveAsync(AppStoredConfig(
     selectedFile: selectedFile.value,
     profiles: profiles.value,
     delayTestUrl: delayTestUrl.value,
@@ -133,25 +132,12 @@ Future<Profile> refreshProfile(Profile old) async {
     interval: old.interval,
   );
   final path = p.join(dir, updated.file);
-  try {
-    final validation = await LibCore.instance.checkConfig(
-      await File(path).readAsString(),
-    );
-    if (validation.isNotEmpty) {
-      throw Exception('配置校验失败: $validation');
-    }
-  } catch (e) {
-    await File(path).delete();
-    rethrow;
-  }
+  await validateConfigFile(path);
 
   final isActive = selectedFile.value == old.file;
   final idx = profiles.value.indexWhere((p) => p.file == old.file);
-  if (idx >= 0) {
-    profiles.value = [...profiles.value]..[idx] = updated;
-  } else {
-    profiles.value = [...profiles.value, updated];
-  }
+  if (idx < 0) return updated; // profile 已被删除，不追加
+  profiles.value = [...profiles.value]..[idx] = updated;
   if (isActive) selectedFile.value = updated.file;
 
   final oldPath = p.join(dir, old.file);
@@ -164,11 +150,8 @@ Future<Profile> refreshProfile(Profile old) async {
 Profile? get activeProfile {
   final file = selectedFile.value;
   if (file == null) return null;
-  try {
-    return profiles.value.firstWhere((e) => e.file == file);
-  } catch (_) {
-    return null;
-  }
+  final idx = profiles.value.indexWhere((e) => e.file == file);
+  return idx >= 0 ? profiles.value[idx] : null;
 }
 
 String get profilesPath =>

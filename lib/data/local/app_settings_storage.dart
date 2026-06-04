@@ -24,6 +24,13 @@ class AppSettingsStorage {
     );
   }
 
+  static Future<void> saveAsync(Map<String, dynamic> settings) async {
+    await _file.create(recursive: true);
+    await _file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(settings),
+    );
+  }
+
   /// 一次性迁移 cfm.json → settings.json，迁移后删除旧文件。
   static void _migrateFromCfm() {
     final cfm = File('${Constants.homeDir.path}/cfm.json');
