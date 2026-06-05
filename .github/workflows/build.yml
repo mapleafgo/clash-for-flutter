@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: "3.41.7"
+  FLUTTER_VERSION: "3.44.1"
   CORE_VERSION: "v1.1.10"
   VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
