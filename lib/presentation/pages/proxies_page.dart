@@ -1,16 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/utils/dialog.dart';
-import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/proxy_group.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
-import 'package:flutter/material.dart';
-import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/utils/dialog.dart';
+import 'package:singcast/utils/log_file.dart';
 
 final _sortType = signal(SortType.defaults);
 
@@ -88,7 +88,8 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
               const SizedBox(width: 8),
               Watch((context) {
                 final busy = _groupTesting.value;
-                final hasNodes = _tabController != null && _cachedTags.isNotEmpty;
+                final hasNodes =
+                    _tabController != null && _cachedTags.isNotEmpty;
                 final disabled = busy || !hasNodes;
                 final cs = Theme.of(context).colorScheme;
                 return FloatingActionButton(
@@ -101,8 +102,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.speed),
                 );
@@ -155,8 +155,9 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
     if (tags.isEmpty) return;
 
     _groupTesting.value = true;
-    final cleared =
-        Map<String, int>.from(LibCore.instance.proxyDelaysSignal.peek());
+    final cleared = Map<String, int>.from(
+      LibCore.instance.proxyDelaysSignal.peek(),
+    );
     for (final tag in tags) {
       cleared.remove(tag);
     }
@@ -179,18 +180,20 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
       builder: (ctx) => SimpleDialog(
         title: const Text('排序方式'),
         children: SortType.values
-            .map((type) => ListTile(
-                  title: Text(switch (type) {
-                    SortType.defaults => '默认',
-                    SortType.name => '按名称',
-                    SortType.delay => '按延迟',
-                  }),
-                  selected: _sortType.value == type,
-                  onTap: () {
-                    _sortType.value = type;
-                    Navigator.pop(ctx);
-                  },
-                ))
+            .map(
+              (type) => ListTile(
+                title: Text(switch (type) {
+                  SortType.defaults => '默认',
+                  SortType.name => '按名称',
+                  SortType.delay => '按延迟',
+                }),
+                selected: _sortType.value == type,
+                onTap: () {
+                  _sortType.value = type;
+                  Navigator.pop(ctx);
+                },
+              ),
+            )
             .toList(),
       ),
     );
@@ -243,10 +246,7 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: widget.tags.length,
-      vsync: this,
-    );
+    _tabController = TabController(length: widget.tags.length, vsync: this);
     widget.onControllerChanged?.call(_tabController);
   }
 
@@ -273,36 +273,38 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      Row(
-        children: [
-          Expanded(
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              padding: const EdgeInsets.only(left: 12),
-              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-              indicatorSize: TabBarIndicatorSize.label,
-              tabs: widget.tags.map((tag) => Tab(text: tag)).toList(),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                padding: const EdgeInsets.only(left: 12),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                indicatorSize: TabBarIndicatorSize.label,
+                tabs: widget.tags.map((tag) => Tab(text: tag)).toList(),
+              ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.unfold_more, size: 20),
-            tooltip: '展开分组',
-            onPressed: widget.onExpand,
-          ),
-        ],
-      ),
-      Expanded(
-        child: TabBarView(
-          controller: _tabController,
-          children: widget.tags
-              .map((tag) => _ProxyList(groupTag: tag))
-              .toList(),
+            IconButton(
+              icon: const Icon(Icons.unfold_more, size: 20),
+              tooltip: '展开分组',
+              onPressed: widget.onExpand,
+            ),
+          ],
         ),
-      ),
-    ]);
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: widget.tags
+                .map((tag) => _ProxyList(groupTag: tag))
+                .toList(),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -318,7 +320,8 @@ class _ProxyList extends StatelessWidget {
       final group = LibCore.instance.proxiesSignal.value
           .where((g) => g.tag == groupTag)
           .firstOrNull;
-      final selected = LibCore.instance.selectedProxySignal.value[groupTag] ?? '';
+      final selected =
+          LibCore.instance.selectedProxySignal.value[groupTag] ?? '';
       final testing = _ProxiesPageState._testingTags.value;
       final items = _sortedItems(group?.items ?? []);
 
@@ -341,8 +344,9 @@ class _ProxyList extends StatelessWidget {
       case SortType.name:
         items.sort((a, b) => a.tag.compareTo(b.tag));
       case SortType.delay:
-        items.sort((a, b) =>
-            (delays[a.tag] ?? 99999).compareTo(delays[b.tag] ?? 99999));
+        items.sort(
+          (a, b) => (delays[a.tag] ?? 99999).compareTo(delays[b.tag] ?? 99999),
+        );
       case SortType.defaults:
         break;
     }
@@ -385,17 +389,24 @@ class _ProxyTile extends StatelessWidget {
           color: selected ? cs.primaryContainer.withValues(alpha: 0.5) : null,
           child: ListTile(
             dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            title: Text(item.tag,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: selected ? FontWeight.w600 : null,
-                  color: selected ? cs.primary : null,
-                )),
-            subtitle:
-                Text(urlTestSelected ?? item.type, style: const TextStyle(fontSize: 12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            title: Text(
+              item.tag,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : null,
+                color: selected ? cs.primary : null,
+              ),
+            ),
+            subtitle: Text(
+              urlTestSelected ?? item.type,
+              style: const TextStyle(fontSize: 12),
+            ),
             trailing: Watch((context) {
-              final delay = LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
+              final delay =
+                  LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
               return _delayWidget(delay, testing, item.tag);
             }),
             onTap: () async {
@@ -424,14 +435,20 @@ Widget _delayWidget(int delay, bool testing, String tag) {
   }
   return GestureDetector(
     onTap: () => _testSingleDelay(tag),
-    child: Builder(builder: (context) {
-      if (delay <= 0) {
-        return Text('...',
+    child: Builder(
+      builder: (context) {
+        if (delay <= 0) {
+          return Text(
+            '......',
             style: TextStyle(
-                fontSize: 13, color: Theme.of(context).disabledColor));
-      }
-      return _delayText(delay, context);
-    }),
+              fontSize: 13,
+              color: Theme.of(context).disabledColor,
+            ),
+          );
+        }
+        return _delayText(delay, context);
+      },
+    ),
   );
 }
 
@@ -446,8 +463,11 @@ Future<void> _testSingleDelay(String tag) async {
       LibCore.instance.updateProxyDelay(tag, delay);
     }
   } catch (e) {
-    LogFileWriter.instance?.log('testDelay($tag) error: $e',
-        level: LogLevel.warning, name: 'delay');
+    LogFileWriter.instance?.log(
+      'testDelay($tag) error: $e',
+      level: LogLevel.warning,
+      name: 'delay',
+    );
   } finally {
     testing.value = Set<String>.from(testing.value)..remove(tag);
   }
@@ -456,9 +476,15 @@ Future<void> _testSingleDelay(String tag) async {
 Widget _delayText(int delay, BuildContext context) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final color = delay <= 500
-      ? isDark ? _delayColorGoodDark : _delayColorGood
+      ? isDark
+            ? _delayColorGoodDark
+            : _delayColorGood
       : delay <= 1000
-          ? isDark ? _delayColorMediumDark : _delayColorMedium
-          : isDark ? _delayColorBadDark : _delayColorBad;
+      ? isDark
+            ? _delayColorMediumDark
+            : _delayColorMedium
+      : isDark
+      ? _delayColorBadDark
+      : _delayColorBad;
   return Text('${delay}ms', style: TextStyle(color: color, fontSize: 13));
 }
