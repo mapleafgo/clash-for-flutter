@@ -113,7 +113,8 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
-          if (notification is ScrollUpdateNotification) {
+          if (notification is ScrollUpdateNotification &&
+              notification.metrics.axis == Axis.vertical) {
             final delta = notification.scrollDelta ?? 0;
             if (delta > 5 && _fabVisible.value) {
               _fabVisible.value = false;
