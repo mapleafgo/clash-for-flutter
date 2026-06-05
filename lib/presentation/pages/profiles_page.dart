@@ -451,17 +451,7 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
 
     setState(() => _loading = true);
     try {
-      final profile = await downloadSubscription(
-        url: url,
-        profilesDir: profilesPath,
-      );
-
-      await validateConfigFile(p.join(profilesPath, profile.file));
-
-      final wasEmpty = profiles.value.isEmpty;
-      profiles.value = [...profiles.value, profile];
-      if (wasEmpty) selectedFile.value = profile.file;
-
+      await importSubscription(url);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) showErrorDialog(context, '导入失败: $e');

@@ -38,6 +38,9 @@
         <!-- Accepts URIs that begin with YOUR_SCHEME://YOUR_HOST -->
         <data android:scheme="clash"/>
       </intent-filter>
+      <meta-data
+        android:name="flutter_deeplinking_enabled"
+        android:value="false" />
     </activity>
     <service
       android:name=".SingcastVpnService"

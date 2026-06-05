@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
 
   # 状态管理
-  signals_flutter: ^6.0.0
+  signals_flutter: ^7.1.0
 
   # 路由
   go_router: ^17.2.2
@@ -21,18 +21,18 @@ dependencies:
 
   # 桌面端
   window_manager: ^0.5.1
-  launch_at_startup: ^0.3.1
+  launch_at_startup: ^0.5.1
   desktop_lifecycle: ^0.1.1
   local_notifier: ^0.1.6
 
   # 工具
-  win32: ^5.15.0
+  win32: ^6.3.0
   ffi: ^2.1.0
-  file_picker: ^11.0.2
-  package_info_plus: ^9.0.1
+  file_picker: 12.0.0-beta.5
+  package_info_plus: ^10.1.0
   url_launcher: ^6.3.2
   path_provider: ^2.1.5
-  share_plus: ^10.0.0
+  share_plus: ^13.1.0
   path: ^1.9.0
   settings_yaml: ^8.3.1
   intl: ^0.20.2
@@ -46,6 +46,10 @@ dependencies:
   yaml_edit: ^2.2.4
   flutter_svg: ^2.3.0
   dart_ipc: ^1.0.1
+  app_links: ^7.1.1
+
+dependency_overrides:
+  win32_registry: ^3.0.3
 
 dev_dependencies:
   flutter_test:

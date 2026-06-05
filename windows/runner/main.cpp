@@ -2,6 +2,7 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include "app_links/app_links_plugin_c_api.h"
 #include "flutter_window.h"
 #include "utils.h"
 
@@ -27,6 +28,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!is_uninstall) {
     HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Singcast");
     if (hwnd != NULL) {
+      // Dispatch deep link to existing instance
+      SendAppLink(hwnd);
       ::ShowWindow(hwnd, SW_NORMAL);
       ::SetForegroundWindow(hwnd);
       return EXIT_FAILURE;

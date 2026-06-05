@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_lifecycle
   desktop_tray
+  gtk
   local_notifier
   screen_retriever_linux
   url_launcher_linux

@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <app_links/app_links_plugin_c_api.h>
 #include <dart_ipc/dart_ipc_plugin_c_api.h>
 #include <desktop_lifecycle/desktop_lifecycle_plugin.h>
 #include <desktop_tray/desktop_tray_plugin.h>
@@ -16,6 +17,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  AppLinksPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("AppLinksPluginCApi"));
   DartIpcPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("DartIpcPluginCApi"));
   DesktopLifecyclePluginRegisterWithRegistrar(

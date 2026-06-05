@@ -61,5 +61,11 @@ Name: "{userstartup}\\{{DISPLAY_NAME}}"; Filename: "{app}\\{{EXECUTABLE_NAME}}";
 [Run]
 Filename: "{app}\\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Flags: {% if PRIVILEGES_REQUIRED == 'admin' %}runascurrentuser{% endif %} nowait postinstall skipifsilent
 
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: ""; ValueData: "URL:Singcast Protocol"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\clash\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\\{{EXECUTABLE_NAME}},0"
+Root: HKCU; Subkey: "Software\Classes\clash\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\\{{EXECUTABLE_NAME}}"" ""%1"""
+
 [UninstallRun]
 Filename: "{app}\\singcast-core.exe"; Parameters: "service uninstall"; Flags: runhidden

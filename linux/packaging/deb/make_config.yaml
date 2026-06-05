@@ -14,6 +14,8 @@ keywords:
   - VPN
   - sing-box
 startup_notify: true
+supported_mime_type:
+  - x-scheme-handler/clash
 installed_size: 6604
 dependencies:
   - libgtk-3-0

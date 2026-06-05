@@ -239,3 +239,16 @@ bool isBase64Content(String content) {
     return false;
   }
 }
+
+/// 下载订阅、校验并添加到配置列表。
+/// 供 deep link 和 UI 共用。
+Future<void> importSubscription(String url) async {
+  final profile = await downloadSubscription(
+    url: url,
+    profilesDir: profilesPath,
+  );
+  await validateConfigFile(p.join(profilesPath, profile.file));
+  final wasEmpty = profiles.value.isEmpty;
+  profiles.value = [...profiles.value, profile];
+  if (wasEmpty) selectedFile.value = profile.file;
+}

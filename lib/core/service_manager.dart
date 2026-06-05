@@ -267,21 +267,20 @@ class WindowsServiceManager extends ServiceManager {
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
 
   /// Open a handle to the installed service with [access] rights.
-  /// Returns the service handle, or 0 if the service is not installed
-  /// or the caller lacks permission.
-  int _openService(int access) {
-    final nullPtr = Pointer<Utf16>.fromAddress(0);
-    final scm = OpenSCManager(nullPtr, nullPtr, SC_MANAGER_CONNECT);
-    if (scm == 0) return 0;
+  /// Returns the service handle, or null if not installed or no permission.
+  SC_HANDLE? _openService(int access) {
+    final scm = OpenSCManager(null, null, SC_MANAGER_CONNECT);
+    if (!scm.value.isValid) return null;
     try {
       final namePtr = _serviceName.toNativeUtf16();
       try {
-        return OpenService(scm, namePtr, access);
+        final svc = OpenService(scm.value, PCWSTR(namePtr), access);
+        return svc.value.isValid ? svc.value : null;
       } finally {
         free(namePtr);
       }
     } finally {
-      CloseServiceHandle(scm);
+      scm.value.close();
     }
   }
 
@@ -289,14 +288,14 @@ class WindowsServiceManager extends ServiceManager {
   Future<bool> isReady() async {
     if (_portable) return _elevated;
     final svc = _openService(SERVICE_QUERY_STATUS);
-    if (svc == 0) return false;
-    CloseServiceHandle(svc);
+    if (svc == null) return false;
+    svc.close();
     return true;
   }
 
   /// UAC-elevate via ShellExecuteExW with "runas" verb.
-  /// Returns the process HANDLE, or 0 on failure.
-  int _runas(String params) {
+  /// Returns the process HANDLE, or null on failure.
+  HANDLE? _runas(String params) {
     final svcPath = ServiceManager.serviceBinaryPath();
     final exePtr = svcPath.toNativeUtf16();
     final paramsPtr = params.toNativeUtf16();
@@ -307,16 +306,14 @@ class WindowsServiceManager extends ServiceManager {
     try {
       info.ref.cbSize = sizeOf<SHELLEXECUTEINFO>();
       info.ref.fMask = 0x00000100 | 0x00000040; // NOCLOSEPROCESS | NOASYNC
-      info.ref.lpVerb = verbPtr;
-      info.ref.lpFile = exePtr;
-      info.ref.lpParameters = paramsPtr;
-      info.ref.lpDirectory = dirPtr;
+      info.ref.lpVerb = PWSTR(verbPtr);
+      info.ref.lpFile = PWSTR(exePtr);
+      info.ref.lpParameters = PWSTR(paramsPtr);
+      info.ref.lpDirectory = PWSTR(dirPtr);
       info.ref.nShow = SW_HIDE;
 
       final result = ShellExecuteEx(info);
-      if (result == FALSE) {
-        return 0;
-      }
+      if (!result.value) return null;
       return info.ref.hProcess;
     } finally {
       free(info);
@@ -339,7 +336,7 @@ class WindowsServiceManager extends ServiceManager {
       homeDir,
     ].map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
     final handle = _runas(params);
-    if (handle == 0) {
+    if (handle == null) {
       LogFileWriter.instance?.log(
         'ShellExecuteEx runas failed',
         level: LogLevel.error,
@@ -347,10 +344,10 @@ class WindowsServiceManager extends ServiceManager {
       );
       return false;
     }
-    while (WaitForSingleObject(handle, 100) == WAIT_TIMEOUT) {
+    while (WaitForSingleObject(handle, 100).value == WAIT_TIMEOUT) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    CloseHandle(handle);
+    handle.close();
 
     return await isReady();
   }
@@ -381,14 +378,10 @@ class WindowsServiceManager extends ServiceManager {
   @override
   Future<bool> start() async {
     final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_START);
-    if (svc != 0) {
-      final result = StartService(
-        svc,
-        0,
-        Pointer<Pointer<Utf16>>.fromAddress(0),
-      );
-      CloseServiceHandle(svc);
-      if (result == 0 && GetLastError() != ERROR_SERVICE_ALREADY_RUNNING) {
+    if (svc != null) {
+      final result = StartService(svc, 0, null);
+      svc.close();
+      if (!result.value && result.error != ERROR_SERVICE_ALREADY_RUNNING) {
         return false;
       }
       return true;
@@ -400,8 +393,8 @@ class WindowsServiceManager extends ServiceManager {
         homeDir,
       ].map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
       final handle = _runas(params);
-      if (handle == 0) return false;
-      CloseHandle(handle);
+      if (handle == null) return false;
+      handle.close();
       _elevated = true;
       return true;
     }
@@ -428,7 +421,7 @@ class WindowsServiceManager extends ServiceManager {
   @override
   Future<bool> stop() async {
     final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_STOP);
-    if (svc != 0) {
+    if (svc != null) {
       try {
         final status = calloc<SERVICE_STATUS>();
         try {
@@ -437,7 +430,7 @@ class WindowsServiceManager extends ServiceManager {
           free(status);
         }
       } finally {
-        CloseServiceHandle(svc);
+        svc.close();
       }
       if (!await _waitForIpcGone()) {
         // Service didn't stop gracefully — force kill the process.

@@ -359,18 +359,21 @@ class _ExportLogTileState extends State<_ExportLogTile> {
 
       final name = _exportFileName();
       if (Platform.isAndroid || Platform.isIOS) {
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: 'Singcast 日志',
-          fileNameOverrides: [name],
+        final bytes = await logFile.readAsBytes();
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile.fromData(bytes, name: name)],
+            text: 'Singcast 日志',
+          ),
         );
       } else {
+        final bytes = await logFile.readAsBytes();
         final savePath = await FilePicker.saveFile(
           dialogTitle: '导出日志',
           fileName: name,
+          bytes: bytes,
         );
         if (savePath == null) return;
-        await logFile.copy(savePath);
         _showMessage('日志已导出');
       }
     } catch (e) {
