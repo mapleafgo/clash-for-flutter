@@ -1,27 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/services.dart';
-
-import 'package:singcast/domain/enums.dart';
-import 'package:singcast/domain/profile.dart';
-import 'package:singcast/presentation/widgets/sys_app_bar.dart';
-import 'package:singcast/presentation/widgets/empty_state.dart';
-import 'package:singcast/services/app_config.dart';
-import 'package:singcast/services/subscription.dart';
-import 'package:singcast/utils/format.dart';
-import 'package:singcast/utils/dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/domain/profile.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
+import 'package:singcast/presentation/widgets/empty_state.dart';
+import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/subscription.dart';
+import 'package:singcast/utils/dialog.dart';
+import 'package:singcast/utils/format.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 final _updatingFile = signal<String?>(null);
-/// 进入页面时递增，驱动 Watch 重建以刷新 timeago 显示
-final _enterVersion = signal<int>(0);
 
 class ProfilesPage extends StatefulWidget {
   const ProfilesPage({super.key});
@@ -30,20 +27,26 @@ class ProfilesPage extends StatefulWidget {
   State<ProfilesPage> createState() => _ProfilesPageState();
 }
 
-class _ProfilesPageState extends State<ProfilesPage> {
+class _ProfilesPageState extends State<ProfilesPage> with SignalsMixin {
   final _scrollController = ScrollController();
   final _fabVisible = ValueNotifier<bool>(true);
   double _lastOffset = 0;
+  late final _timeagoTick = signal(0);
+  Timer? _timeagoTimer;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _enterVersion.value++;
+    _timeagoTick.value++;
+    _timeagoTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      if (mounted) _timeagoTick.value++;
+    });
   }
 
   @override
   void dispose() {
+    _timeagoTimer?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _fabVisible.dispose();
@@ -79,7 +82,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
       body: Watch((context) {
         final list = profiles.value;
         final sel = selectedFile.value;
-        _enterVersion.value; // 进入页面时递增，触发重建
+        _timeagoTick.value;
         if (list.isEmpty) {
           return const EmptyState(
             icon: Icons.cloud_outlined,
@@ -87,21 +90,23 @@ class _ProfilesPageState extends State<ProfilesPage> {
             hint: '点击右下角按钮添加订阅配置',
           );
         }
-        return LayoutBuilder(builder: (_, constraints) {
-          final cols = constraints.maxWidth > 400 ? 2 : 1;
-          return MasonryGridView.count(
-            controller: _scrollController,
-            crossAxisCount: cols,
-            mainAxisSpacing: 20,
-            crossAxisSpacing: 20,
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            itemBuilder: (_, i) => _ProfileCard(
-              profile: list[i],
-              isSelected: list[i].file == sel,
-            ),
-          );
-        });
+        return LayoutBuilder(
+          builder: (_, constraints) {
+            final cols = constraints.maxWidth > 400 ? 2 : 1;
+            return MasonryGridView.count(
+              controller: _scrollController,
+              crossAxisCount: cols,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 20,
+              padding: const EdgeInsets.all(16),
+              itemCount: list.length,
+              itemBuilder: (_, i) => _ProfileCard(
+                profile: list[i],
+                isSelected: list[i].file == sel,
+              ),
+            );
+          },
+        );
       }),
     );
   }
@@ -153,14 +158,18 @@ class _ProfilesPageState extends State<ProfilesPage> {
     if (File(destPath).existsSync()) {
       destPath = p.join(profilesPath, _uniqueFileName(fileName));
     }
-    await File(sourcePath).copy(destPath);
+    try {
+      await File(sourcePath).copy(destPath);
+    } catch (e) {
+      if (context.mounted) showErrorDialog(context, '文件复制失败: $e');
+      return;
+    }
 
     try {
       await validateConfigFile(destPath);
     } catch (e) {
-      if (context.mounted) {
-        showErrorDialog(context, '$e');
-      }
+      File(destPath).delete().catchError((_) => File(destPath));
+      if (context.mounted) showErrorDialog(context, '$e');
       return;
     }
 
@@ -204,7 +213,9 @@ class _ProfileCard extends StatelessWidget {
         : null;
     return Card(
       elevation: 0,
-      color: isSelected ? cs.primaryContainer.withValues(alpha: 0.5) : cs.surfaceContainerLow,
+      color: isSelected
+          ? cs.primaryContainer.withValues(alpha: 0.5)
+          : cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
@@ -213,81 +224,113 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text(profile.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      profile.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? cs.primary : null,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    profile.type.name.toUpperCase(),
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? cs.primary : null,
-                    )),
+                      fontSize: 12,
+                      color: isSelected ? cs.primary : cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              Text(profile.type.name.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isSelected
-                        ? cs.primary
-                        : cs.onSurfaceVariant,
-                  )),
-            ]),
-            if (hasTraffic) ...[
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: info.used / info.total!, minHeight: 6),
-            ],
-            const SizedBox(height: 4),
-            Row(children: [
-              Text(timeago.format(profile.time, locale: 'zh_cn'),
-                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-              const Spacer(),
-              if (hasTraffic)
-                Text('${formatBytes(info.used)} / ${formatBytes(info.total!)}',
-                    style:
-                        TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-            ]),
-            Row(children: [
-              Expanded(
-                child: expireStr != null
-                    ? Row(children: [
-                        Icon(Icons.event, size: 14, color: cs.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text(expireStr,
-                            style: TextStyle(
-                                fontSize: 12, color: cs.onSurfaceVariant)),
-                      ])
-                    : const SizedBox.shrink(),
+              if (hasTraffic) ...[
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: info.used / info.total!,
+                  minHeight: 6,
+                ),
+              ],
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    timeago.format(profile.time, locale: 'zh_cn'),
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                  ),
+                  const Spacer(),
+                  if (hasTraffic)
+                    Text(
+                      '${formatBytes(info.used)} / ${formatBytes(info.total!)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.edit_note, size: 18),
-                tooltip: '修改',
-                onPressed: () => _edit(context),
-                visualDensity: VisualDensity.compact,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18),
-                tooltip: '移除',
-                onPressed: () => _remove(context),
-                visualDensity: VisualDensity.compact,
-              ),
-              if (profile.type == ProfileType.url)
-                Watch((_) {
-                  final busy = _updatingFile.value == profile.file;
-                  return IconButton(
-                    icon: busy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: expireStr != null
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.event,
+                                size: 14,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                expireStr,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           )
-                        : const Icon(Icons.refresh, size: 18),
-                    tooltip: busy ? '更新中...' : '更新',
-                    onPressed: busy ? null : () => _update(context),
+                        : const SizedBox.shrink(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_note, size: 18),
+                    tooltip: '修改',
+                    onPressed: () => _edit(context),
                     visualDensity: VisualDensity.compact,
-                  );
-                }),
-            ]),
-          ]),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: '移除',
+                    onPressed: () => _remove(context),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  if (profile.type == ProfileType.url)
+                    Watch((_) {
+                      final busy = _updatingFile.value == profile.file;
+                      return IconButton(
+                        icon: busy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh, size: 18),
+                        tooltip: busy ? '更新中...' : '更新',
+                        onPressed: busy ? null : () => _update(context),
+                        visualDensity: VisualDensity.compact,
+                      );
+                    }),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -302,11 +345,17 @@ class _ProfileCard extends StatelessWidget {
 
     if (profile.type == ProfileType.url && result.urlChanged) {
       try {
-        await refreshProfile(Profile(
-          file: profile.file, name: result.name, type: profile.type,
-          time: profile.time, url: result.url, interval: result.interval,
-          userinfo: profile.userinfo,
-        ));
+        await refreshProfile(
+          Profile(
+            file: profile.file,
+            name: result.name,
+            type: profile.type,
+            time: profile.time,
+            url: result.url,
+            interval: result.interval,
+            userinfo: profile.userinfo,
+          ),
+        );
       } catch (e) {
         if (context.mounted) showErrorDialog(context, 'URL 校验失败: $e');
       }
@@ -314,11 +363,21 @@ class _ProfileCard extends StatelessWidget {
     }
 
     // URL 未变更，仅更新名称/间隔/URL 微调（refreshProfile 已处理 URL 变更）
-    final list = profiles.value.map((p) =>
-        p.file == profile.file ? Profile(
-          file: p.file, name: result.name, type: p.type, time: p.time,
-          url: result.url, interval: result.interval, userinfo: p.userinfo,
-        ) : p).toList();
+    final list = profiles.value
+        .map(
+          (p) => p.file == profile.file
+              ? Profile(
+                  file: p.file,
+                  name: result.name,
+                  type: p.type,
+                  time: p.time,
+                  url: result.url,
+                  interval: result.interval,
+                  userinfo: p.userinfo,
+                )
+              : p,
+        )
+        .toList();
     profiles.value = list;
   }
 
@@ -534,14 +593,22 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
           onPressed: () {
             final p = widget.profile;
             final newName = _nameCtl.text.isEmpty ? p.name : _nameCtl.text;
-            final newUrl = p.type == ProfileType.url ? _urlCtl.text.trim() : p.url;
-            if (p.type == ProfileType.url && (newUrl == null || newUrl.isEmpty)) return;
-            Navigator.pop(context, _EditResult(
-              name: newName,
-              url: newUrl,
-              interval: int.tryParse(_intervalCtl.text) ?? 0,
-              urlChanged: newUrl != p.url,
-            ));
+            final newUrl = p.type == ProfileType.url
+                ? _urlCtl.text.trim()
+                : p.url;
+            if (p.type == ProfileType.url &&
+                (newUrl == null || newUrl.isEmpty)) {
+              return;
+            }
+            Navigator.pop(
+              context,
+              _EditResult(
+                name: newName,
+                url: newUrl,
+                interval: int.tryParse(_intervalCtl.text) ?? 0,
+                urlChanged: newUrl != p.url,
+              ),
+            );
           },
           child: const Text('确定'),
         ),

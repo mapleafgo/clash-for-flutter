@@ -29,8 +29,8 @@ class ProxiesPage extends StatefulWidget {
 }
 
 class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
-  static final _testingTags = signal<Set<String>>({});
-  static final _groupTesting = signal(false);
+  late final _testingTags = signal<Set<String>>({});
+  late final _groupTesting = signal(false);
   final _fabVisible = ValueNotifier<bool>(true);
   TabController? _tabController;
   List<String> _cachedTags = [];
@@ -131,6 +131,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
               )
             : _ProxiesTabView(
                 tags: _cachedTags,
+                testingTags: _testingTags,
                 onControllerChanged: (c) => _tabController = c,
                 onExpand: () => _showGroupsDialog(context),
               ),
@@ -227,10 +228,12 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
 
 class _ProxiesTabView extends StatefulWidget {
   final List<String> tags;
+  final Signal<Set<String>> testingTags;
   final ValueChanged<TabController>? onControllerChanged;
   final VoidCallback? onExpand;
   const _ProxiesTabView({
     required this.tags,
+    required this.testingTags,
     this.onControllerChanged,
     this.onExpand,
   });
@@ -299,7 +302,7 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
           child: TabBarView(
             controller: _tabController,
             children: widget.tags
-                .map((tag) => _ProxyList(groupTag: tag))
+                .map((tag) => _ProxyList(groupTag: tag, testingTags: widget.testingTags))
                 .toList(),
           ),
         ),
@@ -312,7 +315,8 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
 
 class _ProxyList extends StatelessWidget {
   final String groupTag;
-  const _ProxyList({required this.groupTag});
+  final Signal<Set<String>> testingTags;
+  const _ProxyList({required this.groupTag, required this.testingTags});
 
   @override
   Widget build(BuildContext context) {
@@ -322,16 +326,18 @@ class _ProxyList extends StatelessWidget {
           .firstOrNull;
       final selected =
           LibCore.instance.selectedProxySignal.value[groupTag] ?? '';
-      final testing = _ProxiesPageState._testingTags.value;
+      final testing = testingTags.value;
       final items = _sortedItems(group?.items ?? []);
 
       return ListView.builder(
         itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
+          key: ValueKey(items[i].tag),
           item: items[i],
           selected: items[i].tag == selected,
           groupName: groupTag,
           testing: testing.contains(items[i].tag),
+          testingTags: testingTags,
         ),
       );
     });
@@ -361,11 +367,14 @@ class _ProxyTile extends StatelessWidget {
   final bool selected;
   final bool testing;
   final String groupName;
+  final Signal<Set<String>> testingTags;
   const _ProxyTile({
+    super.key,
     required this.item,
     required this.selected,
     required this.testing,
     required this.groupName,
+    required this.testingTags,
   });
 
   @override
@@ -407,7 +416,7 @@ class _ProxyTile extends StatelessWidget {
             trailing: Watch((context) {
               final delay =
                   LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
-              return _delayWidget(delay, testing, item.tag);
+              return _delayWidget(delay, testing, item.tag, testingTags);
             }),
             onTap: () async {
               try {
@@ -425,7 +434,7 @@ class _ProxyTile extends StatelessWidget {
   }
 }
 
-Widget _delayWidget(int delay, bool testing, String tag) {
+Widget _delayWidget(int delay, bool testing, String tag, Signal<Set<String>> testingTags) {
   if (testing) {
     return const SizedBox(
       width: 16,
@@ -434,7 +443,7 @@ Widget _delayWidget(int delay, bool testing, String tag) {
     );
   }
   return GestureDetector(
-    onTap: () => _testSingleDelay(tag),
+    onTap: () => _testSingleDelay(tag, testingTags),
     child: Builder(
       builder: (context) {
         if (delay <= 0) {
@@ -452,10 +461,9 @@ Widget _delayWidget(int delay, bool testing, String tag) {
   );
 }
 
-Future<void> _testSingleDelay(String tag) async {
-  final testing = _ProxiesPageState._testingTags;
-  if (!testing.value.contains(tag)) {
-    testing.value = Set<String>.from(testing.value)..add(tag);
+Future<void> _testSingleDelay(String tag, Signal<Set<String>> testingTags) async {
+  if (!testingTags.value.contains(tag)) {
+    testingTags.value = Set<String>.from(testingTags.value)..add(tag);
   }
   try {
     final delay = await LibCore.instance.testDelay(tag);
@@ -469,7 +477,7 @@ Future<void> _testSingleDelay(String tag) async {
       name: 'delay',
     );
   } finally {
-    testing.value = Set<String>.from(testing.value)..remove(tag);
+    testingTags.value = Set<String>.from(testingTags.value)..remove(tag);
   }
 }
 

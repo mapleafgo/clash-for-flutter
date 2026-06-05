@@ -131,6 +131,7 @@ class JsonRpcClient {
   void _send(Map<String, dynamic> message) {
     final data = utf8.encode('${jsonEncode(message)}\n');
     _socket?.add(data);
+    _socket?.flush();
   }
 
   void _onData(List<int> data) {

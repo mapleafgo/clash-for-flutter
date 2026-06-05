@@ -98,7 +98,7 @@ class LibCore {
 
   /// Heartbeat: actively probe IPC with queryState to detect zombie connections.
   Timer? _heartbeatTimer;
-  static const _heartbeatInterval = Duration(seconds: 5);
+  static const _heartbeatInterval = Duration(seconds: 10);
   static const _heartbeatTimeout = Duration(seconds: 3);
 
   LibCorePlatform get platform => _platform;
