@@ -1,15 +1,14 @@
 import 'dart:io';
 
-import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/services/app_config.dart';
-import 'package:singcast/services/core_config.dart' show clashConfig, mergeProfileConfig;
-import 'package:singcast/utils/constants.dart';
-import 'package:singcast/domain/enums.dart' show LogLevel;
-import 'package:singcast/utils/log_file.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
-
-final coreActivating = signal(false);
+import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/domain/enums.dart' show LogLevel;
+import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/core_config.dart'
+    show clashConfig, mergeProfileConfig;
+import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/log_file.dart';
 
 String? _lastWorkingConfig;
 
@@ -23,7 +22,7 @@ void startWatchingSelectedFile() {
     if (!File(path).existsSync()) return;
     LogFileWriter.instance?.log(
       'startWatchingSelectedFile: activating profile $file (state=${LibCore.instance.stateSignal.peek()})',
-      name: 'tun',
+      name: 'profile',
     );
     profileError.value = null;
     _activateProfile(path);
@@ -36,9 +35,6 @@ void startWatchingSelectedFile() {
 /// 内核支持热重载，切换订阅/配置变更无需重启内核。
 /// 提权重启等需要重启内核的场景由 enableTun 负责。
 Future<bool> _activateProfile(String yamlPath) async {
-  coreActivating.value = true;
-  final previousConfig = _lastWorkingConfig;
-
   try {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
@@ -70,24 +66,12 @@ Future<bool> _activateProfile(String yamlPath) async {
         ruleSetProxy: ruleSetProxy.value,
       );
     } catch (e) {
+      profileError.value = e.toString();
       LogFileWriter.instance?.log(
         '_activateProfile: startCoreWithContent failed: $e',
         level: LogLevel.error,
-        name: 'tun',
+        name: 'profile',
       );
-      if (previousConfig != null) {
-        try {
-          await LibCore.instance.startCoreWithContent(
-            previousConfig,
-            ruleSetProxy: ruleSetProxy.value,
-          );
-          profileError.value = e.toString();
-        } catch (_) {
-          profileError.value = e.toString();
-        }
-      } else {
-        profileError.value = e.toString();
-      }
       return false;
     }
 
@@ -99,11 +83,9 @@ Future<bool> _activateProfile(String yamlPath) async {
     LogFileWriter.instance?.log(
       '_activateProfile: unexpected error: $e',
       level: LogLevel.error,
-      name: 'tun',
+      name: 'profile',
     );
     return false;
-  } finally {
-    coreActivating.value = false;
   }
 }
 
