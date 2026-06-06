@@ -20,7 +20,10 @@ Widget _shellBuilder(
         BuildContext context, GoRouterState state, StatefulNavigationShell shell) =>
     Constants.isDesktop ? DesktopShell(shell: shell) : MobileShell(shell: shell);
 
+final navigatorKey = GlobalKey<NavigatorState>();
+
 final router = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: Routes.home,
   errorBuilder: (context, state) => Scaffold(
     body: Center(

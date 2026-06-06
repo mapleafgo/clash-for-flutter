@@ -242,10 +242,17 @@ bool isBase64Content(String content) {
 
 /// 下载订阅、校验并添加到配置列表。
 /// 供 deep link 和 UI 共用。
-Future<void> importSubscription(String url) async {
+///
+/// 当 [url] 已存在于现有订阅中时抛出 [StateError]。
+Future<void> importSubscription(String url, {String? name}) async {
+  if (profiles.value.any((p) => p.url == url)) {
+    throw StateError('该订阅已存在');
+  }
+
   final profile = await downloadSubscription(
     url: url,
     profilesDir: profilesPath,
+    name: name,
   );
   await validateConfigFile(p.join(profilesPath, profile.file));
   final wasEmpty = profiles.value.isEmpty;

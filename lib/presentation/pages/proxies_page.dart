@@ -21,14 +21,14 @@ const _delayColorMediumDark = Color(0xFFFFEE58);
 const _delayColorBad = Color(0xFFC62828);
 const _delayColorBadDark = Color(0xFFEF5350);
 
-class ProxiesPage extends StatefulWidget {
+class ProxiesPage extends SignalStatefulWidget {
   const ProxiesPage({super.key});
 
   @override
   State<ProxiesPage> createState() => _ProxiesPageState();
 }
 
-class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
+class _ProxiesPageState extends State<ProxiesPage> {
   late final _testingTags = signal<Set<String>>({});
   late final _groupTesting = signal(false);
   final _fabVisible = ValueNotifier<bool>(true);
@@ -40,7 +40,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
     super.initState();
     _syncTags();
 
-    createEffect(() {
+    effect(() {
       final newTags = LibCore.instance.proxiesSignal.value
           .where((g) => !isUsedProxy(g.tag))
           .map((g) => g.tag)
@@ -86,7 +86,7 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
                 child: const Icon(Icons.sort),
               ),
               const SizedBox(width: 8),
-              Watch((context) {
+              SignalBuilder(builder: (context) {
                 final busy = _groupTesting.value;
                 final hasNodes =
                     _tabController != null && _cachedTags.isNotEmpty;
@@ -183,17 +183,20 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
         title: const Text('排序方式'),
         children: SortType.values
             .map(
-              (type) => ListTile(
-                title: Text(switch (type) {
-                  SortType.defaults => '默认',
-                  SortType.name => '按名称',
-                  SortType.delay => '按延迟',
-                }),
-                selected: _sortType.value == type,
-                onTap: () {
-                  _sortType.value = type;
-                  Navigator.pop(ctx);
-                },
+              (type) => Material(
+                type: MaterialType.transparency,
+                child: ListTile(
+                  title: Text(switch (type) {
+                    SortType.defaults => '默认',
+                    SortType.name => '按名称',
+                    SortType.delay => '按延迟',
+                  }),
+                  selected: _sortType.value == type,
+                  onTap: () {
+                    _sortType.value = type;
+                    Navigator.pop(ctx);
+                  },
+                ),
               ),
             )
             .toList(),
@@ -211,13 +214,16 @@ class _ProxiesPageState extends State<ProxiesPage> with SignalsMixin {
         children: _cachedTags.asMap().entries.map((entry) {
           final index = entry.key;
           final tag = entry.value;
-          return ListTile(
-            title: Text(tag),
-            selected: index == controller.index,
-            onTap: () {
-              Navigator.pop(ctx);
-              controller.animateTo(index);
-            },
+          return Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              title: Text(tag),
+              selected: index == controller.index,
+              onTap: () {
+                Navigator.pop(ctx);
+                controller.animateTo(index);
+              },
+            ),
           );
         }).toList(),
       ),
@@ -321,7 +327,7 @@ class _ProxyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final group = LibCore.instance.proxiesSignal.value
           .where((g) => g.tag == groupTag)
           .firstOrNull;
@@ -395,7 +401,7 @@ class _ProxyTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Container(
+        child: Material(
           color: selected ? cs.primaryContainer.withValues(alpha: 0.5) : null,
           child: ListTile(
             dense: true,
@@ -414,7 +420,7 @@ class _ProxyTile extends StatelessWidget {
               urlTestSelected ?? item.type,
               style: const TextStyle(fontSize: 12),
             ),
-            trailing: Watch((context) {
+            trailing: SignalBuilder(builder: (context) {
               final delay =
                   LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
               return _delayWidget(delay, testing, item.tag, testingTags);

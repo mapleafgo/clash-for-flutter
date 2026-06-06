@@ -56,7 +56,7 @@ class _KernelStateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final state = LibCore.instance.stateSignal.value;
       final disconnected = initError.value != null || _isDisconnected(state);
       final cs = Theme.of(context).colorScheme;

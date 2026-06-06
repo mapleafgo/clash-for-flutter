@@ -1,16 +1,15 @@
 import 'dart:async';
 
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
-import 'package:singcast/presentation/app.dart' show App, appReady;
-import 'package:singcast/presentation/router.dart' show Routes, router;
+import 'package:singcast/presentation/app.dart' show App;
+import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
-import 'package:singcast/services/subscription.dart';
+import 'package:singcast/services/deep_link.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
@@ -49,7 +48,7 @@ void main() async {
   await _initApp();
   appReady.value = true;
 
-  _initDeepLinks();
+  initDeepLinks();
 
   if (Constants.isDesktop) {
     await initTray();
@@ -135,37 +134,6 @@ Future<void> _initApp() async {
 
 void _log(String msg) {
   LogFileWriter.instance?.log(msg, name: 'startup');
-}
-
-final _appLinks = AppLinks();
-
-Future<void> _initDeepLinks() async {
-  // 冷启动时处理初始链接
-  final initial = await _appLinks.getInitialLink();
-  if (initial != null) _handleDeepLink(initial);
-
-  // 热启动时监听后续链接
-  _appLinks.uriLinkStream.listen(
-    _handleDeepLink,
-    onError: (e) => _log('[deeplink] stream error: $e'),
-  );
-}
-
-Future<void> _handleDeepLink(Uri uri) async {
-  _log('[deeplink] received: $uri');
-  if (uri.scheme != 'clash') return;
-  if (!appReady.value) return;
-
-  final url = uri.queryParameters['url'];
-  if (uri.host == 'install-sub' && url != null && url.isNotEmpty) {
-    try {
-      await importSubscription(url);
-      router.go(Routes.profiles);
-      _log('[deeplink] imported subscription from: $url');
-    } catch (e) {
-      _log('[deeplink] import failed: $e');
-    }
-  }
 }
 
 class _WindowListener with WindowListener {

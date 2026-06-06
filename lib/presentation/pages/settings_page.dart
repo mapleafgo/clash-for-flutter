@@ -35,7 +35,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const SysAppBar(title: '设置'),
-      body: Watch((context) {
+      body: SignalBuilder(builder: (context) {
         final config = clashConfig.value;
         return ListView(children: [
           const _Section('内核'),
@@ -71,7 +71,7 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
           if (Constants.isDesktop)
-            Watch((context) {
+            SignalBuilder(builder: (context) {
               final modes = LibCore.instance.availableModesSignal.value;
               final current = LibCore.instance.modeSignal.value;
               final ready = LibCore.instance.stateSignal.value == LibCore.kStateRunning;
@@ -132,7 +132,7 @@ class SettingsPage extends StatelessWidget {
             onChanged: (v) => ruleSetProxy.value = v,
           ),
           const _Section('外观'),
-          Watch((context) => _ChoiceTile<ThemeMode>(
+          SignalBuilder(builder: (context) => _ChoiceTile<ThemeMode>(
                 title: '主题',
                 description: '切换应用外观风格',
                 value: themeMode.value ?? ThemeMode.system,
@@ -252,7 +252,7 @@ class _UaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final ua = subUA.value;
       return ListTile(
         title: const Text('订阅 User-Agent'),
@@ -367,13 +367,16 @@ class _ChoiceTile<T> extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: Text(description!, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
                 ),
-              ...items.map((item) => ListTile(
-                    title: Text(labelBuilder(item)),
-                    selected: item == value,
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      if (item != value) onChanged?.call(item);
-                    },
+              ...items.map((item) => Material(
+                    type: MaterialType.transparency,
+                    child: ListTile(
+                      title: Text(labelBuilder(item)),
+                      selected: item == value,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        if (item != value) onChanged?.call(item);
+                      },
+                    ),
                   )),
             ],
           ),
@@ -396,7 +399,7 @@ Future<String?> _showEditDialog({
 
   return showDialog<String>(
     context: context,
-    builder: (ctx) => Watch((context) {
+    builder: (ctx) => SignalBuilder(builder: (context) {
       return AlertDialog(
         title: Text(title),
         content: Column(

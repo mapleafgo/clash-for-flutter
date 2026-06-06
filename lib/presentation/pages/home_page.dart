@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/presentation/app.dart' show appReady;
+import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
@@ -253,7 +253,7 @@ class _SpeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final stats = LibCore.instance.statsSignal.value;
       final up = stats?.up ?? 0;
       final down = stats?.down ?? 0;
@@ -306,7 +306,7 @@ class _ConnectionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final count = LibCore.instance.activeConnectionsSignal.value;
       final theme = Theme.of(context);
       return _CardShell(
@@ -341,7 +341,7 @@ class _RuntimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final stats = LibCore.instance.statsSignal.value;
       final memory = stats?.memory ?? 0;
       final theme = Theme.of(context);
@@ -370,7 +370,7 @@ class _ToggleFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
@@ -483,7 +483,7 @@ class _TrafficTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final stats = LibCore.instance.statsSignal.value;
       final upTotal = stats?.upTotal ?? 0;
       final downTotal = stats?.downTotal ?? 0;
@@ -542,7 +542,7 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final state = LibCore.instance.stateSignal.value;
       final modes = LibCore.instance.availableModesSignal.value;
       final current = LibCore.instance.modeSignal.value;
@@ -622,7 +622,7 @@ class _ProxyModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final isTun = tunIf.value ?? false;
       return _CardShell(
         icon: Icons.swap_horiz,
@@ -699,7 +699,7 @@ class _InitErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final err = initError.value;
       if (err == null) return const SizedBox.shrink();
       final cs = Theme.of(context).colorScheme;

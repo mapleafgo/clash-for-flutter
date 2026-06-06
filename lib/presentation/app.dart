@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/presentation/app_state.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
@@ -12,15 +12,12 @@ import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 const _windowsCJKFallback = ['Microsoft YaHei', 'SimSun', 'NotoColorEmoji', 'Segoe UI Emoji'];
 
-final appReady = signal(false);
-
 class App extends StatefulWidget {
-  static final routerKey = GlobalKey<NavigatorState>();
-
   const App({super.key});
 
   @override
@@ -85,7 +82,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
+    return SignalBuilder(builder: (context) {
       final ready = appReady.value;
       return MaterialApp.router(
         title: 'Singcast',

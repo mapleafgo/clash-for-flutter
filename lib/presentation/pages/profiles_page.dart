@@ -20,14 +20,14 @@ import 'package:timeago/timeago.dart' as timeago;
 
 final _updatingFile = signal<String?>(null);
 
-class ProfilesPage extends StatefulWidget {
+class ProfilesPage extends SignalStatefulWidget {
   const ProfilesPage({super.key});
 
   @override
   State<ProfilesPage> createState() => _ProfilesPageState();
 }
 
-class _ProfilesPageState extends State<ProfilesPage> with SignalsMixin {
+class _ProfilesPageState extends State<ProfilesPage> {
   final _scrollController = ScrollController();
   final _fabVisible = ValueNotifier<bool>(true);
   double _lastOffset = 0;
@@ -79,7 +79,7 @@ class _ProfilesPageState extends State<ProfilesPage> with SignalsMixin {
           ),
         ),
       ),
-      body: Watch((context) {
+      body: SignalBuilder(builder: (context) {
         final list = profiles.value;
         final sel = selectedFile.value;
         _timeagoTick.value;
@@ -117,21 +117,27 @@ class _ProfilesPageState extends State<ProfilesPage> with SignalsMixin {
       builder: (ctx) => SimpleDialog(
         title: const Text('添加订阅'),
         children: [
-          ListTile(
-            leading: const Icon(Icons.insert_drive_file),
-            title: const Text('从文件'),
-            onTap: () {
-              Navigator.pop(ctx);
-              _addFromFile(context);
-            },
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              leading: const Icon(Icons.insert_drive_file),
+              title: const Text('从文件'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _addFromFile(context);
+              },
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.link),
-            title: const Text('从 URL'),
-            onTap: () {
-              Navigator.pop(ctx);
-              _addFromUrl(context);
-            },
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('从 URL'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _addFromUrl(context);
+              },
+            ),
           ),
         ],
       ),
@@ -154,6 +160,11 @@ class _ProfilesPageState extends State<ProfilesPage> with SignalsMixin {
     if (sourcePath == null) return;
 
     final fileName = p.basename(sourcePath);
+    if (profiles.value.any((p) => p.name == fileName)) {
+      if (context.mounted) showErrorDialog(context, '配置「$fileName」已存在');
+      return;
+    }
+
     var destPath = p.join(profilesPath, fileName);
     if (File(destPath).existsSync()) {
       destPath = p.join(profilesPath, _uniqueFileName(fileName));
@@ -310,7 +321,7 @@ class _ProfileCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                   ),
                   if (profile.type == ProfileType.url)
-                    Watch((_) {
+                    SignalBuilder(builder: (_) {
                       final busy = _updatingFile.value == profile.file;
                       return IconButton(
                         icon: busy
