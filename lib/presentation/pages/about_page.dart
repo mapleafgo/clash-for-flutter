@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/update_checker.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -92,25 +91,14 @@ class _CheckUpdateTile extends StatefulWidget {
 
 class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   int _state = 0;
-  String _currentVersion = '';
+  final String _currentVersion = Defaults.appVersion;
   String _latestVersion = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    if (mounted) setState(() => _currentVersion = info.version);
-  }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       title: const Text('版本'),
-      subtitle: Text(_currentVersion.isNotEmpty ? _currentVersion : '加载中...'),
+      subtitle: Text(_currentVersion),
       trailing: _trailing(),
       onTap: _state == 1 ? null : _check,
     );
@@ -133,29 +121,13 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   Future<void> _check() async {
     setState(() => _state = 1);
     try {
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 10);
-      try {
-        final req = await client.getUrl(Uri.parse(Constants.releaseUrl));
-        final resp = await req.close();
-        if (resp.statusCode != HttpStatus.ok) {
-          throw HttpException('HTTP ${resp.statusCode}');
-        }
-        final body = await resp
-            .transform(utf8.decoder)
-            .join()
-            .timeout(const Duration(seconds: 15));
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final tagName = data['tag_name'] as String? ?? '';
-        _latestVersion = tagName.replaceFirst('v', '');
-      } finally {
-        client.close();
-      }
-
-      if (_currentVersion == _latestVersion) {
-        if (mounted) setState(() => _state = 2);
+      final latest = await checkForUpdate();
+      if (!mounted) return;
+      if (latest == null) {
+        setState(() => _state = 2);
       } else {
-        if (mounted) setState(() => _state = 3);
+        _latestVersion = latest;
+        setState(() => _state = 3);
         _showUpdateDialog();
       }
     } catch (_) {
