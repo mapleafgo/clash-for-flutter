@@ -334,7 +334,8 @@ class _ExportLogTileState extends State<_ExportLogTile> {
         final bytes = await logFile.readAsBytes();
         await SharePlus.instance.share(
           ShareParams(
-            files: [XFile.fromData(bytes, name: name)],
+            files: [XFile.fromData(bytes)],
+            fileNameOverrides: [name],
             text: 'Singcast 日志',
           ),
         );
