@@ -7,17 +7,16 @@ import 'package:singcast/utils/log_file.dart';
 final _appLinks = AppLinks();
 
 void initDeepLinks() {
-  // 冷启动时处理初始链接
+  // 延迟订阅 uriLinkStream：冷启动时 getInitialLink 和 stream 可能同时投递同一链接，
+  // 先处理完 initialLink 再订阅，从结构上保证只触发一次
   _appLinks.getInitialLink().then((initial) {
     _log('[deeplink] initialLink: $initial');
     if (initial != null) _processDeepLink(initial);
+    _appLinks.uriLinkStream.listen(
+      _processDeepLink,
+      onError: (e) => _log('[deeplink] stream error: $e'),
+    );
   });
-
-  // 热启动时监听后续链接
-  _appLinks.uriLinkStream.listen(
-    _processDeepLink,
-    onError: (e) => _log('[deeplink] stream error: $e'),
-  );
 }
 
 Future<void> _processDeepLink(Uri uri) async {
