@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/utils/constants.dart';
 
+const _sentinel = Object();
+
 class AppSettingsStorage {
   static File get _file => File('${Constants.homeDir.path}${Constants.appSettings}');
 
@@ -57,6 +59,7 @@ class AppStoredConfig {
   final bool? tunIf;
   final String subUA;
   final String? themeMode;
+  final String? ignoredVersion;
 
   AppStoredConfig({
     this.selectedFile,
@@ -65,6 +68,7 @@ class AppStoredConfig {
     this.tunIf,
     String? subUA,
     this.themeMode,
+    this.ignoredVersion,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
@@ -78,6 +82,7 @@ class AppStoredConfig {
         tunIf: json['tun-if'] as bool?,
         subUA: json['sub-ua'] as String? ?? Defaults.subUA,
         themeMode: json['theme-mode'] as String?,
+        ignoredVersion: json['ignored-version'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -87,10 +92,32 @@ class AppStoredConfig {
         'tun-if': tunIf,
         if (subUA != Defaults.subUA) 'sub-ua': subUA,
         if (themeMode != null) 'theme-mode': themeMode,
+        if (ignoredVersion != null) 'ignored-version': ignoredVersion,
       };
 
   factory AppStoredConfig.empty() => AppStoredConfig(
         profiles: [],
         delayTestUrl: Defaults.delayTestUrl,
+      );
+
+  AppStoredConfig copyWith({
+    String? selectedFile,
+    List<Profile>? profiles,
+    String? delayTestUrl,
+    bool? tunIf,
+    String? subUA,
+    String? themeMode,
+    Object? ignoredVersion = _sentinel,
+  }) =>
+      AppStoredConfig(
+        selectedFile: selectedFile ?? this.selectedFile,
+        profiles: profiles ?? this.profiles,
+        delayTestUrl: delayTestUrl ?? this.delayTestUrl,
+        tunIf: tunIf ?? this.tunIf,
+        subUA: subUA ?? this.subUA,
+        themeMode: themeMode ?? this.themeMode,
+        ignoredVersion: ignoredVersion == _sentinel
+            ? this.ignoredVersion
+            : ignoredVersion as String?,
       );
 }

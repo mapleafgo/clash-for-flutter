@@ -92,12 +92,11 @@ void _save() {
 }
 
 void _startSubUpdateTimer() {
-  _checkSubUpdates();
   _subUpdateTimer?.cancel();
-  _subUpdateTimer = Timer.periodic(const Duration(hours: 1), (_) => _checkSubUpdates());
+  _subUpdateTimer = Timer.periodic(const Duration(hours: 1), (_) => checkSubUpdates());
 }
 
-Future<void> _checkSubUpdates() async {
+Future<void> checkSubUpdates() async {
   final now = DateTime.now();
   final expired = profiles.value.where(
     (p) => p.type == ProfileType.url && p.url != null && p.interval > 0

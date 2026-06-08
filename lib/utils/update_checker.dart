@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:pub_semver/pub_semver.dart';
+import 'package:singcast/data/local/app_settings_storage.dart';
 import 'package:singcast/utils/constants.dart';
 
 /// 检查是否有新版本可用。
@@ -37,4 +38,29 @@ Future<String?> checkForUpdate() async {
   } finally {
     client.close();
   }
+}
+
+/// 是否已忽略指定版本。
+bool isVersionIgnored(String version) {
+  final config = AppSettingsStorage.load();
+  return AppStoredConfig.fromJson(config).ignoredVersion == version;
+}
+
+/// 持久化忽略的版本号。
+void ignoreVersion(String version) {
+  final config = AppSettingsStorage.load();
+  final stored = AppStoredConfig.fromJson(config);
+  AppSettingsStorage.save(
+    stored.copyWith(ignoredVersion: version).toJson(),
+  );
+}
+
+/// 清除已忽略的版本号（发现新版本时调用）。
+void clearIgnoredVersion() {
+  final config = AppSettingsStorage.load();
+  final stored = AppStoredConfig.fromJson(config);
+  if (stored.ignoredVersion == null) return;
+  AppSettingsStorage.save(
+    stored.copyWith(ignoredVersion: null).toJson(),
+  );
 }

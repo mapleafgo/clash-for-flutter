@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
-import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
@@ -11,8 +10,6 @@ import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/format.dart';
-import 'package:singcast/utils/update_checker.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,7 +20,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _hasInitError = false;
-  bool _updateChecked = false;
   final List<VoidCallback> _effectDisposers = [];
 
   @override
@@ -44,12 +40,6 @@ class _HomePageState extends State<HomePage> {
             profileError.value = null;
           }
         });
-      }
-    }));
-    _effectDisposers.add(effect(() {
-      if (appReady.value && mounted && !_updateChecked) {
-        _updateChecked = true;
-        _checkUpdate();
       }
     }));
   }
@@ -98,39 +88,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _checkUpdate() async {
-    try {
-      final latest = await checkForUpdate();
-      if (latest != null && mounted) {
-        _showUpdateDialog(latest);
-      }
-    } catch (_) {
-      // 启动检查静默失败，不打扰用户
-    }
-  }
-
-  void _showUpdateDialog(String latest) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('发现新版本'),
-        content: Text('当前版本: ${Defaults.appVersion}\n最新版本: $latest'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('忽略'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              launchUrl(Uri.parse('${Constants.sourceUrl}/releases/latest'));
-            },
-            child: const Text('前往下载'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // --- Card Shell ---

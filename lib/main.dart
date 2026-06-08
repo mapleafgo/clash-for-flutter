@@ -10,6 +10,7 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
+import 'package:singcast/services/startup_checks.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
@@ -45,15 +46,18 @@ void main() async {
 
   // 初始化内核和配置
   runApp(const App());
-  await _initApp();
-  appReady.value = true;
-
-  initDeepLinks();
 
   if (Constants.isDesktop) {
     await initTray();
     windowManager.addListener(_WindowListener());
   }
+
+  await _initApp();
+  appReady.value = true;
+
+  LibCore.instance.startHeartbeat();
+  runStartupChecks();
+  initDeepLinks();
 }
 
 Future<void> _initApp() async {

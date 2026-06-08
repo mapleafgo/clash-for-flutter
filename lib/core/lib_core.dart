@@ -124,7 +124,6 @@ class LibCore {
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
-      _startHeartbeat();
     } else {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
@@ -188,6 +187,14 @@ class LibCore {
   }
 
   /// Start the IPC heartbeat timer.
+  ///
+  /// Should be called after all startup initialization is complete.
+  /// Reconnect scenarios also call this internally via [_attemptReconnect].
+  void startHeartbeat() {
+    if (!Constants.isDesktop) return;
+    _startHeartbeat();
+  }
+
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {

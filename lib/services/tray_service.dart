@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
@@ -31,21 +32,25 @@ const _trayModeLabels = {
 };
 
 Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {
-  final modeItems = modes.map((m) => TrayMenuItem.checkbox(
-    label: _trayModeLabels[m] ?? m,
-    key: m,
-    checked: m == current,
-  )).toList();
-  final isTunMode = tunIf.value == true;
-  final proxyLabel = isTunMode ? 'TUN 模式' : '系统代理';
+  final ready = appReady.value;
   final menu = TrayMenu(
     items: [
       TrayMenuItem(label: '显示窗口', key: 'show'),
-      TrayMenuItem.separator(),
-      TrayMenuItem.checkbox(label: proxyLabel, key: 'proxy', checked: proxyOn),
-      if (modeItems.isNotEmpty) ...[
+      if (ready) ...[
         TrayMenuItem.separator(),
-        ...modeItems,
+        TrayMenuItem.checkbox(
+          label: tunIf.value == true ? 'TUN 模式' : '系统代理',
+          key: 'proxy',
+          checked: proxyOn,
+        ),
+        if (modes.isNotEmpty) ...[
+          TrayMenuItem.separator(),
+          ...modes.map((m) => TrayMenuItem.checkbox(
+            label: _trayModeLabels[m] ?? m,
+            key: m,
+            checked: m == current,
+          )),
+        ],
       ],
       TrayMenuItem.separator(),
       TrayMenuItem(label: '退出', key: 'exit'),
