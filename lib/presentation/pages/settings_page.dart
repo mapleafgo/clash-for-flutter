@@ -131,6 +131,14 @@ class SettingsPage extends StatelessWidget {
             value: ruleSetProxy.value,
             onChanged: (v) => ruleSetProxy.value = v,
           ),
+          SignalBuilder(builder: (context) {
+            return SwitchListTile(
+              title: const Text('启动检查更新'),
+              subtitle: const Text('应用启动时自动检查新版本'),
+              value: autoCheckUpdate.value,
+              onChanged: (v) => autoCheckUpdate.value = v,
+            );
+          }),
           const _Section('外观'),
           SignalBuilder(builder: (context) => _ChoiceTile<ThemeMode>(
                 title: '主题',

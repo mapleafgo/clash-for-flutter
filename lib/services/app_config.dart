@@ -19,6 +19,7 @@ final delayTestUrl = signal(Defaults.delayTestUrl);
 final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
+final autoCheckUpdate = signal(true);
 final initError = signal<String?>(null);
 final vpnConnected = signal(false);
 
@@ -34,6 +35,7 @@ void initAppConfig() {
   delayTestUrl.value = stored.delayTestUrl;
   tunIf.value = stored.tunIf ?? !Constants.isDesktop;
   subUA.value = stored.subUA;
+  autoCheckUpdate.value = stored.autoCheckUpdate;
   if (stored.themeMode != null) {
     final mode = _parseThemeMode(stored.themeMode!);
     if (mode != null) themeMode.value = mode;
@@ -74,6 +76,7 @@ void _startAutoSave() {
     tunIf.value;
     subUA.value;
     themeMode.value;
+    autoCheckUpdate.value;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 1), _save);
   });
@@ -88,6 +91,7 @@ void _save() {
     tunIf: tunIf.value,
     subUA: subUA.value,
     themeMode: themeMode.value?.name,
+    autoCheckUpdate: autoCheckUpdate.value,
   ).toJson());
 }
 

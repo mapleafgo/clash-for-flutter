@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:singcast/presentation/router.dart' show navigatorKey;
-import 'package:singcast/services/app_config.dart' show checkSubUpdates;
+import 'package:singcast/services/app_config.dart' show checkSubUpdates, autoCheckUpdate;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/domain/enums.dart' show LogLevel;
 import 'package:singcast/utils/log_file.dart';
@@ -21,14 +21,16 @@ Future<void> runStartupChecks() async {
   }
 
   // 2. 检查应用版本
-  try {
-    final latest = await checkForUpdate();
-    if (latest == null) return;
-    if (isVersionIgnored(latest)) return;
-    clearIgnoredVersion();
-    _showUpdateDialog(latest);
-  } catch (_) {
-    // 启动检查静默失败，不打扰用户
+  if (autoCheckUpdate.value) {
+    try {
+      final latest = await checkForUpdate();
+      if (latest == null) return;
+      if (isVersionIgnored(latest)) return;
+      clearIgnoredVersion();
+      _showUpdateDialog(latest);
+    } catch (_) {
+      // 启动检查静默失败，不打扰用户
+    }
   }
 }
 
