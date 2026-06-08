@@ -1,5 +1,6 @@
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
@@ -9,23 +10,31 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-const _modeLabels = {
-  'rule': '规则',
-  'global': '全局',
-  'direct': '直连',
+
+String _modeLabel(String m) => switch (m) {
+  'rule' => t.mode.rule,
+  'global' => t.mode.global,
+  'direct' => t.mode.direct,
+  _ => m,
 };
 
-const _logLevelLabels = {
-  LogLevel.debug: '调试',
-  LogLevel.info: '信息',
-  LogLevel.warning: '警告',
-  LogLevel.error: '错误',
+String _logLevelLabel(LogLevel l) => switch (l) {
+  LogLevel.debug => t.settings.logDebug,
+  LogLevel.info => t.settings.logInfo,
+  LogLevel.warning => t.settings.logWarning,
+  LogLevel.error => t.settings.logError,
 };
 
-const _themeModeLabels = {
-  ThemeMode.system: '跟随系统',
-  ThemeMode.light: '浅色',
-  ThemeMode.dark: '深色',
+String _themeModeLabel(ThemeMode m) => switch (m) {
+  ThemeMode.system => t.settings.themeSystem,
+  ThemeMode.light => t.settings.themeLight,
+  ThemeMode.dark => t.settings.themeDark,
+};
+
+String _localeLabel(String? v) => switch (v) {
+  'zh' => '中文',
+  'en' => 'English',
+  _ => t.settings.languageSystem,
 };
 
 class SettingsPage extends StatelessWidget {
@@ -34,14 +43,14 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const SysAppBar(title: '设置'),
-      body: SignalBuilder(builder: (context) {
+      appBar: SysAppBar(title: t.settings.title),
+      body: l10nBuilder((context) {
         final config = clashConfig.value;
         return ListView(children: [
-          const _Section('内核'),
+          _Section(t.settings.sectionCore),
           SwitchListTile(
-            title: const Text('代理服务'),
-            subtitle: const Text('开启后提供 HTTP/SOCKS5 混合代理端口'),
+            title: Text(t.settings.proxyService),
+            subtitle: Text(t.settings.proxyServiceDesc),
             value: config.userPortEnabled || config.systemProxyEnabled,
             onChanged: config.systemProxyEnabled
                 ? null
@@ -51,42 +60,42 @@ class SettingsPage extends StatelessWidget {
             expanded: config.userPortEnabled || config.systemProxyEnabled,
             children: [
               SwitchListTile(
-                title: const Text('允许局域网'),
-                subtitle: const Text('允许局域网内其他设备通过代理上网'),
+                title: Text(t.settings.allowLan),
+                subtitle: Text(t.settings.allowLanDesc),
                 value: config.allowLan ?? false,
                 onChanged: (v) => updateClashConfig(allowLan: v),
               ),
             ],
           ),
           _PortTile(
-            label: '端口号',
+            label: t.settings.port,
             value: config.mixedPort,
-            description: '代理服务监听的本地端口号',
+            description: t.settings.portDesc,
             onChanged: (v) => updateClashConfig(mixedPort: v),
           ),
           SwitchListTile(
-            title: const Text('IPv6'),
-            subtitle: const Text('代理连接支持 IPv6 网络协议'),
+            title: Text(t.settings.ipv6),
+            subtitle: Text(t.settings.ipv6Desc),
             value: config.ipv6 ?? false,
             onChanged: (v) => updateClashConfig(ipv6: v),
           ),
           if (Constants.isDesktop)
-            SignalBuilder(builder: (context) {
+            l10nBuilder((context) {
               final modes = LibCore.instance.availableModesSignal.value;
               final current = LibCore.instance.modeSignal.value;
               final ready = LibCore.instance.stateSignal.value == LibCore.kStateRunning;
               return _ChoiceTile<String>(
-                title: '出站模式',
-                description: '控制流量路由策略',
+                title: t.settings.outboundMode,
+                description: t.settings.outboundModeDesc,
                 value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),
                 items: modes,
-                labelBuilder: (m) => _modeLabels[m] ?? m,
+                labelBuilder: _modeLabel,
                 onChanged: ready ? (m) => changeModeStr(m) : null,
               );
             }),
           SwitchListTile(
-            title: const Text('Clash API'),
-            subtitle: const Text('对外提供代理状态查询和控制接口'),
+            title: Text(t.settings.clashApi),
+            subtitle: Text(t.settings.clashApiDesc),
             value: config.apiEnabled,
             onChanged: (v) => updateClashConfig(externalController: v),
           ),
@@ -94,12 +103,12 @@ class SettingsPage extends StatelessWidget {
             expanded: config.apiEnabled,
             children: [
               ListTile(
-                title: const Text('API 地址'),
+                title: Text(t.settings.apiAddress),
                 subtitle: Text(config.apiAddr, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () async {
                   final result = await _showEditDialog(
                     context: context,
-                    title: 'API 地址',
+                    title: t.settings.apiAddress,
                     initialValue: config.apiAddr,
                   );
                   if (result != null && result.isNotEmpty) {
@@ -110,48 +119,68 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           _ChoiceTile<LogLevel>(
-            title: '日志等级',
-            description: '等级越低记录越详细，调试时可选调试',
+            title: t.settings.logLevel,
+            description: t.settings.logLevelDesc,
             value: config.logLevel ?? LogLevel.info,
             items: LogLevel.values,
-            labelBuilder: (l) => _logLevelLabels[l] ?? l.name,
+            labelBuilder: _logLevelLabel,
             onChanged: (l) => updateClashConfig(logLevel: l),
           ),
-          const _Section('普通'),
+          _Section(t.settings.sectionGeneral),
           const _UaTile(),
           _UrlTile(
-            label: '延迟测试 Url',
-            description: '测速时请求的目标地址',
+            label: t.settings.delayTestUrl,
+            description: t.settings.delayTestUrlDesc,
             value: delayTestUrl.value,
             onChanged: (v) => delayTestUrl.value = v,
           ),
           _UrlTile(
-            label: 'Rule-Set 代理',
-            description: '下载 Rule-Set 规则集时使用的代理地址',
+            label: t.settings.ruleSetProxy,
+            description: t.settings.ruleSetProxyDesc,
             value: ruleSetProxy.value,
             onChanged: (v) => ruleSetProxy.value = v,
           ),
-          SignalBuilder(builder: (context) {
+          l10nBuilder((context) {
             return SwitchListTile(
-              title: const Text('启动检查更新'),
-              subtitle: const Text('应用启动时自动检查新版本'),
+              title: Text(t.settings.autoCheckUpdate),
+              subtitle: Text(t.settings.autoCheckUpdateDesc),
               value: autoCheckUpdate.value,
               onChanged: (v) => autoCheckUpdate.value = v,
             );
           }),
-          const _Section('外观'),
-          SignalBuilder(builder: (context) => _ChoiceTile<ThemeMode>(
-                title: '主题',
-                description: '切换应用外观风格',
+          _Section(t.settings.sectionAppearance),
+          l10nBuilder((context) => _ChoiceTile<ThemeMode>(
+                title: t.settings.theme,
+                description: t.settings.themeDesc,
                 value: themeMode.value ?? ThemeMode.system,
                 items: ThemeMode.values,
-                labelBuilder: (m) => _themeModeLabels[m] ?? m.name,
+                labelBuilder: _themeModeLabel,
                 onChanged: (m) => themeMode.value = m,
               )),
-          const _Section('其他'),
+          l10nBuilder((context) {
+            final current = appLocale.value;
+            return _ChoiceTile<String>(
+              title: t.settings.language,
+              description: t.settings.languageDesc,
+              value: current ?? 'system',
+              items: const ['system', 'zh', 'en'],
+              labelBuilder: _localeLabel,
+              onChanged: (v) {
+                // 先更新 LocaleSettings，再设置 appLocale。
+                // 这样 effects 运行时 t.xxx 已是新语言的值。
+                if (v == 'system') {
+                  LocaleSettings.useDeviceLocale();
+                } else {
+                  LocaleSettings.setLocaleRaw(v);
+                }
+                appLocale.value = v == 'system' ? null : v;
+              },
+            );
+          }),
+          _Section(t.settings.sectionOther),
           ListTile(
-            title: const Text('关于'),
-            subtitle: const Text('版本信息与相关链接'),
+            title: Text(t.settings.about),
+            subtitle: Text(t.settings.aboutDesc),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/about'),
           ),
@@ -199,7 +228,7 @@ class _PortTile extends StatelessWidget {
     final enabled = onChanged != null;
     return ListTile(
       title: Text(label),
-      subtitle: Text(value?.toString() ?? '未设置'),
+      subtitle: Text(value?.toString() ?? t.settings.notSet),
       enabled: enabled,
       onTap: enabled ? () async {
         final result = await _showEditDialog(
@@ -211,7 +240,7 @@ class _PortTile extends StatelessWidget {
           validator: (v) {
             final port = int.tryParse(v ?? '');
             if (port == null || port < 1 || port > 65535) {
-              return '请输入 1-65535 之间的端口号';
+              return t.settings.portValidationError;
             }
             return null;
           },
@@ -260,12 +289,12 @@ class _UaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final ua = subUA.value;
       return ListTile(
-        title: const Text('订阅 User-Agent'),
+        title: Text(t.settings.subUserAgent),
         subtitle: Text(
-          ua == Defaults.subUA ? '默认' : ua,
+          ua == Defaults.subUA ? t.settings.defaultValue : ua,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -279,7 +308,7 @@ class _UaTile extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('订阅 User-Agent'),
+        title: Text(t.settings.subUaDialogTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,15 +317,15 @@ class _UaTile extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text('更新订阅时使用的 User-Agent 标识', style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                child: Text(t.settings.subUaDialogDesc, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
               ),
             ),
             TextField(
               controller: controller,
               maxLines: null,
-              decoration: const InputDecoration(
-                hintText: '输入 User-Agent',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: t.settings.inputUa,
+                border: const OutlineInputBorder(),
               ),
               onSubmitted: (v) {
                 final trimmed = v.trim();
@@ -312,7 +341,7 @@ class _UaTile extends StatelessWidget {
               runSpacing: 8,
               children: [
                 ActionChip(
-                  label: const Text('默认', style: TextStyle(fontSize: 12)),
+                  label: Text(t.settings.defaultValue, style: const TextStyle(fontSize: 12)),
                   onPressed: () => controller.text = Defaults.subUA,
                 ),
                 ...Defaults.uaPresets.skip(1).map((ua) => ActionChip(
@@ -326,7 +355,7 @@ class _UaTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(t.dialogs.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -334,7 +363,7 @@ class _UaTile extends StatelessWidget {
               if (v.isNotEmpty) subUA.value = v;
               Navigator.pop(ctx);
             },
-            child: const Text('确定'),
+            child: Text(t.dialogs.confirm),
           ),
         ],
       ),
@@ -407,7 +436,7 @@ Future<String?> _showEditDialog({
 
   return showDialog<String>(
     context: context,
-    builder: (ctx) => SignalBuilder(builder: (context) {
+    builder: (ctx) => l10nBuilder((context) {
       return AlertDialog(
         title: Text(title),
         content: Column(
@@ -445,7 +474,7 @@ Future<String?> _showEditDialog({
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(t.dialogs.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -459,7 +488,7 @@ Future<String?> _showEditDialog({
               }
               Navigator.pop(ctx, v);
             },
-            child: const Text('确定'),
+            child: Text(t.dialogs.confirm),
           ),
         ],
       );

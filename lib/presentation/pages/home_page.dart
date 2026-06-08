@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
@@ -210,7 +211,7 @@ class _SpeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final stats = LibCore.instance.statsSignal.value;
       final up = stats?.up ?? 0;
       final down = stats?.down ?? 0;
@@ -219,7 +220,7 @@ class _SpeedCard extends StatelessWidget {
           final narrow = constraints.maxWidth < 200;
           return _CardShell(
             icon: Icons.speed,
-            title: '网速',
+            title: t.home.speed,
             height: _smallH,
             child: narrow
                 ? Column(
@@ -263,12 +264,12 @@ class _ConnectionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final count = LibCore.instance.activeConnectionsSignal.value;
       final theme = Theme.of(context);
       return _CardShell(
         icon: Icons.link,
-        title: '活动连接',
+        title: t.home.connections,
         height: _smallH,
         child: Center(
           child: Column(
@@ -282,7 +283,7 @@ class _ConnectionsCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text('个连接', style: theme.textTheme.bodySmall),
+              Text(t.home.connectionCount, style: theme.textTheme.bodySmall),
             ],
           ),
         ),
@@ -298,13 +299,13 @@ class _RuntimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final stats = LibCore.instance.statsSignal.value;
       final memory = stats?.memory ?? 0;
       final theme = Theme.of(context);
       return _CardShell(
         icon: Icons.memory,
-        title: '内存占用',
+        title: t.home.memory,
         height: _smallH,
         child: Center(
           child: Text(
@@ -327,7 +328,7 @@ class _ToggleFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final isTun = tunIf.value ?? false;
       final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
@@ -346,19 +347,19 @@ class _ToggleFab extends StatelessWidget {
             tween: Tween(end: on ? 1.0 : 0.0),
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutCubic,
-            builder: (context, t, _) {
+            builder: (context, val, _) {
               final fgColor = disabled
                   ? cs.outline
-                  : Color.lerp(cs.onPrimaryContainer, Colors.white, t)!;
+                  : Color.lerp(cs.onPrimaryContainer, Colors.white, val)!;
               return DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: t > 0.01 && !disabled
+                  boxShadow: val > 0.01 && !disabled
                       ? [
                           BoxShadow(
-                            color: Colors.green.withValues(alpha: 0.3 * t),
-                            blurRadius: 20 * t,
-                            spreadRadius: 3 * t,
+                            color: Colors.green.withValues(alpha: 0.3 * val),
+                            blurRadius: 20 * val,
+                            spreadRadius: 3 * val,
                           ),
                         ]
                       : [],
@@ -366,7 +367,7 @@ class _ToggleFab extends StatelessWidget {
                 child: Material(
                   color: disabled
                       ? cs.surfaceContainerHighest
-                      : Color.lerp(cs.primaryContainer, Colors.green.shade700, t)!,
+                      : Color.lerp(cs.primaryContainer, Colors.green.shade700, val)!,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -391,10 +392,10 @@ class _ToggleFab extends StatelessWidget {
                               duration: const Duration(milliseconds: 200),
                               child: Text(
                                 !hasProfile
-                                    ? '请先添加配置'
+                                    ? t.home.pleaseAddProfile
                                     : on
                                         ? formatDuration(stats?.startedAt ?? 0)
-                                        : '开启',
+                                        : t.home.enable,
                                 key: ValueKey(!hasProfile
                                     ? 'none'
                                     : on
@@ -440,7 +441,7 @@ class _TrafficTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final stats = LibCore.instance.statsSignal.value;
       final upTotal = stats?.upTotal ?? 0;
       final downTotal = stats?.downTotal ?? 0;
@@ -449,7 +450,7 @@ class _TrafficTotalCard extends StatelessWidget {
           final narrow = constraints.maxWidth < 200;
           return _CardShell(
             icon: Icons.data_usage,
-            title: '累计流量',
+            title: t.home.trafficTotal,
             height: _smallH,
             child: narrow
                 ? Column(
@@ -488,10 +489,17 @@ class _TrafficTotalCard extends StatelessWidget {
 
 // --- Mode Card ---
 
-const _modeMeta = {
-  'rule': ('规则', Icons.rule),
-  'global': ('全局', Icons.public),
-  'direct': ('直连', Icons.phonelink),
+String _modeLabel(String m) => switch (m) {
+  'rule' => t.mode.rule,
+  'global' => t.mode.global,
+  'direct' => t.mode.direct,
+  _ => m,
+};
+
+const _modeIcons = {
+  'rule': Icons.rule,
+  'global': Icons.public,
+  'direct': Icons.phonelink,
 };
 
 class _ModeCard extends StatelessWidget {
@@ -499,17 +507,17 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final state = LibCore.instance.stateSignal.value;
       final modes = LibCore.instance.availableModesSignal.value;
       final current = LibCore.instance.modeSignal.value;
       return _CardShell(
         icon: Icons.alt_route,
-        title: '出站模式',
+        title: t.home.outboundMode,
         height: _mediumH,
         child: modes.isEmpty
             ? Center(
-                child: Text('等待内核就绪',
+                child: Text(t.home.waitingCore,
                     style: TextStyle(color: Theme.of(context).disabledColor, fontSize: 13)),
               )
             : Column(
@@ -519,8 +527,8 @@ class _ModeCard extends StatelessWidget {
                       child: Padding(
                         padding: EdgeInsets.only(bottom: i == modes.length - 1 ? 0 : 8),
                         child: _ModeOption(
-                          icon: _modeMeta[modes[i]]?.$2 ?? Icons.alt_route,
-                          label: _modeMeta[modes[i]]?.$1 ?? modes[i],
+                          icon: _modeIcons[modes[i]] ?? Icons.alt_route,
+                          label: _modeLabel(modes[i]),
                           selected: modes[i] == current,
                           onTap: state != LibCore.kStateRunning ? null : () => changeModeStr(modes[i]),
                         ),
@@ -579,11 +587,11 @@ class _ProxyModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final isTun = tunIf.value ?? false;
       return _CardShell(
         icon: Icons.swap_horiz,
-        title: '代理模式',
+        title: t.home.proxyMode,
         height: _smallH,
         child: Row(
           children: [
@@ -599,7 +607,7 @@ class _ProxyModeCard extends StatelessWidget {
             Expanded(
               child: _ProxyModeOption(
                 icon: Icons.computer,
-                label: '系统代理',
+                label: t.home.systemProxy,
                 selected: !isTun,
                 onTap: () => tunIf.value = false,
               ),
@@ -656,7 +664,7 @@ class _InitErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final err = initError.value;
       if (err == null) return const SizedBox.shrink();
       final cs = Theme.of(context).colorScheme;
@@ -673,7 +681,7 @@ class _InitErrorCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.copy, size: 18, color: cs.onErrorContainer),
-                tooltip: '复制',
+                tooltip: t.home.copy,
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: err));
                 },

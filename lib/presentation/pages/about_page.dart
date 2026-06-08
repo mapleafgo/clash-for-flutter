@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
+import 'package:singcast/services/app_config.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/constants.dart';
@@ -21,19 +23,20 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return l10nBuilder((context) {
     return Scaffold(
-      appBar: const SysAppBar(title: '关于'),
+      appBar: SysAppBar(title: t.about.title),
       body: ListView(children: [
         const _AboutHeader(),
         const _CheckUpdateTile(),
         ListTile(
-          title: const Text('官方网站'),
+          title: Text(t.about.officialWebsite),
           subtitle: const Text(Constants.homeUrl),
           trailing: const Icon(Icons.open_in_new),
           onTap: () => launchUrl(Uri.parse(Constants.homeUrl)),
         ),
         ListTile(
-          title: const Text('源码仓库'),
+          title: Text(t.about.sourceRepo),
           subtitle: const Text(Constants.sourceUrl),
           trailing: const Icon(Icons.open_in_new),
           onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
@@ -43,6 +46,7 @@ class AboutPage extends StatelessWidget {
         if (Platform.isWindows || Platform.isMacOS) const _UninstallServiceTile(),
       ]),
     );
+    });
   }
 }
 
@@ -74,8 +78,8 @@ class _KernelVersionTileState extends State<_KernelVersionTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('内核版本'),
-      subtitle: Text(_version.isEmpty ? '加载中...' : _version),
+      title: Text(t.about.kernelVersion),
+      subtitle: Text(_version.isEmpty ? t.about.loading : _version),
       trailing: const Icon(Icons.open_in_new),
       onTap: () => launchUrl(Uri.parse('https://github.com/mapleafgo/singcast-cli')),
     );
@@ -97,7 +101,7 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('版本'),
+      title: Text(t.about.version),
       subtitle: Text(_currentVersion),
       trailing: _trailing(),
       onTap: _state == 1 ? null : _check,
@@ -139,19 +143,19 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('发现新版本'),
-        content: Text('当前版本: $_currentVersion\n最新版本: $_latestVersion'),
+        title: Text(t.about.newVersionFound),
+        content: Text(t.about.versionInfo(current: _currentVersion, latest: _latestVersion)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('忽略'),
+            child: Text(t.about.ignore),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               launchUrl(Uri.parse('${Constants.sourceUrl}/releases/latest'));
             },
-            child: const Text('前往下载'),
+            child: Text(t.about.goDownload),
           ),
         ],
       ),
@@ -173,16 +177,16 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认移除提权'),
-        content: const Text('将移除 TUN 模式的提权服务，内核将以内置模式重启（TUN 不可用），下次使用 TUN 时需重新提权。'),
+        title: Text(t.about.removeElevationConfirm),
+        content: Text(t.about.removeElevationDesc),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(t.dialogs.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确认'),
+            child: Text(t.dialogs.confirm),
           ),
         ],
       ),
@@ -195,14 +199,14 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('提权已移除，已切换到内置内核')),
+          SnackBar(content: Text(t.about.elevationRemoved)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('操作失败')),
+          SnackBar(content: Text(t.about.operationFailed)),
         );
       }
     }
@@ -212,10 +216,10 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('移除提权'),
+      title: Text(t.about.removeElevation),
       subtitle: Text(Platform.isWindows
-          ? '删除 Windows 服务并切换到内置内核'
-          : '删除提权内核并切换到内置内核'),
+          ? t.about.removeElevationWinDesc
+          : t.about.removeElevationMacDesc),
       trailing: _loading
           ? const SizedBox(
               width: 20,
@@ -272,9 +276,9 @@ class _AboutHeaderState extends State<_AboutHeader>
       });
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('这都被你发现了！'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(t.about.easterEgg),
+          duration: const Duration(seconds: 2),
         ),
       );
     } else if (_tapCount >= 3) {
@@ -320,12 +324,12 @@ class _ExportLogTileState extends State<_ExportLogTile> {
       await LogFileWriter.instance?.flush();
       final path = LogFileWriter.logFilePath;
       if (path == null) {
-        _showMessage('日志未初始化');
+        _showMessage(t.about.logNotInitialized);
         return;
       }
       final logFile = File(path);
       if (!await logFile.exists()) {
-        _showMessage('日志文件不存在');
+        _showMessage(t.about.logFileNotExist);
         return;
       }
 
@@ -336,26 +340,26 @@ class _ExportLogTileState extends State<_ExportLogTile> {
           ShareParams(
             files: [XFile.fromData(bytes)],
             fileNameOverrides: [name],
-            text: 'Singcast 日志',
+            text: 'Singcast log',
           ),
         );
       } else {
         final bytes = await logFile.readAsBytes();
         final savePath = await FilePicker.saveFile(
-          dialogTitle: '导出日志',
+          dialogTitle: t.about.exportLog,
           fileName: name,
           bytes: bytes,
         );
         if (savePath == null) return;
-        _showMessage('日志已导出');
+        _showMessage(t.about.logExported);
       }
     } catch (e) {
       LogFileWriter.instance?.log(
-        '导出日志失败: $e',
+        'export log failed: $e',
         level: LogLevel.error,
         name: 'export',
       );
-      _showMessage('导出失败');
+      _showMessage(t.about.exportFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -375,7 +379,7 @@ class _ExportLogTileState extends State<_ExportLogTile> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: const Text('导出日志'),
+      title: Text(t.about.exportLog),
       trailing: _loading
           ? const SizedBox(
               width: 20,

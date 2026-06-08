@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:window_manager/window_manager.dart';
@@ -35,7 +35,7 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
           if (needClose)
             IconButton(
               icon: const Icon(Icons.close),
-              tooltip: '关闭',
+              tooltip: t.common.close,
               onPressed: () => windowManager.hide(),
             ),
         ],
@@ -56,7 +56,7 @@ class _KernelStateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final state = LibCore.instance.stateSignal.value;
       final disconnected = initError.value != null || _isDisconnected(state);
       final cs = Theme.of(context).colorScheme;
@@ -84,7 +84,7 @@ class _KernelStateIcon extends StatelessWidget {
         padding: EdgeInsets.only(right: Constants.isDesktop ? 8 : 12),
         child: IconButton(
           icon: icon,
-          tooltip: disconnected ? '内核未连接，点击重新连接' : '内核状态',
+          tooltip: disconnected ? t.core.coreDisconnected : t.core.coreState,
           onPressed: () => _confirmReconnect(context),
         ),
       );
@@ -97,19 +97,19 @@ class _KernelStateIcon extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(disconnected ? '重新连接内核' : '重启内核'),
-        content: Text(disconnected ? '内核当前未连接，是否尝试重新连接？' : '是否重启内核服务？'),
+        title: Text(disconnected ? t.core.reconnectCore : t.core.restartCore),
+        content: Text(disconnected ? t.core.reconnectMessage : t.core.restartMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(t.dialogs.cancel),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               _doReconnect(context);
             },
-            child: Text(disconnected ? '重新连接' : '重启'),
+            child: Text(disconnected ? t.core.reconnect : t.core.restart),
           ),
         ],
       ),
@@ -122,7 +122,7 @@ class _KernelStateIcon extends StatelessWidget {
       await LibCore.instance.restart();
     } catch (e) {
       if (context.mounted) {
-        initError.value = '内核连接失败: $e';
+        initError.value = t.core.connectionFailed(error: '$e');
       }
     }
   }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/app_state.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
@@ -12,6 +13,7 @@ import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -84,23 +86,28 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return SignalBuilder(builder: (context) {
       final ready = appReady.value;
-      return MaterialApp.router(
-        title: 'Singcast',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: Colors.blue,
-          useMaterial3: true,
-          brightness: Brightness.light,
-          fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
+      return TranslationProvider(
+        child: MaterialApp.router(
+          title: 'Singcast',
+          debugShowCheckedModeBanner: false,
+          locale: LocaleSettings.currentLocale.flutterLocale,
+          supportedLocales: AppLocaleUtils.supportedLocales,
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          theme: ThemeData(
+            colorSchemeSeed: Colors.blue,
+            useMaterial3: true,
+            brightness: Brightness.light,
+            fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
+          ),
+          darkTheme: ThemeData(
+            colorSchemeSeed: Colors.blue,
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
+          ),
+          themeMode: resolvedThemeMode,
+          routerConfig: ready ? router : _splashRouter,
         ),
-        darkTheme: ThemeData(
-          colorSchemeSeed: Colors.blue,
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
-        ),
-        themeMode: resolvedThemeMode,
-        routerConfig: ready ? router : _splashRouter,
       );
     });
   }

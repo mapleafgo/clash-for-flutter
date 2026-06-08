@@ -6,6 +6,7 @@ import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/domain/subscription_info.dart';
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml_edit/yaml_edit.dart';
@@ -225,7 +226,7 @@ Future<void> validateConfigFile(String filePath) async {
   );
   if (validation.isNotEmpty) {
     await File(filePath).delete();
-    throw Exception('配置校验失败: $validation');
+    throw Exception(t.profiles.configValidationFailed(validation: validation));
   }
 }
 
@@ -246,7 +247,7 @@ bool isBase64Content(String content) {
 /// 当 [url] 已存在于现有订阅中时抛出 [StateError]。
 Future<void> importSubscription(String url, {String? name}) async {
   if (profiles.value.any((p) => p.url == url)) {
-    throw StateError('该订阅已存在');
+    throw StateError(t.profiles.subscriptionExists);
   }
 
   final profile = await downloadSubscription(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/router.dart' show navigatorKey;
 import 'package:singcast/services/app_config.dart' show checkSubUpdates, autoCheckUpdate;
 import 'package:singcast/utils/constants.dart';
@@ -40,26 +41,26 @@ void _showUpdateDialog(String latest) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('发现新版本'),
-      content: Text('当前版本: ${Defaults.appVersion}\n最新版本: $latest'),
+      title: Text(t.startup.newVersionFound),
+      content: Text(t.startup.currentAndLatest(current: Defaults.appVersion, latest: latest)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('忽略本次'),
+          child: Text(t.startup.ignoreThisTime),
         ),
         TextButton(
           onPressed: () {
             ignoreVersion(latest);
             Navigator.pop(ctx);
           },
-          child: const Text('忽略该版本'),
+          child: Text(t.startup.ignoreThisVersion),
         ),
         FilledButton(
           onPressed: () {
             Navigator.pop(ctx);
             launchUrl(Uri.parse('${Constants.sourceUrl}/releases/latest'));
           },
-          child: const Text('前往下载'),
+          child: Text(t.startup.goDownload),
         ),
       ],
     ),

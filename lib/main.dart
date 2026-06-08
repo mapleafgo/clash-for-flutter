@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/app.dart' show App;
 import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/services/app_config.dart';
@@ -21,6 +22,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Defaults.init();
+
+  // 初始化语言：优先使用设备语言，非中英文时 fallback 到中文
+  LocaleSettings.useDeviceLocale();
+  if (!{AppLocale.zh, AppLocale.en}.contains(LocaleSettings.currentLocale)) {
+    LocaleSettings.setLocale(AppLocale.en);
+  }
 
   if (Constants.isDesktop) {
     await windowManager.ensureInitialized();
@@ -67,7 +74,7 @@ Future<void> _initApp() async {
     await LibCore.instance.init();
   } catch (e) {
     _log('[startup] LibCore.init failed: $e');
-    initError.value = '内核连接失败: $e';
+    initError.value = t.core.connectionFailed(error: '$e');
   }
   _log(
     '[startup] LibCore.init: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',
@@ -85,9 +92,9 @@ Future<void> _initApp() async {
         .initCore(Constants.homeDir.path)
         .timeout(const Duration(seconds: 10));
   } on TimeoutException {
-    initError.value = '内核初始化超时';
+    initError.value = t.core.initTimeout;
   } catch (e) {
-    initError.value = '内核初始化失败: $e';
+    initError.value = t.core.initFailed(error: '$e');
   }
   _log(
     '[startup] initCore: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',

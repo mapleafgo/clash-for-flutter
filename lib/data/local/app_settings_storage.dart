@@ -61,6 +61,7 @@ class AppStoredConfig {
   final String? themeMode;
   final String? ignoredVersion;
   final bool autoCheckUpdate;
+  final String? locale;
 
   AppStoredConfig({
     this.selectedFile,
@@ -71,6 +72,7 @@ class AppStoredConfig {
     this.themeMode,
     this.ignoredVersion,
     this.autoCheckUpdate = true,
+    this.locale,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
@@ -86,6 +88,7 @@ class AppStoredConfig {
         themeMode: json['theme-mode'] as String?,
         ignoredVersion: json['ignored-version'] as String?,
         autoCheckUpdate: json['auto-check-update'] as bool? ?? true,
+        locale: json['locale'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -97,6 +100,7 @@ class AppStoredConfig {
         if (themeMode != null) 'theme-mode': themeMode,
         if (ignoredVersion != null) 'ignored-version': ignoredVersion,
         if (!autoCheckUpdate) 'auto-check-update': autoCheckUpdate,
+        if (locale != null) 'locale': locale,
       };
 
   factory AppStoredConfig.empty() => AppStoredConfig(
@@ -113,6 +117,7 @@ class AppStoredConfig {
     String? themeMode,
     Object? ignoredVersion = _sentinel,
     bool? autoCheckUpdate,
+    String? locale,
   }) =>
       AppStoredConfig(
         selectedFile: selectedFile ?? this.selectedFile,
@@ -125,5 +130,6 @@ class AppStoredConfig {
             ? this.ignoredVersion
             : ignoredVersion as String?,
         autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
+        locale: locale ?? this.locale,
       );
 }

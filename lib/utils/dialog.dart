@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:singcast/i18n/strings.g.dart';
 
 Future<void> showErrorDialog(BuildContext context, String message) {
   return showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('错误'),
+      title: Text(t.dialogs.error),
       content: SelectableText(message),
       actions: [
         TextButton(
@@ -13,11 +14,11 @@ Future<void> showErrorDialog(BuildContext context, String message) {
             Clipboard.setData(ClipboardData(text: message));
             Navigator.pop(ctx);
           },
-          child: const Text('复制'),
+          child: Text(t.dialogs.copy),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('确定'),
+          child: Text(t.dialogs.confirm),
         ),
       ],
     ),

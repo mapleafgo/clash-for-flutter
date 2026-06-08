@@ -10,7 +10,55 @@ import 'package:singcast/services/core_config.dart'
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 
-String? _lastWorkingConfig;
+/// 最近一次发送到内核的合并后配置（待机/TUN 关闭）。
+final mergedConfigStandby = signal<String?>(null);
+
+/// 最近一次发送到内核的合并后配置（TUN 开启）。
+final mergedConfigProxy = signal<String?>(null);
+
+/// 当前生效的合并后配置（指向待机或代理开启配置）。
+final lastMergedConfig = computed(() {
+  if (mergedConfigProxy.value != null) return mergedConfigProxy.value;
+  return mergedConfigStandby.value;
+});
+
+String get _standbyPath =>
+    '${Constants.homeDir.path}${Constants.mergedConfigCacheStandby}';
+String get _proxyPath =>
+    '${Constants.homeDir.path}${Constants.mergedConfigCacheProxy}';
+
+/// 缓存待机配置（TUN 关闭）：同时写入 signal 和磁盘文件。
+void cacheMergedConfigStandby(String merged) {
+  mergedConfigStandby.value = merged;
+  File(_standbyPath).writeAsStringSync(merged);
+}
+
+/// 缓存代理开启配置（TUN 开启）：同时写入 signal 和磁盘文件。
+void cacheMergedConfigProxy(String merged) {
+  mergedConfigProxy.value = merged;
+  File(_proxyPath).writeAsStringSync(merged);
+}
+
+/// 从磁盘恢复缓存到 signal。
+void restoreMergedConfigCache() {
+  final standbyFile = File(_standbyPath);
+  if (standbyFile.existsSync()) {
+    mergedConfigStandby.value = standbyFile.readAsStringSync();
+  }
+  final proxyFile = File(_proxyPath);
+  if (proxyFile.existsSync()) {
+    mergedConfigProxy.value = proxyFile.readAsStringSync();
+  }
+}
+
+/// 根据当前 TUN 状态写入对应缓存。
+void _cacheByTunState(String merged) {
+  if (clashConfig.value.tunEnabled) {
+    cacheMergedConfigProxy(merged);
+  } else {
+    cacheMergedConfigStandby(merged);
+  }
+}
 
 void startWatchingSelectedFile() {
   effect(() {
@@ -39,12 +87,12 @@ Future<bool> _activateProfile(String yamlPath) async {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
-    // Flutter hot restart 重置 isolate 导致 _lastWorkingConfig 为空，
-    // 但内核进程仍在运行。此时同步 _lastWorkingConfig 但不热重载，
+    // Flutter hot restart 重置 isolate 导致缓存为空，
+    // 但内核进程仍在运行。此时同步缓存但不热重载，
     // 避免流量计数器归零
-    if (_lastWorkingConfig == null &&
+    if (lastMergedConfig.peek() == null &&
         LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
-      _lastWorkingConfig = merged;
+      _cacheByTunState(merged);
       return true;
     }
 
@@ -75,7 +123,7 @@ Future<bool> _activateProfile(String yamlPath) async {
       return false;
     }
 
-    _lastWorkingConfig = merged;
+    _cacheByTunState(merged);
     profileError.value = null;
     return true;
   } catch (e) {

@@ -4,11 +4,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:singcast/core/lib_core.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
 import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
-import 'package:singcast/services/core_reload.dart' show asyncProfile;
+import 'package:singcast/services/core_reload.dart'
+    show asyncProfile, cacheMergedConfigProxy;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -73,7 +75,7 @@ Future<void> _syncModeToCore(Mode? mode) async {
       level: LogLevel.error,
       name: 'core_config',
     );
-    profileError.value = '切换模式失败: $e';
+    profileError.value = t.core.modeSwitchFailed(error: '$e');
   }
 }
 
@@ -179,6 +181,7 @@ Future<void> enableTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
+      cacheMergedConfigProxy(merged);
     } catch (e) {
       _applyTunConfig(false);
       rethrow;
@@ -208,7 +211,7 @@ Future<void> _enableTunDesktop() async {
   if (svc != null && !await svc.isReady()) {
     final ok = await LibCore.instance.elevateService();
     if (!ok) {
-      throw TunElevationException('提权设置失败，请重试');
+      throw TunElevationException(t.core.elevationFailed);
     }
     try {
       await LibCore.instance.restart();

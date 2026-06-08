@@ -9,6 +9,7 @@ import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/dialog.dart' show showErrorDialog;
 import 'package:desktop_tray/desktop_tray.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:window_manager/window_manager.dart';
 
 Future<void> initTray() async {
@@ -25,40 +26,51 @@ Future<void> initTray() async {
     LibCore.instance.availableModesSignal.value,
     LibCore.instance.modeSignal.value,
   ));
+
+  // rebuild tray labels when locale changes
+  effect(() {
+    localeVersion.value;
+    _rebuildMenu(
+      _proxyEnabled,
+      LibCore.instance.availableModesSignal.peek(),
+      LibCore.instance.modeSignal.peek(),
+    );
+  });
 }
 
 bool get _proxyEnabled =>
     tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
 
-const _trayModeLabels = {
-  'rule': '规则',
-  'global': '全局',
-  'direct': '直连',
+String _trayModeLabel(String m) => switch (m) {
+  'rule' => t.mode.rule,
+  'global' => t.mode.global,
+  'direct' => t.mode.direct,
+  _ => m,
 };
 
 Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {
   final ready = appReady.value;
   final menu = TrayMenu(
     items: [
-      TrayMenuItem(label: '显示窗口', key: 'show'),
+      TrayMenuItem(label: t.tray.showWindow, key: 'show'),
       if (ready) ...[
         TrayMenuItem.separator(),
         TrayMenuItem.checkbox(
-          label: tunIf.value == true ? 'TUN 模式' : '系统代理',
+          label: tunIf.value == true ? t.tray.tunMode : t.tray.systemProxy,
           key: 'proxy',
           checked: proxyOn,
         ),
         if (modes.isNotEmpty) ...[
           TrayMenuItem.separator(),
           ...modes.map((m) => TrayMenuItem.checkbox(
-            label: _trayModeLabels[m] ?? m,
+            label: _trayModeLabel(m),
             key: m,
             checked: m == current,
           )),
         ],
       ],
       TrayMenuItem.separator(),
-      TrayMenuItem(label: '退出', key: 'exit'),
+      TrayMenuItem(label: t.tray.exit, key: 'exit'),
     ],
   );
   await desktopTray.setContextMenu(menu);

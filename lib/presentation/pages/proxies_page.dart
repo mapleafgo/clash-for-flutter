@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/domain/proxy_group.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/log_file.dart';
+import 'package:singcast/services/app_config.dart';
 
 final _sortType = signal(SortType.defaults);
 
@@ -70,8 +72,9 @@ class _ProxiesPageState extends State<ProxiesPage> {
 
   @override
   Widget build(BuildContext context) {
+    localeVersion.value; // rebuild on locale change
     return Scaffold(
-      appBar: const SysAppBar(title: '代理'),
+      appBar: SysAppBar(title: t.proxies.title),
       floatingActionButton: ValueListenableBuilder<bool>(
         valueListenable: _fabVisible,
         builder: (_, visible, _) => AnimatedFab(
@@ -82,11 +85,11 @@ class _ProxiesPageState extends State<ProxiesPage> {
               FloatingActionButton(
                 heroTag: 'sort',
                 onPressed: () => _showSort(context),
-                tooltip: '排序',
+                tooltip: t.proxies.sort,
                 child: const Icon(Icons.sort),
               ),
               const SizedBox(width: 8),
-              SignalBuilder(builder: (context) {
+              l10nBuilder((context) {
                 final busy = _groupTesting.value;
                 final hasNodes =
                     _tabController != null && _cachedTags.isNotEmpty;
@@ -95,7 +98,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
                 return FloatingActionButton(
                   heroTag: 'speed',
                   onPressed: disabled ? null : _testAllDelay,
-                  tooltip: '测速',
+                  tooltip: t.proxies.speedTest,
                   backgroundColor: disabled ? cs.surfaceContainerHighest : null,
                   foregroundColor: disabled ? cs.outline : null,
                   child: busy
@@ -125,10 +128,10 @@ class _ProxiesPageState extends State<ProxiesPage> {
           return false;
         },
         child: _cachedTags.isEmpty
-            ? const EmptyState(
+            ? EmptyState(
                 icon: Icons.swap_horiz_rounded,
-                title: '暂无代理',
-                hint: '添加订阅后，节点将出现在这里',
+                title: t.proxies.empty,
+                hint: t.proxies.emptyHint,
               )
             : _ProxiesTabView(
                 tags: _cachedTags,
@@ -180,16 +183,16 @@ class _ProxiesPageState extends State<ProxiesPage> {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('排序方式'),
+        title: Text(t.proxies.sortTitle),
         children: SortType.values
             .map(
               (type) => Material(
                 type: MaterialType.transparency,
                 child: ListTile(
                   title: Text(switch (type) {
-                    SortType.defaults => '默认',
-                    SortType.name => '按名称',
-                    SortType.delay => '按延迟',
+                    SortType.defaults => t.proxies.sortDefault,
+                    SortType.name => t.proxies.sortByName,
+                    SortType.delay => t.proxies.sortByDelay,
                   }),
                   selected: _sortType.value == type,
                   onTap: () {
@@ -210,7 +213,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('选择分组'),
+        title: Text(t.proxies.selectGroup),
         children: _cachedTags.asMap().entries.map((entry) {
           final index = entry.key;
           final tag = entry.value;
@@ -300,7 +303,7 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
             ),
             IconButton(
               icon: const Icon(Icons.unfold_more, size: 20),
-              tooltip: '展开分组',
+              tooltip: t.proxies.expandGroups,
               onPressed: widget.onExpand,
             ),
           ],
@@ -327,7 +330,7 @@ class _ProxyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
+    return l10nBuilder((context) {
       final group = LibCore.instance.proxiesSignal.value
           .where((g) => g.tag == groupTag)
           .firstOrNull;
@@ -420,7 +423,7 @@ class _ProxyTile extends StatelessWidget {
               urlTestSelected ?? item.type,
               style: const TextStyle(fontSize: 12),
             ),
-            trailing: SignalBuilder(builder: (context) {
+            trailing: l10nBuilder((context) {
               final delay =
                   LibCore.instance.proxyDelaysSignal.value[item.tag] ?? 0;
               return _delayWidget(delay, testing, item.tag, testingTags);
@@ -430,7 +433,7 @@ class _ProxyTile extends StatelessWidget {
                 await LibCore.instance.selectProxy(groupName, item.tag);
               } catch (e) {
                 if (context.mounted) {
-                  showErrorDialog(context, '切换代理失败: $e');
+                  showErrorDialog(context, t.proxies.switchFailed(error: '$e'));
                 }
               }
             },

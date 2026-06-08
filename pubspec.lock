@@ -334,6 +334,11 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "6.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_native_splash:
     dependency: "direct dev"
     description:
@@ -800,6 +805,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.2.0"
+  serial_csv:
+    dependency: transitive
+    description:
+      name: serial_csv
+      sha256: "2d62bb70cb3ce7251383fc86ea9aae1298ab1e57af6ef4e93b6a9751c5c268dd"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.5.2"
   settings_yaml:
     dependency: "direct main"
     description:
@@ -861,6 +874,30 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  slang:
+    dependency: "direct main"
+    description:
+      name: slang
+      sha256: "46e929158c2f563994c4d1fce5819cfa13e18b164941473d2553bcddcf387c31"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.15.0"
+  slang_build_runner:
+    dependency: "direct dev"
+    description:
+      name: slang_build_runner
+      sha256: "7da604c926c15435543a4a7088133bd4b9d027a55257e516474811534701e676"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.15.0"
+  slang_flutter:
+    dependency: "direct main"
+    description:
+      name: slang_flutter
+      sha256: "0eb6348416a296f1bd940fe02669bcd2df5c5cfdabf893b98e448df8b7ecf4ac"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.15.0"
   source_gen:
     dependency: transitive
     description:

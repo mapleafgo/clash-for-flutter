@@ -1,5 +1,6 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/router.dart' show Routes, navigatorKey, router;
 import 'package:singcast/services/subscription.dart';
 import 'package:singcast/utils/log_file.dart';
@@ -37,20 +38,19 @@ Future<void> _processDeepLink(Uri uri) async {
   }
 
   final name = uri.queryParameters['name'];
-  final label = name != null ? '「$name」' : '';
   final confirmed = await showDialog<bool>(
     context: navContext,
     builder: (ctx) => AlertDialog(
-      title: const Text('导入订阅'),
-      content: Text('是否导入订阅$label？', softWrap: true),
+      title: Text(t.deepLink.importSubscription),
+      content: Text(name != null ? t.deepLink.confirmImport(name: name) : t.deepLink.confirmImportNoName, softWrap: true),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('取消'),
+          child: Text(t.dialogs.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('导入'),
+          child: Text(t.dialogs.import),
         ),
       ],
     ),
@@ -64,7 +64,7 @@ Future<void> _processDeepLink(Uri uri) async {
     if (navContext.mounted) {
       ScaffoldMessenger.of(navContext).clearSnackBars();
       ScaffoldMessenger.of(navContext).showSnackBar(
-        const SnackBar(content: Text('订阅导入成功')),
+        SnackBar(content: Text(t.deepLink.importSuccess)),
       );
     }
   } catch (e) {
@@ -72,7 +72,7 @@ Future<void> _processDeepLink(Uri uri) async {
     if (navContext.mounted) {
       ScaffoldMessenger.of(navContext).clearSnackBars();
       ScaffoldMessenger.of(navContext).showSnackBar(
-        SnackBar(content: Text('订阅导入失败: $e')),
+        SnackBar(content: Text(t.deepLink.importFailed(error: '$e'))),
       );
     }
   }

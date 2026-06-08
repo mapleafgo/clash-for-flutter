@@ -1,3 +1,4 @@
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/pages/about_page.dart';
 import 'package:singcast/presentation/pages/desktop_shell.dart';
 import 'package:singcast/presentation/pages/home_page.dart';
@@ -8,7 +9,6 @@ import 'package:singcast/presentation/pages/settings_page.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 class Routes {
   static const home = '/home';
   static const proxies = '/proxies';
@@ -30,11 +30,11 @@ final router = GoRouter(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.error_outline, size: 48),
         const SizedBox(height: 16),
-        SelectableText('页面未找到: ${state.error?.message ?? state.uri.path}'),
+        SelectableText('页面未找到: ${state.error?.message ?? state.uri.path}'), // keep raw for debugging
         const SizedBox(height: 16),
         FilledButton(
           onPressed: () => context.go(Routes.home),
-          child: const Text('返回首页'),
+          child: Text(t.nav.home),
         ),
       ]),
     ),
@@ -81,9 +81,9 @@ class NavItem {
   const NavItem(this.path, this.label, this.icon);
 }
 
-final navItems = [
-  NavItem(Routes.home, '首页', Icons.home_outlined),
-  NavItem(Routes.proxies, '代理', Icons.cloud_outlined),
-  NavItem(Routes.profiles, '订阅', Icons.code_rounded),
-  NavItem(Routes.settings, '设置', Icons.settings_outlined),
+List<NavItem> get navItems => [
+  NavItem(Routes.home, t.nav.home, Icons.home_outlined),
+  NavItem(Routes.proxies, t.nav.proxies, Icons.cloud_outlined),
+  NavItem(Routes.profiles, t.nav.profiles, Icons.code_rounded),
+  NavItem(Routes.settings, t.nav.settings, Icons.settings_outlined),
 ];

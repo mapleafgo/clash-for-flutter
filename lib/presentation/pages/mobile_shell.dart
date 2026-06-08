@@ -2,6 +2,7 @@ import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:singcast/services/app_config.dart';
 
 class MobileShell extends StatelessWidget {
   final StatefulNavigationShell shell;
@@ -9,6 +10,7 @@ class MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return l10nBuilder((context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -40,5 +42,6 @@ class MobileShell extends StatelessWidget {
         ),
       ),
     );
+    });
   }
 }

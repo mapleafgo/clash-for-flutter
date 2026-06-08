@@ -13,6 +13,8 @@ class Constants {
   static const profilesPath = "/profiles";
   static const clashConfig = "/config.yaml";
   static const appSettings = "/settings.json";
+  static const mergedConfigCacheStandby = "/cache-standby.yaml";
+  static const mergedConfigCacheProxy = "/cache-proxy.yaml";
   static const localhost = "127.0.0.1";
   static const logsCapacity = 1000;
 }

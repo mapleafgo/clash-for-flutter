@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart' show ThemeMode, WidgetBuilder, Widget;
 import 'package:singcast/data/local/app_settings_storage.dart';
 import 'package:singcast/domain/profile.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
@@ -20,6 +21,16 @@ final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
 final autoCheckUpdate = signal(true);
+/// 应用语言设置。null = 跟随系统。
+final appLocale = signal<String?>(null);
+/// 语言版本号，每次 locale 变化递增，用于触发全局 UI 重建。
+final localeVersion = signal(0);
+
+/// 自动追踪 [localeVersion] 的 SignalBuilder，用于显示 i18n 文本 (t.xxx) 的场景。
+Widget l10nBuilder(WidgetBuilder builder) => SignalBuilder(
+      dependencies: [localeVersion],
+      builder: builder,
+    );
 final initError = signal<String?>(null);
 final vpnConnected = signal(false);
 
@@ -40,7 +51,14 @@ void initAppConfig() {
     final mode = _parseThemeMode(stored.themeMode!);
     if (mode != null) themeMode.value = mode;
   }
+  if (stored.locale != null) {
+    appLocale.value = stored.locale;
+    LocaleSettings.setLocaleRaw(stored.locale!);
+  }
   _startAutoSave();
+
+  // locale 变化时递增 localeVersion，驱动全局 UI 重建
+  appLocale.subscribe((_) => localeVersion.value++);
 }
 
 ThemeMode? _parseThemeMode(String name) {
@@ -77,6 +95,7 @@ void _startAutoSave() {
     subUA.value;
     themeMode.value;
     autoCheckUpdate.value;
+    appLocale.value;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 1), _save);
   });
@@ -92,6 +111,7 @@ void _save() {
     subUA: subUA.value,
     themeMode: themeMode.value?.name,
     autoCheckUpdate: autoCheckUpdate.value,
+    locale: appLocale.value,
   ).toJson());
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:singcast/services/app_config.dart';
 import 'package:window_manager/window_manager.dart';
 
 class DesktopShell extends StatelessWidget {
@@ -16,6 +17,7 @@ class DesktopShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return l10nBuilder((context) {
     return Scaffold(
       body: Row(children: [
         NavigationRail(
@@ -52,6 +54,7 @@ class DesktopShell extends StatelessWidget {
         Expanded(child: shell),
       ]),
     );
+    });
   }
 
   void _navigate(BuildContext context, int index) {

@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
+import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
@@ -66,28 +67,29 @@ class _ProfilesPageState extends State<ProfilesPage> {
 
   @override
   Widget build(BuildContext context) {
+    localeVersion.value; // rebuild on locale change
     return Scaffold(
-      appBar: const SysAppBar(title: '订阅'),
+      appBar: SysAppBar(title: t.profiles.title),
       floatingActionButton: ValueListenableBuilder<bool>(
         valueListenable: _fabVisible,
         builder: (_, visible, _) => AnimatedFab(
           visible: visible,
           child: FloatingActionButton(
             onPressed: () => _showAddOptions(context),
-            tooltip: '添加',
+            tooltip: t.profiles.add,
             child: const Icon(Icons.add),
           ),
         ),
       ),
-      body: SignalBuilder(builder: (context) {
+      body: l10nBuilder((context) {
         final list = profiles.value;
         final sel = selectedFile.value;
         _timeagoTick.value;
         if (list.isEmpty) {
-          return const EmptyState(
+          return EmptyState(
             icon: Icons.cloud_outlined,
-            title: '暂无订阅',
-            hint: '点击右下角按钮添加订阅配置',
+            title: t.profiles.empty,
+            hint: t.profiles.emptyHint,
           );
         }
         return LayoutBuilder(
@@ -115,13 +117,13 @@ class _ProfilesPageState extends State<ProfilesPage> {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('添加订阅'),
+        title: Text(t.profiles.addSubscription),
         children: [
           Material(
             type: MaterialType.transparency,
             child: ListTile(
               leading: const Icon(Icons.insert_drive_file),
-              title: const Text('从文件'),
+              title: Text(t.profiles.fromFile),
               onTap: () {
                 Navigator.pop(ctx);
                 _addFromFile(context);
@@ -132,7 +134,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
             type: MaterialType.transparency,
             child: ListTile(
               leading: const Icon(Icons.link),
-              title: const Text('从 URL'),
+              title: Text(t.profiles.fromUrl),
               onTap: () {
                 Navigator.pop(ctx);
                 _addFromUrl(context);
@@ -161,7 +163,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
 
     final fileName = p.basename(sourcePath);
     if (profiles.value.any((p) => p.name == fileName)) {
-      if (context.mounted) showErrorDialog(context, '配置「$fileName」已存在');
+      if (context.mounted) showErrorDialog(context, t.profiles.configExists(name: fileName));
       return;
     }
 
@@ -172,7 +174,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
     try {
       await File(sourcePath).copy(destPath);
     } catch (e) {
-      if (context.mounted) showErrorDialog(context, '文件复制失败: $e');
+      if (context.mounted) showErrorDialog(context, t.profiles.fileCopyFailed(error: '$e'));
       return;
     }
 
@@ -271,7 +273,7 @@ class _ProfileCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    timeago.format(profile.time, locale: 'zh_cn'),
+                    timeago.format(profile.time, locale: LocaleSettings.currentLocale == AppLocale.en ? 'en' : 'zh_cn'),
                     style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                   ),
                   const Spacer(),
@@ -310,18 +312,18 @@ class _ProfileCard extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit_note, size: 18),
-                    tooltip: '修改',
+                    tooltip: t.profiles.edit,
                     onPressed: () => _edit(context),
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: '移除',
+                    tooltip: t.profiles.remove,
                     onPressed: () => _remove(context),
                     visualDensity: VisualDensity.compact,
                   ),
                   if (profile.type == ProfileType.url)
-                    SignalBuilder(builder: (_) {
+                    l10nBuilder((_) {
                       final busy = _updatingFile.value == profile.file;
                       return IconButton(
                         icon: busy
@@ -333,7 +335,7 @@ class _ProfileCard extends StatelessWidget {
                                 ),
                               )
                             : const Icon(Icons.refresh, size: 18),
-                        tooltip: busy ? '更新中...' : '更新',
+                        tooltip: busy ? t.profiles.updating : t.profiles.update,
                         onPressed: busy ? null : () => _update(context),
                         visualDensity: VisualDensity.compact,
                       );
@@ -368,7 +370,7 @@ class _ProfileCard extends StatelessWidget {
           ),
         );
       } catch (e) {
-        if (context.mounted) showErrorDialog(context, 'URL 校验失败: $e');
+        if (context.mounted) showErrorDialog(context, t.profiles.urlValidationFailed(error: '$e'));
       }
       return;
     }
@@ -396,19 +398,19 @@ class _ProfileCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除「${profile.name}」吗？'),
+        title: Text(t.profiles.confirmDelete),
+        content: Text(t.profiles.confirmDeleteMessage(name: profile.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(t.dialogs.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('删除'),
+            child: Text(t.dialogs.delete),
           ),
         ],
       ),
@@ -431,7 +433,7 @@ class _ProfileCard extends StatelessWidget {
       await refreshProfile(profile);
     } catch (e) {
       if (context.mounted) {
-        showErrorDialog(context, '更新失败: $e');
+        showErrorDialog(context, t.profiles.updateFailed(error: '$e'));
       }
     } finally {
       _updatingFile.value = null;
@@ -465,7 +467,7 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
       await importSubscription(url);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) showErrorDialog(context, '导入失败: $e');
+      if (mounted) showErrorDialog(context, t.profiles.importFailed(error: '$e'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -474,14 +476,14 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('输入订阅 URL'),
+      title: Text(t.profiles.inputUrl),
       content: TextField(
         controller: _controller,
         maxLines: null,
         keyboardType: TextInputType.url,
         enabled: !_loading,
-        decoration: const InputDecoration(
-          hintText: '请输入',
+        decoration: InputDecoration(
+          hintText: t.profiles.pleaseInput,
           border: OutlineInputBorder(),
         ),
         onSubmitted: _loading ? null : (_) => _submit(),
@@ -489,7 +491,7 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
       actions: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(t.dialogs.cancel),
         ),
         FilledButton(
           onPressed: _loading ? null : _submit,
@@ -499,7 +501,7 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('确定'),
+              : Text(t.dialogs.confirm),
         ),
       ],
     );
@@ -545,14 +547,14 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('修改'),
+      title: Text(t.profiles.edit),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _nameCtl,
-            decoration: const InputDecoration(
-              labelText: '名称',
+            decoration: InputDecoration(
+              labelText: t.profiles.name,
               border: OutlineInputBorder(),
             ),
           ),
@@ -566,7 +568,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.copy, size: 18),
-                  tooltip: '复制',
+                  tooltip: t.profiles.copy,
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _urlCtl.text));
                   },
@@ -577,8 +579,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
             TextField(
               controller: _intervalCtl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: '更新间隔（小时）',
+              decoration: InputDecoration(
+                labelText: t.profiles.updateIntervalHours,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -588,7 +590,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(t.dialogs.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -611,7 +613,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               ),
             );
           },
-          child: const Text('确定'),
+          child: Text(t.dialogs.confirm),
         ),
       ],
     );

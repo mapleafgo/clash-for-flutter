@@ -25,6 +25,12 @@ dependencies:
   desktop_lifecycle: ^0.1.1
   local_notifier: ^0.1.6
 
+  # 国际化
+  slang: ^4.15.0
+  slang_flutter: ^4.15.0
+  flutter_localizations:
+    sdk: flutter
+
   # 工具
   win32: ^6.3.0
   ffi: ^2.1.0
@@ -57,6 +63,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.15
+  slang_build_runner: ^4.15.0
   json_serializable: ^6.9.0
   flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.3
