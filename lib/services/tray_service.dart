@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/presentation/app_state.dart' show appReady;
+import 'package:singcast/presentation/router.dart' show navigatorKey;
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/dialog.dart' show showErrorDialog;
 import 'package:desktop_tray/desktop_tray.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';
@@ -19,11 +21,14 @@ Future<void> initTray() async {
   desktopTray.addListener(_TrayHandler());
 
   effect(() => _rebuildMenu(
-    tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled,
+    _proxyEnabled,
     LibCore.instance.availableModesSignal.value,
     LibCore.instance.modeSignal.value,
   ));
 }
+
+bool get _proxyEnabled =>
+    tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
 
 const _trayModeLabels = {
   'rule': '规则',
@@ -72,11 +77,22 @@ class _TrayHandler with DesktopTrayListener {
       case 'show':
         await windowManager.show();
       case 'proxy':
-        final isTun = tunIf.value == true;
-        if (isTun) {
-          await toggleTun(!(item.checked ?? false));
-        } else {
-          await toggleSystemProxy(!(item.checked ?? false));
+        try {
+          final isTun = tunIf.value == true;
+          if (isTun) {
+            await toggleTun(!(item.checked ?? false));
+          } else {
+            await toggleSystemProxy(!(item.checked ?? false));
+          }
+        } catch (e) {
+          final ctx = navigatorKey.currentContext;
+          if (ctx != null && ctx.mounted) showErrorDialog(ctx, e.toString());
+        } finally {
+          _rebuildMenu(
+            _proxyEnabled,
+            LibCore.instance.availableModesSignal.value,
+            LibCore.instance.modeSignal.value,
+          );
         }
       case 'exit':
         try {
