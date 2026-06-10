@@ -339,6 +339,7 @@ class _ProxyList extends StatelessWidget {
       final testing = testingTags.value;
       final items = _sortedItems(group?.items ?? []);
 
+      final selectable = group?.selectable ?? false;
       return ListView.builder(
         itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
@@ -346,6 +347,7 @@ class _ProxyList extends StatelessWidget {
           item: items[i],
           selected: items[i].tag == selected,
           groupName: groupTag,
+          selectable: selectable,
           testing: testing.contains(items[i].tag),
           testingTags: testingTags,
         ),
@@ -375,6 +377,7 @@ class _ProxyList extends StatelessWidget {
 class _ProxyTile extends StatelessWidget {
   final ProxyGroupItem item;
   final bool selected;
+  final bool selectable;
   final bool testing;
   final String groupName;
   final Signal<Set<String>> testingTags;
@@ -382,6 +385,7 @@ class _ProxyTile extends StatelessWidget {
     super.key,
     required this.item,
     required this.selected,
+    required this.selectable,
     required this.testing,
     required this.groupName,
     required this.testingTags,
@@ -429,11 +433,16 @@ class _ProxyTile extends StatelessWidget {
               return _delayWidget(delay, testing, item.tag, testingTags);
             }),
             onTap: () async {
+              if (!selectable) {
+                _showHint(context, t.proxies.autoGroupHint);
+                return;
+              }
               try {
                 await LibCore.instance.selectProxy(groupName, item.tag);
               } catch (e) {
                 if (context.mounted) {
-                  showErrorDialog(context, t.proxies.switchFailed(error: '$e'));
+                  showErrorDialog(
+                      context, t.proxies.switchFailed(error: '$e'));
                 }
               }
             },
@@ -505,4 +514,10 @@ Widget _delayText(int delay, BuildContext context) {
       ? _delayColorBadDark
       : _delayColorBad;
   return Text('${delay}ms', style: TextStyle(color: color, fontSize: 13));
+}
+
+void _showHint(BuildContext context, String message) {
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
 }

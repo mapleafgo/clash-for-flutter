@@ -36,7 +36,8 @@
     "sortByDelay": "By Delay",
     "expandGroups": "Expand Groups",
     "selectGroup": "Select Group",
-    "switchFailed": "Failed to switch proxy: $error"
+    "switchFailed": "Failed to switch proxy: $error",
+    "autoGroupHint": "This is an auto-select group, manual switching is not supported"
   },
   "profiles": {
     "title": "Profiles",

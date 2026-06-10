@@ -182,6 +182,9 @@ class Translations$proxies$zh {
 
 	/// zh: '切换代理失败: $error'
 	String switchFailed({required Object error}) => '切换代理失败: ${error}';
+
+	/// zh: '该分组为自动选择，不支持手动切换'
+	String get autoGroupHint => '该分组为自动选择，不支持手动切换';
 }
 
 // Path: profiles
@@ -691,6 +694,7 @@ extension on Translations {
 			'proxies.expandGroups' => '展开分组',
 			'proxies.selectGroup' => '选择分组',
 			'proxies.switchFailed' => ({required Object error}) => '切换代理失败: ${error}',
+			'proxies.autoGroupHint' => '该分组为自动选择，不支持手动切换',
 			'profiles.title' => '订阅',
 			'profiles.add' => '添加',
 			'profiles.addSubscription' => '添加订阅',

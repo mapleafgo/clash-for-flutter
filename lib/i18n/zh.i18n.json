@@ -36,7 +36,8 @@
     "sortByDelay": "按延迟",
     "expandGroups": "展开分组",
     "selectGroup": "选择分组",
-    "switchFailed": "切换代理失败: $error"
+    "switchFailed": "切换代理失败: $error",
+    "autoGroupHint": "该分组为自动选择，不支持手动切换"
   },
   "profiles": {
     "title": "订阅",

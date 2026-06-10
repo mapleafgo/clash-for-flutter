@@ -119,6 +119,7 @@ class _Translations$proxies$en extends Translations$proxies$zh {
 	@override String get expandGroups => 'Expand Groups';
 	@override String get selectGroup => 'Select Group';
 	@override String switchFailed({required Object error}) => 'Failed to switch proxy: ${error}';
+	@override String get autoGroupHint => 'This is an auto-select group, manual switching is not supported';
 }
 
 // Path: profiles
@@ -370,6 +371,7 @@ extension on TranslationsEn {
 			'proxies.expandGroups' => 'Expand Groups',
 			'proxies.selectGroup' => 'Select Group',
 			'proxies.switchFailed' => ({required Object error}) => 'Failed to switch proxy: ${error}',
+			'proxies.autoGroupHint' => 'This is an auto-select group, manual switching is not supported',
 			'profiles.title' => 'Profiles',
 			'profiles.add' => 'Add',
 			'profiles.addSubscription' => 'Add Profile',
