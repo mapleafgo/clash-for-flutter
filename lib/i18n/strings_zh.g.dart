@@ -633,8 +633,8 @@ class Translations$startup$zh {
 	/// zh: '当前版本: $current 最新版本: $latest'
 	String currentAndLatest({required Object current, required Object latest}) => '当前版本: ${current}\n最新版本: ${latest}';
 
-	/// zh: '忽略本次'
-	String get ignoreThisTime => '忽略本次';
+	/// zh: '下次提醒'
+	String get remindLater => '下次提醒';
 
 	/// zh: '忽略该版本'
 	String get ignoreThisVersion => '忽略该版本';
@@ -820,7 +820,7 @@ extension on Translations {
 			'deepLink.importFailed' => ({required Object error}) => '订阅导入失败: ${error}',
 			'startup.newVersionFound' => '发现新版本',
 			'startup.currentAndLatest' => ({required Object current, required Object latest}) => '当前版本: ${current}\n最新版本: ${latest}',
-			'startup.ignoreThisTime' => '忽略本次',
+			'startup.remindLater' => '下次提醒',
 			'startup.ignoreThisVersion' => '忽略该版本',
 			'startup.goDownload' => '前往下载',
 			'common.close' => '关闭',

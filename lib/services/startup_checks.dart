@@ -45,15 +45,15 @@ void _showUpdateDialog(String latest) {
       content: Text(t.startup.currentAndLatest(current: Defaults.appVersion, latest: latest)),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: Text(t.startup.ignoreThisTime),
-        ),
-        TextButton(
           onPressed: () {
             ignoreVersion(latest);
             Navigator.pop(ctx);
           },
           child: Text(t.startup.ignoreThisVersion),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(t.startup.remindLater),
         ),
         FilledButton(
           onPressed: () {

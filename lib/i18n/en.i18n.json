@@ -179,7 +179,7 @@
   "startup": {
     "newVersionFound": "Update Available",
     "currentAndLatest": "Current: $current\nLatest: $latest",
-    "ignoreThisTime": "Dismiss",
+    "remindLater": "Remind Later",
     "ignoreThisVersion": "Ignore This Version",
     "goDownload": "Download"
   },

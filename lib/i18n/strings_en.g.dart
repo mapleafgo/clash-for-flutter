@@ -317,7 +317,7 @@ class _Translations$startup$en extends Translations$startup$zh {
 	// Translations
 	@override String get newVersionFound => 'Update Available';
 	@override String currentAndLatest({required Object current, required Object latest}) => 'Current: ${current}\nLatest: ${latest}';
-	@override String get ignoreThisTime => 'Dismiss';
+	@override String get remindLater => 'Remind Later';
 	@override String get ignoreThisVersion => 'Ignore This Version';
 	@override String get goDownload => 'Download';
 }
@@ -497,7 +497,7 @@ extension on TranslationsEn {
 			'deepLink.importFailed' => ({required Object error}) => 'Profile import failed: ${error}',
 			'startup.newVersionFound' => 'Update Available',
 			'startup.currentAndLatest' => ({required Object current, required Object latest}) => 'Current: ${current}\nLatest: ${latest}',
-			'startup.ignoreThisTime' => 'Dismiss',
+			'startup.remindLater' => 'Remind Later',
 			'startup.ignoreThisVersion' => 'Ignore This Version',
 			'startup.goDownload' => 'Download',
 			'common.close' => 'Close',
