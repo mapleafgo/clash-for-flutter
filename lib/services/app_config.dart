@@ -10,6 +10,7 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:singcast/services/core_config.dart' show themeMode;
 import 'package:singcast/services/subscription.dart';
 
@@ -58,7 +59,13 @@ void initAppConfig() {
   _startAutoSave();
 
   // locale 变化时递增 localeVersion，驱动全局 UI 重建
-  appLocale.subscribe((_) => localeVersion.value++);
+  appLocale.subscribe((_) {
+    localeVersion.value++;
+    // 通知 Android 重建通知栏文本
+    if (!Constants.isDesktop) {
+      const MethodChannel('cn.mapleafgo/singcast').invokeMethod('updateNotification');
+    }
+  });
 }
 
 ThemeMode? _parseThemeMode(String name) {
