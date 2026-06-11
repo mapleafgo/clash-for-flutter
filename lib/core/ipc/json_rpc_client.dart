@@ -118,20 +118,26 @@ class JsonRpcClient {
     _connected = false;
     await _subscription?.cancel();
     _subscription = null;
-    _socket?.destroy();
-    _socket = null;
 
+    // Clear pending completers before destroying socket to prevent
+    // _onDone() from triggering onDisconnect during reconnection.
     for (final c in _pending.values) {
       c.completeError(StateError('Disconnected'));
     }
     _pending.clear();
     _lineBuffer.clear();
+
+    try {
+      _socket?.destroy();
+    } catch (_) {}
+    _socket = null;
   }
 
   void _send(Map<String, dynamic> message) {
+    if (!_connected || _socket == null) return;
     final data = utf8.encode('${jsonEncode(message)}\n');
-    _socket?.add(data);
-    _socket?.flush();
+    _socket!.add(data);
+    _socket!.flush();
   }
 
   void _onData(List<int> data) {
