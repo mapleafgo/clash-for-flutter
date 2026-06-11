@@ -174,6 +174,10 @@ class MainActivity : FlutterFragmentActivity() {
                 stopVpn()
                 result.success(true)
             }
+            "updateNotification" -> {
+                vpnService?.recreateNotification()
+                result.success(null)
+            }
 
             // Queries
             "queryProxies" -> safeReply(result) { Mobile.queryProxies() }

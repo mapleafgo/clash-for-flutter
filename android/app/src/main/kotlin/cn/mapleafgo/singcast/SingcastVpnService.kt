@@ -224,8 +224,8 @@ class SingcastVpnService : VpnService() {
 
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "VPN 服务", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Singcast VPN 服务状态"
+            NotificationChannel(CHANNEL_ID, getString(R.string.vpn_notification_channel), NotificationManager.IMPORTANCE_LOW).apply {
+                description = getString(R.string.vpn_notification_channel_desc)
                 setShowBadge(false)
             }
         )
@@ -235,19 +235,19 @@ class SingcastVpnService : VpnService() {
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.IMMUTABLE
         )
         val disconnectPending = PendingIntent.getService(
             this, 1,
             Intent(this, SingcastVpnService::class.java).apply { action = ACTION_DISCONNECT_NOTIFY },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.IMMUTABLE
         )
 
         notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setContentIntent(openPending)
-            .addAction(R.mipmap.ic_launcher, "断开", disconnectPending)
+            .addAction(R.mipmap.ic_launcher, getString(R.string.vpn_disconnect), disconnectPending)
         return notificationBuilder!!
     }
 
@@ -270,13 +270,18 @@ class SingcastVpnService : VpnService() {
         nm.notify(NOTIFY_ID, buildNotification())
     }
 
+    fun recreateNotification() {
+        notificationBuilder = null
+        updateNotification()
+    }
+
     private fun formatTraffic(): String {
         return "↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s"
     }
 
     private fun formatTrafficDetail(): String {
-        return "网速: ↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s\n" +
-               "流量: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
+        return "${getString(R.string.vpn_speed)}: ↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s\n" +
+               "${getString(R.string.vpn_traffic)}: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
     }
 
     private fun formatBytes(bytes: Long): String {

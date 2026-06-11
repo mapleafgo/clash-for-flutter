@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_notification_channel">VPN Service</string>
+    <string name="vpn_notification_channel_desc">Singcast VPN service status</string>
+    <string name="vpn_disconnect">Disconnect</string>
+    <string name="vpn_speed">Speed</string>
+    <string name="vpn_traffic">Traffic</string>
+</resources>
