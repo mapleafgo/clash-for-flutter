@@ -69,6 +69,12 @@ class AppDelegate: FlutterAppDelegate {
             name: .NEVPNStatusDidChange, object: nil
         )
 
+        // 查询 VPN 真实状态（app 被杀时隧道可能仍在运行）
+        NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+            let status = (managers?.first?.connection as? NETunnelProviderSession)?.status ?? .invalid
+            self.vpnConnected = (status == .connected)
+        }
+
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
@@ -217,7 +223,10 @@ class AppDelegate: FlutterAppDelegate {
                 }
             }
         case "getVersion":
-            result(singcast.version())
+            bgQueue.async {
+                let version = self.singcast.version()
+                DispatchQueue.main.async { result(version) }
+            }
 
         // --- VPN ---
         case "connectVpn":
