@@ -65,6 +65,9 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.init(filesDir)
         NetworkMonitor.init(this)
 
+        // 应用重启时停止残留的旧 VPN 服务，防止 TUN 接口残留导致联网失败
+        stopService(Intent(this, SingcastVpnService::class.java))
+
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
 
