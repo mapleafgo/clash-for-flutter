@@ -5,6 +5,7 @@ import 'package:singcast/presentation/router.dart' show Routes, navigatorKey, ro
 import 'package:singcast/services/subscription.dart';
 import 'package:singcast/utils/log_file.dart';
 
+const _deepLinkScheme = 'clash';
 final _appLinks = AppLinks();
 
 void initDeepLinks() {
@@ -12,7 +13,11 @@ void initDeepLinks() {
   // 先处理完 initialLink 再订阅，从结构上保证只触发一次
   _appLinks.getInitialLink().then((initial) {
     _log('[deeplink] initialLink: $initial');
-    if (initial != null) _processDeepLink(initial);
+    if (initial != null) {
+      _processDeepLink(initial).catchError((e) {
+        _log('[deeplink] initialLink processing failed: $e');
+      });
+    }
     _appLinks.uriLinkStream.listen(
       _processDeepLink,
       onError: (e) => _log('[deeplink] stream error: $e'),
@@ -22,7 +27,7 @@ void initDeepLinks() {
 
 Future<void> _processDeepLink(Uri uri) async {
   _log('[deeplink] received: $uri');
-  if (uri.scheme != 'clash') return;
+  if (uri.scheme != _deepLinkScheme) return;
 
   final url = uri.queryParameters['url'];
   _log('[deeplink] host=${uri.host}, url=$url');

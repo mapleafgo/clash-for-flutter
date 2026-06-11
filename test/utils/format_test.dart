@@ -56,5 +56,26 @@ void main() {
       expect(formatBytes(102400), contains('KB'));
       expect(formatBytes(10485760), contains('MB'));
     });
+
+    test('formats negative value as 0 B', () {
+      expect(formatBytes(-1), '0 B');
+    });
+  });
+
+  group('formatDuration', () {
+    test('returns 00:00 for zero or negative', () {
+      expect(formatDuration(0), '00:00');
+      expect(formatDuration(-1), '00:00');
+    });
+
+    test('formats minutes and seconds', () {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      expect(formatDuration(now - 65000), '01:05');
+    });
+
+    test('formats hours when > 0', () {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      expect(formatDuration(now - 3661000), '01:01:01');
+    });
   });
 }

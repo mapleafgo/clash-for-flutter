@@ -1,4 +1,5 @@
 String formatBytes(int value) {
+  if (value < 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   double num = value.toDouble();
   var level = 0;

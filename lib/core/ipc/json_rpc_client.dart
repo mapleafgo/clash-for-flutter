@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_ipc/dart_ipc.dart' as ipc;
+import 'package:singcast/domain/enums.dart';
+import 'package:singcast/utils/log_file.dart';
 
 /// NDJSON JSON-RPC 2.0 client over dart_ipc transport.
 class JsonRpcClient {
@@ -157,7 +159,11 @@ class JsonRpcClient {
         final json = jsonDecode(utf8.decode(lineBytes)) as Map<String, dynamic>;
         _handleMessage(json);
       } catch (e) {
-        // Malformed JSON — skip
+        LogFileWriter.instance?.log(
+          'IPC malformed JSON: $e',
+          level: LogLevel.warning,
+          name: 'ipc',
+        );
       }
     }
   }

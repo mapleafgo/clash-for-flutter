@@ -72,17 +72,19 @@ class IpcWorker implements LibCorePlatform {
   }
 
   Future<void> disconnect() async {
-    await _logSub?.cancel();
+    await Future.wait([
+      _logSub?.cancel() ?? Future.value(),
+      _urlTestSub?.cancel() ?? Future.value(),
+      _modeUpdateSub?.cancel() ?? Future.value(),
+      _connEventSub?.cancel() ?? Future.value(),
+      _stateUpdateSub?.cancel() ?? Future.value(),
+      _trafficUpdateSub?.cancel() ?? Future.value(),
+    ]);
     _logSub = null;
-    await _urlTestSub?.cancel();
     _urlTestSub = null;
-    await _modeUpdateSub?.cancel();
     _modeUpdateSub = null;
-    await _connEventSub?.cancel();
     _connEventSub = null;
-    await _stateUpdateSub?.cancel();
     _stateUpdateSub = null;
-    await _trafficUpdateSub?.cancel();
     _trafficUpdateSub = null;
     try {
       await _client?.disconnect().timeout(const Duration(seconds: 3));
@@ -91,7 +93,7 @@ class IpcWorker implements LibCorePlatform {
     _client = null;
   }
 
-  Future<bool> get isConnected async => _client?.isConnected ?? false;
+  bool get isConnected => _client?.isConnected ?? false;
 
   @override
   Future<void> init() async {}

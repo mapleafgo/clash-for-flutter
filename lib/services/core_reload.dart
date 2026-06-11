@@ -106,7 +106,13 @@ Future<bool> _activateProfile(String yamlPath) async {
         profileError.value = validationResult;
         return false;
       }
-    } catch (_) {}
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'checkConfig failed: $e',
+        level: LogLevel.warning,
+        name: 'profile',
+      );
+    }
 
     try {
       await LibCore.instance.startCoreWithContent(

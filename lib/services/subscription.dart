@@ -47,13 +47,14 @@ Future<Profile> downloadSubscription({
     }
 
     final bytes = await resp
-        .timeout(const Duration(minutes: 3), onTimeout: (sink) => sink.close())
+        .timeout(const Duration(minutes: 3))
         .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk));
     final raw = utf8.decode(bytes);
-    String content;
-    try {
-      content = isBase64Content(raw) ? decodeBase64Subscription(raw) : raw;
-    } catch (_) {
+    final String content;
+    if (isBase64Content(raw)) {
+      content = decodeBase64Subscription(raw) ??
+          (throw FormatException('No valid proxies found in base64 subscription'));
+    } else {
       content = raw;
     }
     await File(savePath).writeAsString(content);
@@ -85,7 +86,7 @@ String? extractFilename(String? contentDisposition) {
 SubscriptionInfo? parseSubInfo(String? raw) =>
     raw != null ? SubscriptionInfo.fromHeader(raw) : null;
 
-String decodeBase64Subscription(String raw) {
+String? decodeBase64Subscription(String raw) {
   final decoded = utf8.decode(base64.decode(raw.trim()));
   final lines = decoded
       .split(RegExp(r'\n'))
@@ -96,7 +97,7 @@ String decodeBase64Subscription(String raw) {
     final proxy = parseProxyUri(line);
     if (proxy != null) proxies.add(proxy);
   }
-  if (proxies.isEmpty) return raw;
+  if (proxies.isEmpty) return null;
   final editor = YamlEditor('proxies: []\n');
   editor.update(['proxies'], proxies);
   return editor.toString();
@@ -142,7 +143,7 @@ Map<String, dynamic>? parseShadowsocks(String body, String name) {
         'name': name,
         'type': 'ss',
         'server': serverPort[0],
-        'port': int.parse(serverPort[1]),
+        'port': int.tryParse(serverPort[1]) ?? 0,
         'cipher': decoded.split(':').first,
         'password': decoded.split(':').last,
       };
@@ -155,7 +156,7 @@ Map<String, dynamic>? parseShadowsocks(String body, String name) {
         'name': name,
         'type': 'ss',
         'server': serverPort[0],
-        'port': int.parse(serverPort[1]),
+        'port': int.tryParse(serverPort[1]) ?? 0,
         'cipher': methodPass[0],
         'password': methodPass[1],
       };
@@ -246,7 +247,7 @@ bool isBase64Content(String content) {
 ///
 /// 当 [url] 已存在于现有订阅中时抛出 [StateError]。
 Future<void> importSubscription(String url, {String? name}) async {
-  if (profiles.value.any((p) => p.url == url)) {
+  if (profiles.value.any((e) => e.url == url)) {
     throw StateError(t.profiles.subscriptionExists);
   }
 

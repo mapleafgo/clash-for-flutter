@@ -1,20 +1,28 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/log_file.dart';
 
 const _sentinel = Object();
 
 class AppSettingsStorage {
-  static File get _file => File('${Constants.homeDir.path}${Constants.appSettings}');
+  static File get _file => File(p.join(Constants.homeDir.path, Constants.appSettings));
 
   static Map<String, dynamic> load() {
     _migrateFromCfm();
     if (!_file.existsSync()) return {};
     try {
       return jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
-    } catch (_) {
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'Failed to load settings: $e',
+        level: LogLevel.warning,
+        name: 'settings',
+      );
       return {};
     }
   }
@@ -35,7 +43,7 @@ class AppSettingsStorage {
 
   /// 一次性迁移 cfm.json → settings.json，迁移后删除旧文件。
   static void _migrateFromCfm() {
-    final cfm = File('${Constants.homeDir.path}/cfm.json');
+    final cfm = File(p.join(Constants.homeDir.path, 'cfm.json'));
     if (!cfm.existsSync()) return;
     if (_file.existsSync()) {
       // settings.json 已存在，直接删除旧文件

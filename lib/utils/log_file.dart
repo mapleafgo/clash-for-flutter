@@ -23,7 +23,10 @@ class LogFileWriter {
     final file = File(path);
     try {
       if (await file.exists() && await file.length() > _maxSize) {
-        await file.writeAsString('');
+        // Rotate: rename current log to .log.1 before creating fresh file
+        final rotated = File('$path.1');
+        if (await rotated.exists()) await rotated.delete();
+        await file.rename(rotated.path);
       }
     } catch (_) {}
     writer._sink = file.openWrite(mode: FileMode.append);
@@ -37,9 +40,11 @@ class LogFileWriter {
   void writeAll(List<LogEntry> entries) {
     final sink = _sink;
     if (sink == null) return;
-    for (final e in entries) {
-      if (_shouldLog(e.type)) sink.writeln(_formatEntry(e));
-    }
+    try {
+      for (final e in entries) {
+        if (_shouldLog(e.type)) sink.writeln(_formatEntry(e));
+      }
+    } catch (_) {}
   }
 
   void log(String message, {LogLevel level = LogLevel.info, String? name}) {
@@ -50,7 +55,9 @@ class LogFileWriter {
       payload: name != null ? '[$name] $message' : message,
       timestamp: DateTime.now(),
     );
-    sink.writeln(_formatEntry(entry));
+    try {
+      sink.writeln(_formatEntry(entry));
+    } catch (_) {}
     developer.log(message, name: name ?? 'app');
   }
 

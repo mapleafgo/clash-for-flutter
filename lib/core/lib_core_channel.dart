@@ -20,12 +20,11 @@ class LibCoreChannel implements LibCorePlatform {
 
   Future<void> _handleMethodCall(MethodCall call) async {
     if (call.method == 'onEvent') {
-      final args = call.arguments as Map?;
-      if (args != null) {
-        final eventType = args['eventType'] as int? ?? -1;
-        final payload = args['payload'] as String? ?? '';
-        onCallback?.call(eventType, payload);
-      }
+      final args = call.arguments;
+      if (args is! Map) return;
+      final eventType = args['eventType'] as int? ?? -1;
+      final payload = args['payload'] as String? ?? '';
+      onCallback?.call(eventType, payload);
     } else if (call.method == 'onVpnDisconnected') {
       onVpnDisconnected?.call();
     }
@@ -34,7 +33,11 @@ class LibCoreChannel implements LibCorePlatform {
   Future<dynamic> _invokeJson(String method, [Map<String, dynamic>? args]) async {
     final raw = await _channel.invokeMethod<String>(method, args);
     if (raw == null || raw.isEmpty) return null;
-    return jsonDecode(raw);
+    try {
+      return jsonDecode(raw);
+    } catch (_) {
+      return null;
+    }
   }
 
   // --- Lifecycle ---

@@ -127,7 +127,6 @@ Future<void> checkSubUpdates() async {
         && now.isAfter(p.time.add(Duration(hours: p.interval))),
   ).toList();
   for (final p in expired) {
-    if (!profiles.value.any((e) => e.file == p.file)) continue;
     try {
       await refreshProfile(p);
       LogFileWriter.instance?.log(

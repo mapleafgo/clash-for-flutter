@@ -103,7 +103,9 @@ class UnixServiceManager extends ServiceManager {
       if (!File(_elevatedBinaryPath).existsSync()) return false;
       if (!_elevatedUpToDate()) return false;
       final stat = await FileStat.stat(_elevatedBinaryPath);
-      return (stat.mode & 0x800) != 0;
+      // 0o800 = setuid bit (S_ISUID)
+      const setuidBit = 0x800;
+      return (stat.mode & setuidBit) != 0;
     } catch (_) {
       return false;
     }

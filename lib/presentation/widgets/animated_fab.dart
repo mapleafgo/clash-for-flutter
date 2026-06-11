@@ -8,14 +8,17 @@ class AnimatedFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSlide(
-      offset: visible ? Offset.zero : const Offset(0, 2),
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      child: AnimatedOpacity(
-        opacity: visible ? 1.0 : 0.0,
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedSlide(
+        offset: visible ? Offset.zero : const Offset(0, 2),
         duration: const Duration(milliseconds: 200),
-        child: child,
+        curve: Curves.easeInOut,
+        child: AnimatedOpacity(
+          opacity: visible ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          child: child,
+        ),
       ),
     );
   }
@@ -23,7 +26,7 @@ class AnimatedFab extends StatelessWidget {
 
 /// Wraps a child with a cat-head-shake animation.
 /// Call [controller.forward(from: 0)] to trigger.
-class ShakeBuilder extends StatelessWidget {
+class ShakeBuilder extends StatefulWidget {
   final AnimationController controller;
   final Widget child;
 
@@ -33,7 +36,14 @@ class ShakeBuilder extends StatelessWidget {
     required this.child,
   });
 
-  static Animation<double> createAnimation(AnimationController controller) {
+  @override
+  State<ShakeBuilder> createState() => _ShakeBuilderState();
+}
+
+class _ShakeBuilderState extends State<ShakeBuilder> {
+  late final Animation<double> _animation;
+
+  static Animation<double> _createAnimation(AnimationController controller) {
     return TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween<double>(begin: 0, end: 0.2)
@@ -64,14 +74,19 @@ class ShakeBuilder extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _animation = _createAnimation(widget.controller);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      animation: _animation,
       builder: (context, child) {
-        final angle = createAnimation(controller).value;
-        return Transform.rotate(angle: angle, child: child);
+        return Transform.rotate(angle: _animation.value, child: child);
       },
-      child: child,
+      child: widget.child,
     );
   }
 }

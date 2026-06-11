@@ -99,6 +99,12 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   String _latestVersion = '';
 
   @override
+  void initState() {
+    super.initState();
+    _state = 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(t.about.version),
@@ -202,7 +208,12 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
           SnackBar(content: Text(t.about.elevationRemoved)),
         );
       }
-    } catch (_) {
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'uninstallServiceAndRestart failed: $e',
+        level: LogLevel.error,
+        name: 'service',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(

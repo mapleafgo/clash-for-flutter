@@ -98,6 +98,7 @@ class LibCore {
 
   /// Heartbeat: actively probe IPC with queryState to detect zombie connections.
   Timer? _heartbeatTimer;
+  bool _heartbeatInProgress = false;
   static const _heartbeatInterval = Duration(seconds: 10);
   static const _heartbeatTimeout = Duration(seconds: 3);
 
@@ -173,7 +174,15 @@ class LibCore {
         await _serviceManager!.stop();
         if (await _startAndConnectWithFallback()) {
           await syncKernelState();
-          await onProcessReady?.call();
+          try {
+            await onProcessReady?.call();
+          } catch (e) {
+            LogFileWriter.instance?.log(
+              'onProcessReady failed: $e',
+              level: LogLevel.warning,
+              name: 'ipc',
+            );
+          }
           _startHeartbeat();
         } else {
           LogFileWriter.instance?.log('IPC reconnect failed', level: LogLevel.error, name: 'ipc');
@@ -204,7 +213,8 @@ class LibCore {
 
   /// Send a queryState RPC to probe IPC liveness.
   Future<void> _heartbeatProbe() async {
-    if (_disposed || _reconnecting) return;
+    if (_disposed || _reconnecting || _heartbeatInProgress) return;
+    _heartbeatInProgress = true;
     try {
       await _platform.queryState().timeout(_heartbeatTimeout);
     } catch (e) {
@@ -215,7 +225,12 @@ class LibCore {
         name: 'ipc',
       );
       _heartbeatTimer?.cancel();
-      _ipcWorker?.disconnect().then((_) => _onIpcDisconnected());
+      try {
+        await _ipcWorker?.disconnect();
+      } catch (_) {}
+      _onIpcDisconnected();
+    } finally {
+      _heartbeatInProgress = false;
     }
   }
 
@@ -467,40 +482,42 @@ class LibCore {
 
   // --- Proxy query helper ---
 
-  void _queryAndUpdate() {
-    _platform
-        .queryProxies()
-        .then((result) {
-          proxiesSignal.value = result.$1;
-          final selected = <String, String>{};
-          for (final g in result.$1) {
-            if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
-          }
-          selectedProxySignal.value = selected;
-          if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
-        })
-        .catchError((e) {
-          LogFileWriter.instance?.log(
-            '$e',
-            level: LogLevel.warning,
-            name: 'proxies',
-          );
-        });
+  void _queryAndUpdate() async {
+    try {
+      final result = await _platform.queryProxies();
+      proxiesSignal.value = result.$1;
+      final selected = <String, String>{};
+      for (final g in result.$1) {
+        if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
+      }
+      selectedProxySignal.value = selected;
+      if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        '$e',
+        level: LogLevel.warning,
+        name: 'proxies',
+      );
+    }
   }
 
-  void _fetchAvailableModes() {
-    _platform
-        .queryMode()
-        .then((modeJson) {
-          final decoded = jsonDecode(modeJson) as Map<String, dynamic>;
-          final available = decoded['modes'];
-          if (available is List) {
-            availableModesSignal.value = available
-                .map((e) => (e as String).toLowerCase())
-                .toList();
-          }
-        })
-        .catchError((_) {});
+  void _fetchAvailableModes() async {
+    try {
+      final modeJson = await _platform.queryMode();
+      final decoded = jsonDecode(modeJson) as Map<String, dynamic>;
+      final available = decoded['modes'];
+      if (available is List) {
+        availableModesSignal.value = available
+            .map((e) => (e as String).toLowerCase())
+            .toList();
+      }
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        '$e',
+        level: LogLevel.warning,
+        name: 'modes',
+      );
+    }
   }
 
   /// Handle traffic stats pushed from kernel (both desktop IPC and mobile FFI).

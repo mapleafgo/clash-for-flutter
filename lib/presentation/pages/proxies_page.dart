@@ -340,6 +340,9 @@ class _ProxyList extends StatelessWidget {
       final items = _sortedItems(group?.items ?? []);
 
       final selectable = group?.selectable ?? false;
+      final urlTestSelected = group?.type == 'urltest' && group!.selected.isNotEmpty
+          ? group.selected
+          : null;
       return ListView.builder(
         itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
@@ -350,6 +353,7 @@ class _ProxyList extends StatelessWidget {
           selectable: selectable,
           testing: testing.contains(items[i].tag),
           testingTags: testingTags,
+          urlTestSelected: urlTestSelected,
         ),
       );
     });
@@ -381,6 +385,7 @@ class _ProxyTile extends StatelessWidget {
   final bool testing;
   final String groupName;
   final Signal<Set<String>> testingTags;
+  final String? urlTestSelected;
   const _ProxyTile({
     super.key,
     required this.item,
@@ -389,20 +394,11 @@ class _ProxyTile extends StatelessWidget {
     required this.testing,
     required this.groupName,
     required this.testingTags,
+    this.urlTestSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    String? urlTestSelected;
-    if (item.type == 'urltest') {
-      final group = LibCore.instance.proxiesSignal.value
-          .where((g) => g.tag == item.tag)
-          .firstOrNull;
-      if (group != null && group.selected.isNotEmpty) {
-        urlTestSelected = group.selected;
-      }
-    }
-
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),

@@ -59,7 +59,6 @@ class DesktopShell extends StatelessWidget {
 
   void _navigate(BuildContext context, int index) {
     if (shell.currentIndex == index) return;
-    context.go(navItems[index].path);
     shell.goBranch(index, initialLocation: index == shell.currentIndex);
   }
 }
