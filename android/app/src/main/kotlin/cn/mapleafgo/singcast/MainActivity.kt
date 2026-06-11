@@ -128,21 +128,22 @@ class MainActivity : FlutterFragmentActivity() {
             "startCoreWithContent" -> {
                 val content = args?.str("content") ?: ""
                 val proxy = args?.str("ruleSetProxy") ?: ""
+                val enabledVpn = args?.get("enabledVpn") as? Boolean ?: false
                 val svc = vpnService
                 if (svc != null && svc.isRunning()) {
                     // refreshConfig 会阻塞（JNI 同步调用内核热重载），
                     // 在独立线程执行避免阻塞串行任务队列导致 queryStats 无法响应。
                     Thread({
                         try {
-                            svc.refreshConfig(content, proxy)
-                            if (!isTunEnabled(content)) SingcastVpnService.cacheNonTunConfig(content, proxy)
+                            svc.refreshConfig(content, proxy, enabledVpn)
+                            if (!enabledVpn) SingcastVpnService.cacheNonTunConfig(content, proxy)
                             result.success(null)
                         } catch (e: Throwable) {
                             AppLog.e(tag, "refreshConfig failed", e)
                             result.error("CORE_ERROR", e.message, null)
                         }
                     }, "core-reload").start()
-                } else if (isTunEnabled(content)) {
+                } else if (enabledVpn) {
                     requestVpn(content, proxy, true, result)
                 } else {
                     Thread({
@@ -241,10 +242,6 @@ class MainActivity : FlutterFragmentActivity() {
         result.success(true)
     }
 
-    private fun isTunEnabled(content: String): Boolean {
-        return content.contains("tun:") && content.contains("enable: true")
-    }
-
     private fun stopVpn() {
         vpnService?.disconnect("user_disconnect")
         try { unbindService(vpnConnection) } catch (_: Exception) {}
@@ -254,6 +251,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        SingcastVpnService.onNotificationDisconnect = null
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }

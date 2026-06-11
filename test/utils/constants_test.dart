@@ -3,16 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Constants', () {
-    test('profilesPath is /profiles', () {
-      expect(Constants.profilesPath, '/profiles');
+    test('profilesDir is profiles', () {
+      expect(Constants.profilesDir, 'profiles');
     });
 
-    test('clashConfig is /config.yaml', () {
-      expect(Constants.clashConfig, '/config.yaml');
+    test('clashConfig is config.yaml', () {
+      expect(Constants.clashConfig, 'config.yaml');
     });
 
-    test('appSettings is /settings.json', () {
-      expect(Constants.appSettings, '/settings.json');
+    test('appSettings is settings.json', () {
+      expect(Constants.appSettings, 'settings.json');
     });
 
     test('localhost is 127.0.0.1', () {

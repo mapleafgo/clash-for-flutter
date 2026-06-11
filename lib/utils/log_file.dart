@@ -23,10 +23,7 @@ class LogFileWriter {
     final file = File(path);
     try {
       if (await file.exists() && await file.length() > _maxSize) {
-        // Rotate: rename current log to .log.1 before creating fresh file
-        final rotated = File('$path.1');
-        if (await rotated.exists()) await rotated.delete();
-        await file.rename(rotated.path);
+        await file.writeAsString('');
       }
     } catch (_) {}
     writer._sink = file.openWrite(mode: FileMode.append);

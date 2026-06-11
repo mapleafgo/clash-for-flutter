@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:path/path.dart' as p;
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
@@ -247,7 +248,7 @@ void ensureTunEnabled(bool enabled) {
 
 String _resolveProfilePath(String file) {
   if (file.startsWith('/')) return file;
-  return '${Constants.homeDir.path}${Constants.profilesPath}/$file';
+  return p.join(Constants.homeDir.path, Constants.profilesDir, file);
 }
 
 class TunElevationException implements Exception {

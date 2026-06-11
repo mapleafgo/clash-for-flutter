@@ -186,14 +186,13 @@ class SingcastVpnService : VpnService() {
 
     fun isRunning(): Boolean = running.get()
 
-    fun refreshConfig(content: String, ruleSetProxy: String) {
+    fun refreshConfig(content: String, ruleSetProxy: String, enabledVpn: Boolean = false) {
         if (!running.get() || disconnected.get()) {
             AppLog.w(TAG, "refreshConfig: not running or already disconnected, ignoring (running=$running, disconnected=$disconnected)")
             return
         }
-        val hasTun = content.contains("tun:") && content.contains("enable: true")
-        AppLog.i(TAG, "refreshConfig: config=${content.length} chars, hasTun=$hasTun")
-        if (hasTun) {
+        AppLog.i(TAG, "refreshConfig: config=${content.length} chars, enabledVpn=$enabledVpn")
+        if (enabledVpn) {
             Mobile.startWithContent(content, ruleSetProxy, onPrepare = { establishTun(ipv6Enabled) })
         } else {
             Mobile.startWithContent(content, ruleSetProxy)
@@ -281,6 +280,7 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun formatBytes(bytes: Long): String {
+        if (bytes < 0) return "0 B"
         if (bytes < 1024) return "$bytes B"
         val kb = bytes / 1024.0
         if (kb < 1024) return "%.1f KB".format(kb)

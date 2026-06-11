@@ -111,18 +111,32 @@ class AppDelegate: FlutterAppDelegate {
                 }
             }
         case "stopCore":
-            singcast.stop()
-            result(nil)
+            bgQueue.async {
+                self.singcast.stop()
+                DispatchQueue.main.async { result(nil) }
+            }
 
         // --- Queries ---
         case "queryProxies":
-            result(singcast.queryProxies())
+            bgQueue.async {
+                let json = self.singcast.queryProxies()
+                DispatchQueue.main.async { result(json) }
+            }
         case "queryConnections":
-            result(singcast.queryConnections())
+            bgQueue.async {
+                let json = self.singcast.queryConnections()
+                DispatchQueue.main.async { result(json) }
+            }
         case "queryMode":
-            result(singcast.queryMode())
+            bgQueue.async {
+                let json = self.singcast.queryMode()
+                DispatchQueue.main.async { result(json) }
+            }
         case "queryState":
-            result(singcast.state())
+            bgQueue.async {
+                let state = self.singcast.state()
+                DispatchQueue.main.async { result(state) }
+            }
 
         // --- Proxy Control ---
         case "selectProxy":
@@ -164,14 +178,20 @@ class AppDelegate: FlutterAppDelegate {
 
         // --- Logging / Memory ---
         case "setLogLevel":
-            singcast.setLogLevel(args["level"] as? Int32 ?? 4)
-            result(nil)
+            bgQueue.async {
+                self.singcast.setLogLevel(args["level"] as? Int32 ?? 4)
+                DispatchQueue.main.async { result(nil) }
+            }
         case "setMemoryLimit":
-            singcast.setMemoryLimit(args["bytes"] as? Int64 ?? 0)
-            result(nil)
+            bgQueue.async {
+                self.singcast.setMemoryLimit(args["bytes"] as? Int64 ?? 0)
+                DispatchQueue.main.async { result(nil) }
+            }
         case "flushSystemDNS":
-            singcast.flushSystemDNS()
-            result(nil)
+            bgQueue.async {
+                self.singcast.flushSystemDNS()
+                DispatchQueue.main.async { result(nil) }
+            }
         case "flushFakeIP":
             runAsync(result: result) {
                 try self.singcast.flushFakeIP()
@@ -181,8 +201,10 @@ class AppDelegate: FlutterAppDelegate {
                 try self.singcast.flushDNSCache()
             }
         case "triggerGC":
-            singcast.triggerGC()
-            result(nil)
+            bgQueue.async {
+                self.singcast.triggerGC()
+                DispatchQueue.main.async { result(nil) }
+            }
 
         // --- Utilities ---
         case "checkConfig":

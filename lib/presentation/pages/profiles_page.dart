@@ -167,9 +167,9 @@ class _ProfilesPageState extends State<ProfilesPage> {
       return;
     }
 
-    var destPath = p.join(profilesPath, fileName);
+    var destPath = p.join(profilesFullPath, fileName);
     if (File(destPath).existsSync()) {
-      destPath = p.join(profilesPath, _uniqueFileName(fileName));
+      destPath = p.join(profilesFullPath, _uniqueFileName(fileName));
     }
     try {
       await File(sourcePath).copy(destPath);
@@ -422,7 +422,7 @@ class _ProfileCard extends StatelessWidget {
     if (selectedFile.value == file) {
       selectedFile.value = list.isEmpty ? null : list.first.file;
     }
-    final path = p.join(profilesPath, file);
+    final path = p.join(profilesFullPath, file);
     if (File(path).existsSync()) await File(path).delete();
   }
 

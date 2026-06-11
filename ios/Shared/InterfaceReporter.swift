@@ -56,16 +56,17 @@ enum InterfaceReporter {
     private static func buildTypeMap() -> [String: Int] {
         var map = [String: Int]()
         let monitor = NWPathMonitor()
-        let semaphore = DispatchSemaphore(value: 0)
+        let group = DispatchGroup()
+        group.enter()
         monitor.pathUpdateHandler = { path in
             for iface in path.availableInterfaces {
                 map[iface.name] = swiftTypeToConst(iface.type)
             }
-            semaphore.signal()
+            group.leave()
             monitor.pathUpdateHandler = nil
         }
         monitor.start(queue: DispatchQueue.global())
-        semaphore.wait()
+        group.wait()
         monitor.cancel()
         return map
     }

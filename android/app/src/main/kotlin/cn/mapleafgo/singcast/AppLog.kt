@@ -21,9 +21,9 @@ object AppLog {
     fun init(logDir: File): File {
         val logFile = File(logDir, LOG_FILE)
 
-        // Rotate if too large
+        // Truncate if too large
         if (logFile.exists() && logFile.length() > MAX_LOG_SIZE) {
-            logFile.delete()
+            logFile.writeText("")
         }
 
         writer = BufferedWriter(FileWriter(logFile, true))

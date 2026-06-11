@@ -105,7 +105,7 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) =>
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) =>
       _call('core.startWithContent', {
         'content': content,
         'rule_set_proxy': ruleSetProxy ?? '',

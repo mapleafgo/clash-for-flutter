@@ -23,9 +23,9 @@ final lastMergedConfig = computed(() {
 });
 
 String get _standbyPath =>
-    '${Constants.homeDir.path}${Constants.mergedConfigCacheStandby}';
+    p.join(Constants.homeDir.path, Constants.mergedConfigCacheStandby);
 String get _proxyPath =>
-    '${Constants.homeDir.path}${Constants.mergedConfigCacheProxy}';
+    p.join(Constants.homeDir.path, Constants.mergedConfigCacheProxy);
 
 /// 缓存待机配置（TUN 关闭）：同时写入 signal 和磁盘文件。
 void cacheMergedConfigStandby(String merged) {
@@ -66,7 +66,7 @@ void startWatchingSelectedFile() {
     if (file == null) return;
     final path = p.isAbsolute(file)
         ? file
-        : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
+        : p.join(Constants.homeDir.path, Constants.profilesDir, file);
     if (!File(path).existsSync()) return;
     LogFileWriter.instance?.log(
       'startWatchingSelectedFile: activating profile $file (state=${LibCore.instance.stateSignal.peek()})',
@@ -118,6 +118,7 @@ Future<bool> _activateProfile(String yamlPath) async {
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,
+        enabledVpn: clashConfig.value.tunEnabled,
       );
     } catch (e) {
       profileError.value = e.toString();
@@ -150,6 +151,6 @@ Future<bool> asyncProfile() async {
   if (!Constants.isDesktop && clashConfig.value.tunEnabled) return true;
   final path = p.isAbsolute(file)
       ? file
-      : '${Constants.homeDir.path}${Constants.profilesPath}/$file';
+      : p.join(Constants.homeDir.path, Constants.profilesDir, file);
   return _activateProfile(path);
 }

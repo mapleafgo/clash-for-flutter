@@ -17,7 +17,7 @@ import 'service_manager.dart';
 abstract class LibCorePlatform {
   Future<void> init();
   Future<void> initCore(String homeDir);
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy});
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false});
   Future<void> stopCore();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<ConnectionEventsPayload> queryConnections();
@@ -414,8 +414,9 @@ class LibCore {
   Future<void> startCoreWithContent(
     String content, {
     String? ruleSetProxy,
+    bool enabledVpn = false,
   }) async {
-    await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy);
+    await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy, enabledVpn: enabledVpn);
   }
 
   Future<void> stopCore() async {

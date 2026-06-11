@@ -32,7 +32,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
             settings.ipv6Settings = ipv6
         }
         settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "8.8.4.4"])
-        settings.mtu = 9000
+        settings.mtu = 1500
         try await setTunnelNetworkSettings(settings)
 
         guard let rawFd = extractTunFd() ?? getTunnelFileDescriptor() else {
@@ -76,18 +76,22 @@ class ExtensionProvider: NEPacketTunnelProvider {
     // MARK: - TUN fd extraction
 
     /// Extract fd from NEPacketTunnelProvider's packetFlow via KVO.
+    /// Falls back to getTunnelFileDescriptor if KVO fails (private API may change).
     private func extractTunFd() -> Int32? {
         let flow = packetFlow as AnyObject
-        if let socket = flow.value(forKey: "socket") as AnyObject?,
-           let fd = socket.value(forKey: "fileDescriptor") as? Int32 {
-            return fd
+        guard let socket = flow.value(forKey: "socket") as AnyObject?,
+              let fd = socket.value(forKey: "fileDescriptor") as? Int32,
+              fd >= 0 else {
+            return nil
         }
-        return nil
+        return fd
     }
 
     /// Fallback: iterate file descriptors to find the tunnel fd.
     private func getTunnelFileDescriptor() -> Int32? {
-        for fd in 3..<1024 {
+        // Tunnel fds are typically low-numbered (5-32). Limit range to avoid
+        // accidentally picking up unrelated file descriptors.
+        for fd in 5..<64 {
             var addr = sockaddr_in()
             var len = socklen_t(MemoryLayout<sockaddr_in>.size)
             if getsockname(fd, &addr, &len) == 0 {
@@ -102,16 +106,10 @@ class ExtensionProvider: NEPacketTunnelProvider {
     private func startDefaultInterfaceMonitor() {
         let monitor = NWPathMonitor()
         pathMonitor = monitor
-        let semaphore = DispatchSemaphore(value: 0)
         monitor.pathUpdateHandler = { [weak self] path in
             self?.handlePathUpdate(path)
-            semaphore.signal()
-            monitor.pathUpdateHandler = { [weak self] path in
-                self?.handlePathUpdate(path)
-            }
         }
         monitor.start(queue: DispatchQueue.global())
-        semaphore.wait()
     }
 
     private func handlePathUpdate(_ path: NWPath) {

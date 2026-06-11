@@ -251,12 +251,13 @@ Future<void> importSubscription(String url, {String? name}) async {
     throw StateError(t.profiles.subscriptionExists);
   }
 
+  final dir = profilesFullPath;
   final profile = await downloadSubscription(
     url: url,
-    profilesDir: profilesPath,
+    profilesDir: dir,
     name: name,
   );
-  await validateConfigFile(p.join(profilesPath, profile.file));
+  await validateConfigFile(p.join(dir, profile.file));
   final wasEmpty = profiles.value.isEmpty;
   profiles.value = [...profiles.value, profile];
   if (wasEmpty) selectedFile.value = profile.file;

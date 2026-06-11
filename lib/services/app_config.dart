@@ -75,7 +75,7 @@ ThemeMode? _parseThemeMode(String name) {
 }
 
 List<Profile> _filterExistingProfiles(List<Profile> list) {
-  final dir = Directory('${Constants.homeDir.path}${Constants.profilesPath}');
+  final dir = Directory(p.join(Constants.homeDir.path, Constants.profilesDir));
   if (!dir.existsSync()) return [];
   final files = dir.listSync().map((e) => p.basename(e.path)).toSet();
   return list.where((e) => files.contains(e.file)).toList();
@@ -146,7 +146,7 @@ Future<void> checkSubUpdates() async {
 
 /// 下载订阅并替换旧 profile。校验失败时抛出异常。
 Future<Profile> refreshProfile(Profile old) async {
-  final dir = '${Constants.homeDir.path}${Constants.profilesPath}';
+  final dir = p.join(Constants.homeDir.path, Constants.profilesDir);
   final updated = await downloadSubscription(
     url: old.url!,
     profilesDir: dir,
@@ -176,5 +176,5 @@ Profile? get activeProfile {
   return idx >= 0 ? profiles.value[idx] : null;
 }
 
-String get profilesPath =>
-    '${Constants.homeDir.path}${Constants.profilesPath}';
+String get profilesFullPath =>
+    p.join(Constants.homeDir.path, Constants.profilesDir);

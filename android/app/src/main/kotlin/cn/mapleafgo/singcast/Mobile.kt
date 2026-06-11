@@ -59,9 +59,8 @@ object Mobile {
 
     fun startWithContent(content: String, ruleSetProxy: String, onPrepare: (() -> Int)? = null) {
         synchronized(coreLock) {
-            val hasTun = content.contains("tun:") && content.contains("enable: true")
             val tunFd = onPrepare?.invoke() ?: -1
-            AppLog.i(TAG, "startWithContent: content=${content.length} chars, hasTun=$hasTun, tunFd=$tunFd")
+            AppLog.i(TAG, "startWithContent: content=${content.length} chars, tunFd=$tunFd")
             if (tunFd >= 0) {
                 singcast.setTunFd(tunFd)
             }
@@ -129,8 +128,6 @@ object Mobile {
     fun setMemoryLimit(bytes: Long) {
         singcast.setMemoryLimit(bytes)
     }
-
-    fun queryRules(): String = singcast.queryRules()
 
     fun flushSystemDNS() {
         singcast.flushSystemDNS()

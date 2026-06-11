@@ -52,10 +52,11 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy}) async {
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) async {
     await _channel.invokeMethod('startCoreWithContent', {
       'content': content,
       'ruleSetProxy': ruleSetProxy ?? '',
+      'enabledVpn': enabledVpn,
     });
   }
 
