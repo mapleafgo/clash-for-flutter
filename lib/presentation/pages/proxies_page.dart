@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -44,7 +42,6 @@ class _ProxiesPageState extends State<ProxiesPage> {
 
     effect(() {
       final newTags = LibCore.instance.proxiesSignal.value
-          .where((g) => !isUsedProxy(g.tag))
           .map((g) => g.tag)
           .toList();
       if (!listEquals(_cachedTags, newTags)) {
@@ -59,7 +56,6 @@ class _ProxiesPageState extends State<ProxiesPage> {
   void _syncTags() {
     _cachedTags = LibCore.instance.proxiesSignal
         .peek()
-        .where((g) => !isUsedProxy(g.tag))
         .map((g) => g.tag)
         .toList();
   }
@@ -148,13 +144,11 @@ class _ProxiesPageState extends State<ProxiesPage> {
     if (tabController == null) return;
 
     final index = tabController.index;
-    final allGroups = LibCore.instance.proxiesSignal.value;
-    final groups = allGroups.where((g) => !isUsedProxy(g.tag)).toList();
+    final groups = LibCore.instance.proxiesSignal.value;
     if (index >= groups.length) return;
     final group = groups[index];
 
     final tags = group.items
-        .where((item) => !isUsedProxy(item.tag))
         .map((item) => item.tag)
         .toSet();
     if (tags.isEmpty) return;
@@ -331,18 +325,15 @@ class _ProxyList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return l10nBuilder((context) {
-      final group = LibCore.instance.proxiesSignal.value
-          .where((g) => g.tag == groupTag)
-          .firstOrNull;
+      final allGroups = LibCore.instance.proxiesSignal.value;
+      final groupsByTag = {for (final g in allGroups) g.tag: g};
+      final group = groupsByTag[groupTag];
       final selected =
           LibCore.instance.selectedProxySignal.value[groupTag] ?? '';
       final testing = testingTags.value;
       final items = _sortedItems(group?.items ?? []);
 
       final selectable = group?.selectable ?? false;
-      final urlTestSelected = group?.type == 'urltest' && group!.selected.isNotEmpty
-          ? group.selected
-          : null;
       return ListView.builder(
         itemCount: items.length,
         itemBuilder: (_, i) => _ProxyTile(
@@ -353,14 +344,13 @@ class _ProxyList extends StatelessWidget {
           selectable: selectable,
           testing: testing.contains(items[i].tag),
           testingTags: testingTags,
-          urlTestSelected: urlTestSelected,
+          groupsByTag: groupsByTag,
         ),
       );
     });
   }
 
   List<ProxyGroupItem> _sortedItems(List<ProxyGroupItem> items) {
-    items = items.where((item) => !isUsedProxy(item.tag)).toList();
     final delays = LibCore.instance.proxyDelaysSignal.peek();
     switch (_sortType.value) {
       case SortType.name:
@@ -385,7 +375,7 @@ class _ProxyTile extends StatelessWidget {
   final bool testing;
   final String groupName;
   final Signal<Set<String>> testingTags;
-  final String? urlTestSelected;
+  final Map<String, ProxyGroup> groupsByTag;
   const _ProxyTile({
     super.key,
     required this.item,
@@ -394,11 +384,18 @@ class _ProxyTile extends StatelessWidget {
     required this.testing,
     required this.groupName,
     required this.testingTags,
-    this.urlTestSelected,
+    required this.groupsByTag,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 当 item 本身是一个 URLTest 子组时，显示其当前选中节点
+    final subGroup = groupsByTag[item.tag];
+    final urlTestSelected =
+        subGroup?.type == kGroupTypeUrlTest && subGroup!.selected.isNotEmpty
+            ? subGroup.selected
+            : null;
+
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
