@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Binder
@@ -37,10 +38,23 @@ class SingcastVpnService : VpnService() {
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
         private const val TAG = "SingcastVpn"
+        private const val PREFS_NAME = "singcast_vpn_state"
+        private const val KEY_VPN_ACTIVE = "vpn_active"
 
         @Volatile
         var isServiceRunning = false
             private set
+
+        /// 持久化 VPN 活跃状态（覆盖安装后恢复用）
+        private fun prefs(context: Context): SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        fun markVpnActive(context: Context, active: Boolean) {
+            prefs(context).edit().putBoolean(KEY_VPN_ACTIVE, active).apply()
+        }
+
+        fun wasVpnActive(context: Context): Boolean =
+            prefs(context).getBoolean(KEY_VPN_ACTIVE, false)
     }
 
     private val binder = LocalBinder()
@@ -142,6 +156,7 @@ class SingcastVpnService : VpnService() {
                     fd
                 })
                 isServiceRunning = true
+                markVpnActive(this@SingcastVpnService, true)
 
                 // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
                 NetworkMonitor.startMonitoring(this@SingcastVpnService)
@@ -192,6 +207,7 @@ class SingcastVpnService : VpnService() {
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
         Mobile.setVpnService(null)
+        markVpnActive(this, false)
         notificationBuilder = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
