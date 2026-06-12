@@ -235,12 +235,12 @@ class SingcastVpnService : VpnService() {
             Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val disconnectPending = PendingIntent.getService(
             this, 1,
             Intent(this, SingcastVpnService::class.java).apply { action = ACTION_DISCONNECT_NOTIFY },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
