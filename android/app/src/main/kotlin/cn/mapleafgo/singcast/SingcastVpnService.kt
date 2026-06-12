@@ -5,12 +5,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 class SingcastVpnService : VpnService() {
@@ -52,6 +54,17 @@ class SingcastVpnService : VpnService() {
     private var prevUpTotal: Long = 0
     private var prevDownTotal: Long = 0
     private var notificationBuilder: NotificationCompat.Builder? = null
+    /// Flutter 端当前 locale，null = 跟随系统。
+    private var currentLocale: String? = null
+
+    /// 返回适配当前 locale 的 Context，用于 getString() 解析正确的语言资源。
+    private fun localizedContext(): Context {
+        val tag = currentLocale ?: return this
+        val locale = Locale(tag)
+        val config = Configuration(resources.configuration)
+        config.setLocale(locale)
+        return createConfigurationContext(config)
+    }
 
     inner class LocalBinder : Binder() {
         fun getService() = this@SingcastVpnService
@@ -222,10 +235,11 @@ class SingcastVpnService : VpnService() {
     private fun ensureNotificationBuilder(): NotificationCompat.Builder {
         notificationBuilder?.let { return it }
 
+        val ctx = localizedContext()
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, getString(R.string.vpn_notification_channel), NotificationManager.IMPORTANCE_LOW).apply {
-                description = getString(R.string.vpn_notification_channel_desc)
+            NotificationChannel(CHANNEL_ID, ctx.getString(R.string.vpn_notification_channel), NotificationManager.IMPORTANCE_LOW).apply {
+                description = ctx.getString(R.string.vpn_notification_channel_desc)
                 setShowBadge(false)
             }
         )
@@ -247,7 +261,7 @@ class SingcastVpnService : VpnService() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setContentIntent(openPending)
-            .addAction(R.mipmap.ic_launcher, getString(R.string.vpn_disconnect), disconnectPending)
+            .addAction(R.mipmap.ic_launcher, ctx.getString(R.string.vpn_disconnect), disconnectPending)
         return notificationBuilder!!
     }
 
@@ -270,8 +284,11 @@ class SingcastVpnService : VpnService() {
         nm.notify(NOTIFY_ID, buildNotification())
     }
 
-    fun recreateNotification() {
+    /// 根据 Flutter 端传入的 locale 重建通知栏文本。
+    /// locale 为 null 表示跟随系统，直接使用 Service 的默认 Context。
+    fun recreateNotification(locale: String?) {
         notificationBuilder = null
+        currentLocale = locale
         updateNotification()
     }
 
@@ -280,8 +297,9 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun formatTrafficDetail(): String {
-        return "${getString(R.string.vpn_speed)}: ↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s\n" +
-               "${getString(R.string.vpn_traffic)}: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
+        val ctx = localizedContext()
+        return "${ctx.getString(R.string.vpn_speed)}: ↑ ${formatBytes(upSpeed)}/s  ↓ ${formatBytes(downSpeed)}/s\n" +
+               "${ctx.getString(R.string.vpn_traffic)}: ↑ ${formatBytes(lastUpTotal)}  ↓ ${formatBytes(lastDownTotal)}"
     }
 
     private fun formatBytes(bytes: Long): String {

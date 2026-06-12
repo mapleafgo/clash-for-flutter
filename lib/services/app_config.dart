@@ -63,7 +63,9 @@ void initAppConfig() {
     localeVersion.value++;
     // 通知 Android 重建通知栏文本
     if (!Constants.isDesktop) {
-      const MethodChannel('cn.mapleafgo/singcast').invokeMethod('updateNotification');
+      const MethodChannel('cn.mapleafgo/singcast').invokeMethod('updateNotification', {
+        'locale': appLocale.value,
+      });
     }
   });
 }

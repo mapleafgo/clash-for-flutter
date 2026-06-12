@@ -175,7 +175,8 @@ class MainActivity : FlutterFragmentActivity() {
                 result.success(true)
             }
             "updateNotification" -> {
-                vpnService?.recreateNotification()
+                val locale = args?.get("locale") as? String
+                vpnService?.recreateNotification(locale)
                 result.success(null)
             }
 
