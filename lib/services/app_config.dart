@@ -61,8 +61,8 @@ void initAppConfig() {
   // locale 变化时递增 localeVersion，驱动全局 UI 重建
   appLocale.subscribe((_) {
     localeVersion.value++;
-    // 通知 Android 重建通知栏文本
-    if (!Constants.isDesktop) {
+    // 通知 Android 重建通知栏文本（iOS 无前台服务通知栏，不调用）
+    if (Platform.isAndroid) {
       const MethodChannel('cn.mapleafgo/singcast').invokeMethod('updateNotification', {
         'locale': appLocale.value,
       });

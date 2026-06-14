@@ -118,6 +118,16 @@ Future<void> _initApp() async {
       ensureTunEnabled(true);
       _log('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
     }
+
+    // iOS：隧道由系统独立维护（Extension 进程），app 被杀后隧道可能仍在运行。
+    // 主 App 内核状态不反映 VPN，需直接查隧道实时状态同步 UI。
+    // Android 覆盖安装后隧道已死，isVpnRunning=false，不影响上面逻辑。
+    final vpnRunning = await LibCore.instance.isVpnRunning();
+    if (vpnRunning) {
+      vpnConnected.value = true;
+      ensureTunEnabled(true);
+      _log('[startup] VPN tunnel still running, synced vpnConnected=true');
+    }
   } else {
     // 桌面端：LibCore.init() 已通过 syncKernelState 恢复状态
     final syncedState = LibCore.instance.stateSignal.peek();
