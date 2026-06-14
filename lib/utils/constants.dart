@@ -16,6 +16,7 @@ class Constants {
   static const mergedConfigCacheStandby = "cache-standby.yaml";
   static const mergedConfigCacheProxy = "cache-proxy.yaml";
   static const localhost = "127.0.0.1";
+  static const defaultMixedPort = 7890;
   static const logsCapacity = 1000;
 }
 

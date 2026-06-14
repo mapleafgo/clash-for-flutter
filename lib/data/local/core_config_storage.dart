@@ -18,8 +18,10 @@ class CoreConfigStorage {
       return ClashConfig(
         mixedPort: yaml['mixed-port'] as int?,
         allowLan: yaml['allow-lan'] as bool?,
-        mode: null,
-        logLevel: _parseLogLevel(yaml['log-level']),
+        // mode 必须持久化：内核消费配置的 mode 字段作为 default_mode（启动初始模式），
+        // 但内核运行时 SetMode 不写回配置文件，所以持久化由 Flutter 侧负责。
+        mode: _parseEnum(yaml['mode'], Mode.values),
+        logLevel: _parseEnum(yaml['log-level'], LogLevel.values),
         ipv6: yaml['ipv6'] as bool?,
         externalController: yaml['external-controller'] as bool?,
         externalControllerAddr: yaml['external-controller-addr'] as String?,
@@ -45,16 +47,22 @@ class CoreConfigStorage {
     yaml.save();
   }
 
-  static LogLevel? _parseLogLevel(dynamic value) {
+  /// 将字符串解析为枚举值，无法匹配时返回 null。
+  static T? _parseEnum<T extends Enum>(dynamic value, List<T> values) {
     if (value is! String) return null;
-    return LogLevel.values.where((l) => l.name == value).firstOrNull;
+    return values.where((e) => e.name == value).firstOrNull;
   }
 
   static void createDefault() {
+    final file = File(_path);
+    // 仅在配置文件不存在时写入默认值。
+    // writeAsStringSync 默认 FileMode.write 是覆盖写法，若不加守卫会清空
+    // 用户已保存的内核配置，导致每次启动配置"丢失"。
+    if (file.existsSync()) return;
     try {
-      File(_path).writeAsStringSync('mixed-port: 7890\n');
+      file.writeAsStringSync('mixed-port: ${Constants.defaultMixedPort}\n');
     } on FileSystemException catch (_) {
-      // File may already exist from another instance — safe to ignore
+      // 目录不可写或并发创建时忽略
     }
   }
 }
