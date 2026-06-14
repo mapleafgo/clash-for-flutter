@@ -189,14 +189,4 @@ class LibCoreChannel implements LibCorePlatform {
       return false;
     }
   }
-
-  @override
-  Future<bool> wasVpnActive() async {
-    try {
-      return await _channel.invokeMethod<bool>('wasVpnActive') ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
-
 }

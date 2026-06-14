@@ -45,7 +45,6 @@ abstract class LibCorePlatform {
   });
   Future<void> disconnectVpn();
   Future<bool> isVpnRunning();
-  Future<bool> wasVpnActive();
 }
 
 class LibCore {
@@ -481,8 +480,6 @@ class LibCore {
   }
 
   Future<bool> isVpnRunning() => _platform.isVpnRunning();
-
-  Future<bool> wasVpnActive() => _platform.wasVpnActive();
 
   // --- Proxy query helper ---
 

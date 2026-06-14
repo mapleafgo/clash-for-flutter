@@ -117,14 +117,6 @@ Future<void> _initApp() async {
       vpnConnected.value = true;
       ensureTunEnabled(true);
       _log('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
-    } else {
-      // 覆盖安装后进程重建：内核状态不是 running，但 VPN 之前是活跃的
-      // 检查持久化的 VPN 状态，如果之前活跃则恢复 TUN 配置
-      final wasActive = await LibCore.instance.wasVpnActive();
-      if (wasActive) {
-        ensureTunEnabled(true);
-        _log('[startup] restored VPN state from prefs: tunEnabled=true');
-      }
     }
   } else {
     // 桌面端：LibCore.init() 已通过 syncKernelState 恢复状态

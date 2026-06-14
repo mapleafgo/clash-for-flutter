@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Binder
@@ -20,7 +19,6 @@ class SingcastVpnService : VpnService() {
 
     companion object {
         const val ACTION_CONNECT = "cn.mapleafgo.singcast.CONNECT"
-        const val ACTION_DISCONNECT = "cn.mapleafgo.singcast.DISCONNECT"
         const val EXTRA_CONFIG = "configContent"
         const val EXTRA_PROXY = "ruleSetProxy"
         const val EXTRA_IPV6 = "ipv6"
@@ -38,23 +36,10 @@ class SingcastVpnService : VpnService() {
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
         private const val TAG = "SingcastVpn"
-        private const val PREFS_NAME = "singcast_vpn_state"
-        private const val KEY_VPN_ACTIVE = "vpn_active"
 
         @Volatile
         var isServiceRunning = false
             private set
-
-        /// 持久化 VPN 活跃状态（覆盖安装后恢复用）
-        private fun prefs(context: Context): SharedPreferences =
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-        fun markVpnActive(context: Context, active: Boolean) {
-            prefs(context).edit().putBoolean(KEY_VPN_ACTIVE, active).apply()
-        }
-
-        fun wasVpnActive(context: Context): Boolean =
-            prefs(context).getBoolean(KEY_VPN_ACTIVE, false)
     }
 
     private val binder = LocalBinder()
@@ -107,20 +92,15 @@ class SingcastVpnService : VpnService() {
                 AppLog.i(TAG, "onStartCommand: CONNECT config=${config.length} chars, proxy='$proxy', ipv6=$ipv6")
                 connect(config, proxy, ipv6)
             }
-            ACTION_DISCONNECT -> {
-                AppLog.i(TAG, "onStartCommand: DISCONNECT (explicit)")
-                disconnect("explicit_action")
-            }
             ACTION_DISCONNECT_NOTIFY -> {
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (notification button)")
                 val config = lastNonTunConfig
                 val proxy = lastNonTunProxy
                 Thread({
                     disconnect("notification_button")
+                    // disconnect 已 stopCore；有缓存配置则拉起非 VPN 实例
                     if (config != null) {
                         Mobile.startWithContent(config, proxy)
-                    } else {
-                        Mobile.stopCore()
                     }
                     onNotificationDisconnect?.invoke()
                     stopSelf()
@@ -156,7 +136,6 @@ class SingcastVpnService : VpnService() {
                     fd
                 })
                 isServiceRunning = true
-                markVpnActive(this@SingcastVpnService, true)
 
                 // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
                 NetworkMonitor.startMonitoring(this@SingcastVpnService)
@@ -207,9 +186,17 @@ class SingcastVpnService : VpnService() {
         isServiceRunning = false
         NetworkMonitor.stopMonitoring(this)
         Mobile.setVpnService(null)
-        markVpnActive(this, false)
         notificationBuilder = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+        // 停止内核以关闭 TUN fd，撤销 Android VPN 路由。
+        // 仅 stopForeground 不会关 fd：内核仍持有 TUN，VPN 路由残留，
+        // 用户"断开 VPN"后流量仍被劫持，必须 stopCore 才能真正停掉 VPN。
+        // 通知栏断开等需继续代理的场景，由调用方随后 startWithContent 拉起非 VPN 实例。
+        try {
+            Mobile.stopCore()
+        } catch (e: Throwable) {
+            AppLog.e(TAG, "disconnect: stopCore failed", e)
+        }
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
 

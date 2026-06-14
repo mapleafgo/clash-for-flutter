@@ -65,15 +65,6 @@ class MainActivity : FlutterFragmentActivity() {
         AppLog.init(filesDir)
         NetworkMonitor.init(this)
 
-        // 应用重启时停止残留的旧 VPN 服务，防止 TUN 接口残留导致联网失败
-        // 先发 DISCONNECT action 确保服务有机会做完整清理，再 stopService
-        try {
-            startService(Intent(this, SingcastVpnService::class.java).apply {
-                action = SingcastVpnService.ACTION_DISCONNECT
-            })
-        } catch (_: Exception) {}
-        stopService(Intent(this, SingcastVpnService::class.java))
-
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
 
@@ -223,7 +214,6 @@ class MainActivity : FlutterFragmentActivity() {
             "checkConfig" -> safeReply(result) { Mobile.checkConfig(args?.str("content") ?: "") }
             "getVersion" -> safeReply(result) { Mobile.getVersion() }
             "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
-            "wasVpnActive" -> safeReply(result) { SingcastVpnService.wasVpnActive(this@MainActivity) }
             else -> result.notImplemented()
         }
     }
