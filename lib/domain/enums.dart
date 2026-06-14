@@ -7,5 +7,4 @@ enum ProfileType { url, file }
 enum SortType { defaults, name, delay }
 
 // sing-box outbound group types (constant/proxy.go)
-const kGroupTypeSelector = 'selector';
 const kGroupTypeUrlTest = 'urltest';

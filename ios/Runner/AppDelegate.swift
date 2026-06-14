@@ -241,12 +241,6 @@ class AppDelegate: FlutterAppDelegate {
                 let status = (managers?.first?.connection as? NETunnelProviderSession)?.status ?? .invalid
                 result(status == .connected)
             }
-        case "updateVpnStats":
-            result(nil)
-
-        // --- Platform (iOS no-ops) ---
-        case "requestNotificationPermission":
-            result(nil)
 
         default:
             result(FlutterMethodNotImplemented)

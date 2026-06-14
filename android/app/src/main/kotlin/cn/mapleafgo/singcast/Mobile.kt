@@ -145,12 +145,6 @@ object Mobile {
         singcast.triggerGC()
     }
 
-    // --- Platform ---
-
-    fun setIncludeAllNetworks(v: Boolean) {
-        singcast.setIncludeAllNetworks(v)
-    }
-
     // --- Utilities ---
 
     fun checkConfig(content: String): String {
@@ -168,11 +162,6 @@ object Mobile {
     fun updateDefaultInterface(name: String, index: Long, metered: Boolean) {
         singcast.updateDefaultInterface(name, index, metered)
     }
-
-    // --- Network (delegated to NetworkMonitor) ---
-
-    fun unregisterDefaultNetworkCallback(context: android.content.Context) =
-        NetworkMonitor.stopMonitoring(context)
 
     // --- Callbacks ---
 
