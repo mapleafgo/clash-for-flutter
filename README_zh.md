@@ -18,8 +18,10 @@ Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://git
 
 支持 **Windows**、**Linux**、**macOS** 和 **Android**。
 
+**iOS** 暂不支持。
+
 - **桌面端**：内核以独立特权进程运行，通过 JSON-RPC（IPC）与 UI 通信，确保界面稳定可靠。
-- **移动端**：内核以原生库形式通过 FFI 加载，与平台 VPN 服务深度集成。
+- **移动端**：内核以原生库形式通过 FFI 加载，与平台 VPN 服务深度集成（暂不支持 iOS）。
 - **TUN 模式**：透明代理，自动管理路由，无需手动配置系统代理。
 
 > [使用说明](https://mapleafgo.github.io/singcast)
@@ -69,8 +71,7 @@ sudo apt-get install libayatana-appindicator3
    macos/Frameworks/singcast-core
 
    # 移动端 (FFI 原生库)
-   android/app/libs/libsingcast.aar
-   ios/Frameworks/libsingcast-darwin.xcframework
+    android/app/libs/libsingcast.aar
    ```
 
 3. 编译运行
