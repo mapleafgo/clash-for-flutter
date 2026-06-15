@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -106,8 +107,24 @@ Future<void> _initApp() async {
   initAppConfig();
   _log('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
 
-  // 移动端：引擎重建恢复时内核可能仍在运行，同步真实状态
-  if (!Constants.isDesktop) {
+  if (Platform.isIOS) {
+    // iOS：内核跑在 Extension 进程，主 App 是 RPC 客户端。
+    // 先查隧道是否在跑，在跑才连 RPC socket 再同步内核状态。
+    final vpnRunning = await LibCore.instance.isVpnRunning();
+    if (vpnRunning) {
+      await LibCore.instance.connectIpc();
+      await LibCore.instance.syncKernelState();
+      vpnConnected.value = true;
+      ensureTunEnabled(true);
+      _log(
+        '[startup] iOS tunnel running: RPC connected, synced '
+        'state=${LibCore.instance.stateSignal.peek()}',
+      );
+    } else {
+      _log('[startup] iOS tunnel not running, RPC deferred');
+    }
+  } else if (!Constants.isDesktop) {
+    // Android：内核在本进程，引擎重建恢复时内核可能仍在运行，同步真实状态
     await LibCore.instance.syncKernelState();
     final syncedState = LibCore.instance.stateSignal.peek();
     _log(
@@ -119,8 +136,6 @@ Future<void> _initApp() async {
       _log('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
     }
 
-    // iOS：隧道由系统独立维护（Extension 进程），app 被杀后隧道可能仍在运行。
-    // 主 App 内核状态不反映 VPN，需直接查隧道实时状态同步 UI。
     // Android 覆盖安装后隧道已死，isVpnRunning=false，不影响上面逻辑。
     final vpnRunning = await LibCore.instance.isVpnRunning();
     if (vpnRunning) {

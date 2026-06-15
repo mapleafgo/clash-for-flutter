@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -11,6 +12,7 @@ import '../domain/proxy_group.dart';
 import '../utils/constants.dart';
 import '../utils/log_file.dart';
 import 'ipc_worker.dart';
+import 'ios_vpn_bridge.dart';
 import 'lib_core_channel.dart';
 import 'service_manager.dart';
 
@@ -125,7 +127,19 @@ class LibCore {
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
+    } else if (Platform.isIOS) {
+      // iOS:内核跑在 Network Extension,主 App 是纯 RPC 客户端。
+      // VPN 生命周期走 MethodChannel,运行时控制复用桌面 RPC。
+      // RPC 连接延迟到 main.dart 确认隧道 running 后(见 connectIpc)。
+      final bridge = IosVpnBridge();
+      final socketPath = await bridge.appGroupSocketPath();
+      _ipcWorker = IpcWorker(ipcPath: socketPath);
+      _ipcWorker!.onCallback = _handleWorkerCallback;
+      _ipcWorker!.onDisconnect = _onIpcDisconnected;
+      bridge.wireInto(_ipcWorker!, onVpnDisconnected: _onVpnDisconnected);
+      _platform = _ipcWorker!;
     } else {
+      // Android:内核在本进程 FFI
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
       channel.onVpnDisconnected = _onVpnDisconnected;
@@ -133,6 +147,17 @@ class LibCore {
       await _platform.init();
     }
     await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
+  }
+
+  /// iOS:连接 Extension 内核的 RPC socket。
+  ///
+  /// 隧道运行时由 main.dart 冷启动恢复调用。带重试以等待 Extension 开启 socket。
+  /// 桌面/Android 不使用(桌面在 init 内连,Android 走 FFI)。
+  Future<void> connectIpc() async {
+    if (_ipcWorker == null) return;
+    if (!await _connectWithRetry(attempts: 20)) {
+      throw StateError('Failed to connect to Extension RPC socket');
+    }
   }
 
   Future<void> dispose() async {
@@ -154,6 +179,19 @@ class LibCore {
 
   Future<void> _attemptReconnect() async {
     if (_disposed || _reconnecting) return;
+    // 移动端无独立内核进程:iOS 内核跑在 Extension、Android 走本进程 FFI,
+    // _serviceManager 仅桌面 init() 创建(为 null)。桌面端的进程重启逻辑在此
+    // 不适用 —— 直接走到 `_serviceManager!.stop()` 会解引用 null 而崩溃。
+    // iOS RPC 断开通常意味着 VPN 停止(Extension 退出);不自动重连,等用户
+    // 重新开 VPN 时由 connectVpn → connectIpc 恢复。
+    if (!Constants.isDesktop) {
+      LogFileWriter.instance?.log(
+        'IPC disconnected; awaiting reconnect via VPN toggle',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
+      return;
+    }
     _reconnecting = true;
     _heartbeatTimer?.cancel();
 
@@ -473,6 +511,25 @@ class LibCore {
       ruleSetProxy: ruleSetProxy,
       ipv6: ipv6,
     );
+    // iOS:隧道开启后 Extension 已起 RPC socket,主 App 连上以恢复运行时控制。
+    // 冷启动恢复时 main.dart 已连过,此处先断旧连接再重连(幂等);首次开 VPN 时
+    // 这是 RPC 连接的唯一入口 —— 不连则 queryProxies 失败、代理页空白。
+    if (Platform.isIOS) {
+      try {
+        await _ipcWorker?.disconnect();
+      } catch (_) {}
+      try {
+        await connectIpc();
+        await syncKernelState();
+      } catch (e) {
+        // 隧道已成功开启,RPC 连接 Extension socket 失败不阻断 connectVpn。
+        LogFileWriter.instance?.log(
+          'connectIpc after VPN start failed: $e',
+          level: LogLevel.warning,
+          name: 'ipc',
+        );
+      }
+    }
   }
 
   Future<void> disconnectVpn() async {

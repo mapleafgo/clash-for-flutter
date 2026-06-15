@@ -1,45 +1,19 @@
 import UIKit
 import Flutter
-import Singcast
 import NetworkExtension
 
-// MARK: - Kernel callback handler
-
-class SingcastCallbackHandler: NSObject, FfiEventListener {
-    private let channel: FlutterMethodChannel
-    init(channel: FlutterMethodChannel) { self.channel = channel; super.init() }
-
-    func onEvent(_ eventType: Int32, json: String?) {
-        DispatchQueue.main.async {
-            self.channel.invokeMethod("onEvent", arguments: [
-                "eventType": Int(eventType), "payload": json ?? ""
-            ])
-        }
-    }
-}
-
-// MARK: - gomobile provider adapters
-
-class InterfaceProviderAdapter: NSObject, FfiInterfaceProvider {
-    func GetInterfaces() -> String {
-        return InterfaceReporter.getInterfacesJSON()
-    }
-}
-
-class WiFiStateProviderAdapter: NSObject, FfiWiFiStateProvider {
-    func GetWiFiState() -> String {
-        return InterfaceReporter.getWiFiStateJSON()
-    }
-}
+// iOS VPN-only 架构:内核跑在 Network Extension 进程,主 App 是纯 RPC 客户端。
+// 主 App 不再持有 FfiSingcast 实例,只负责:
+//   1. VPN 生命周期(connect/disconnect/isVpnRunning)— 原生 NETunnelProviderManager
+//   2. 内核 reload(reloadCore)— 转发到 Extension 本地 SetTunFd + StartWithContent
+//   3. 暴露 App Group 容器路径(getAppGroupPath)— 供 Dart 连 RPC socket
+// 运行时控制(查询/切节点/测延迟/切模式)由 Dart 侧 IpcWorker 直连 RPC,不经此 channel。
 
 @main
 class AppDelegate: FlutterAppDelegate {
 
-    private let singcast = FfiSingcast()
     private var vpnConnected = false
-    private let bgQueue = DispatchQueue(label: "cn.mapleafgo.singcast.core", qos: .userInitiated)
     private var methodChannel: FlutterMethodChannel!
-    private var callbackHandler: SingcastCallbackHandler?
 
     override func application(
         _ application: UIApplication,
@@ -57,19 +31,12 @@ class AppDelegate: FlutterAppDelegate {
             self.handle(call: call, result: result)
         }
 
-        callbackHandler = SingcastCallbackHandler(channel: methodChannel)
-        singcast.setOnEvent(callbackHandler)
-
-        // 注册按需回调 provider（内核通过回调获取网络接口和 WiFi 状态）
-        singcast.setInterfaceProvider(InterfaceProviderAdapter())
-        singcast.setWiFiStateProvider(WiFiStateProviderAdapter())
-
         NotificationCenter.default.addObserver(
             self, selector: #selector(vpnStatusDidChange),
             name: .NEVPNStatusDidChange, object: nil
         )
 
-        // 查询 VPN 真实状态（app 被杀时隧道可能仍在运行）
+        // 查询 VPN 真实状态(app 被杀时隧道可能仍在运行)
         NETunnelProviderManager.loadAllFromPreferences { managers, _ in
             let status = (managers?.first?.connection as? NETunnelProviderSession)?.status ?? .invalid
             self.vpnConnected = (status == .connected)
@@ -97,138 +64,11 @@ class AppDelegate: FlutterAppDelegate {
         let args = call.arguments as? [String: Any] ?? [:]
 
         switch call.method {
-        // --- Lifecycle ---
-        case "initCore":
-            runAsync(result: result) {
-                let state = self.singcast.state()
-                if state != "created" && state != "destroyed" {
-                    return
-                }
-                try self.singcast.init_(args["optionsJSON"] as? String ?? "")
-            }
-        case "startCoreWithContent":
-            let content = args["content"] as? String ?? ""
-            let proxy = args["ruleSetProxy"] as? String ?? ""
-            if vpnConnected {
-                reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
-            } else {
-                runAsync(result: result) {
-                    try self.singcast.startWithContent(content, ruleSetProxy: proxy)
-                }
-            }
-        case "stopCore":
-            bgQueue.async {
-                self.singcast.stop()
-                DispatchQueue.main.async { result(nil) }
-            }
+        // --- App Group ---
+        case "getAppGroupPath":
+            result(Self.appGroupContainerPath())
 
-        // --- Queries ---
-        case "queryProxies":
-            bgQueue.async {
-                let json = self.singcast.queryProxies()
-                DispatchQueue.main.async { result(json) }
-            }
-        case "queryConnections":
-            bgQueue.async {
-                let json = self.singcast.queryConnections()
-                DispatchQueue.main.async { result(json) }
-            }
-        case "queryMode":
-            bgQueue.async {
-                let json = self.singcast.queryMode()
-                DispatchQueue.main.async { result(json) }
-            }
-        case "queryState":
-            bgQueue.async {
-                let state = self.singcast.state()
-                DispatchQueue.main.async { result(state) }
-            }
-
-        // --- Proxy Control ---
-        case "selectProxy":
-            runAsync(result: result) {
-                try self.singcast.selectProxy(args["group"] as? String ?? "", tag: args["tag"] as? String ?? "")
-            }
-        case "testDelay":
-            let name = args["name"] as? String ?? ""
-            let timeoutMs = args["timeoutMs"] as? Int32 ?? 3000
-            bgQueue.async {
-                let delay = self.singcast.testDelay(name, timeoutMs: timeoutMs)
-                DispatchQueue.main.async { result(delay) }
-            }
-        case "testGroupDelay":
-            let group = args["group"] as? String ?? ""
-            let timeoutMs = args["timeoutMs"] as? Int32 ?? 3000
-            bgQueue.async {
-                let json = self.singcast.testGroupDelay(group, timeoutMs: timeoutMs)
-                DispatchQueue.main.async { result(json) }
-            }
-        case "setMode":
-            runAsync(result: result) {
-                try self.singcast.setMode(args["mode"] as? String ?? "")
-            }
-        case "setGroupExpand":
-            runAsync(result: result) {
-                try self.singcast.setGroupExpand(args["group"] as? String ?? "", expand: args["expand"] as? Bool ?? false)
-            }
-
-        // --- Connection Management ---
-        case "closeConnection":
-            runAsync(result: result) {
-                try self.singcast.closeConnection(args["id"] as? String ?? "")
-            }
-        case "closeAllConnections":
-            runAsync(result: result) {
-                try self.singcast.closeAllConnections()
-            }
-
-        // --- Logging / Memory ---
-        case "setLogLevel":
-            bgQueue.async {
-                self.singcast.setLogLevel(args["level"] as? Int32 ?? 4)
-                DispatchQueue.main.async { result(nil) }
-            }
-        case "setMemoryLimit":
-            bgQueue.async {
-                self.singcast.setMemoryLimit(args["bytes"] as? Int64 ?? 0)
-                DispatchQueue.main.async { result(nil) }
-            }
-        case "flushSystemDNS":
-            bgQueue.async {
-                self.singcast.flushSystemDNS()
-                DispatchQueue.main.async { result(nil) }
-            }
-        case "flushFakeIP":
-            runAsync(result: result) {
-                try self.singcast.flushFakeIP()
-            }
-        case "flushDNSCache":
-            runAsync(result: result) {
-                try self.singcast.flushDNSCache()
-            }
-        case "triggerGC":
-            bgQueue.async {
-                self.singcast.triggerGC()
-                DispatchQueue.main.async { result(nil) }
-            }
-
-        // --- Utilities ---
-        case "checkConfig":
-            bgQueue.async {
-                do {
-                    try self.singcast.checkConfig(args["content"] as? String ?? "")
-                    DispatchQueue.main.async { result("") }
-                } catch {
-                    DispatchQueue.main.async { result(error.localizedDescription) }
-                }
-            }
-        case "getVersion":
-            bgQueue.async {
-                let version = self.singcast.version()
-                DispatchQueue.main.async { result(version) }
-            }
-
-        // --- VPN ---
+        // --- VPN lifecycle ---
         case "connectVpn":
             let config = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
@@ -242,21 +82,27 @@ class AppDelegate: FlutterAppDelegate {
                 result(status == .connected)
             }
 
+        // --- Kernel reload (Extension-local: SetTunFd + StartWithContent) ---
+        // 裸 RPC core.startWithContent 会因 tunFd 已被消费而失败,故经 sendProviderMessage
+        // 让 Extension 本地重新 SetTunFd 再重启内核。
+        case "reloadCore":
+            let content = args["configContent"] as? String ?? ""
+            let proxy = args["ruleSetProxy"] as? String ?? ""
+            let enabledVpn = args["enabledVpn"] as? Bool ?? false
+            reloadTunnel(configContent: content, ruleSetProxy: proxy, enabledVpn: enabledVpn, result: result)
+
         default:
             result(FlutterMethodNotImplemented)
         }
     }
 
-    /// Run a blocking operation on a background queue, then post the result back to the main thread.
-    private func runAsync(result: @escaping FlutterResult, block: @escaping () throws -> Void) {
-        bgQueue.async {
-            do {
-                try block()
-                DispatchQueue.main.async { result(nil) }
-            } catch {
-                DispatchQueue.main.async { result(FlutterError(code: "CORE_ERROR", message: error.localizedDescription, details: nil)) }
-            }
-        }
+    // MARK: - App Group
+
+    /// App Group 共享容器路径。主 App 与 Extension 解析到同一容器,RPC socket 落此。
+    static func appGroupContainerPath() -> String? {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.cn.mapleafgo.singcast"
+        )?.path
     }
 
     // MARK: - Network Extension
@@ -303,7 +149,7 @@ class AppDelegate: FlutterAppDelegate {
         }
     }
 
-    private func reloadTunnel(configContent: String, ruleSetProxy: String, result: @escaping FlutterResult) {
+    private func reloadTunnel(configContent: String, ruleSetProxy: String, enabledVpn: Bool, result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, _ in
             guard let session = managers?.first?.connection as? NETunnelProviderSession else {
                 result(FlutterError(code: "TUNNEL_ERROR", message: "No active tunnel session", details: nil))
@@ -317,8 +163,20 @@ class AppDelegate: FlutterAppDelegate {
                 result(FlutterError(code: "TUNNEL_ERROR", message: "Failed to serialize config", details: nil))
                 return
             }
-            session.sendProviderMessage(data) { _ in
-                result(nil)
+            session.sendProviderMessage(data) { response in
+                // 解析 Extension 回传的 reload 结果;失败透传 FlutterError 让 Dart 感知。
+                guard let response = response,
+                      let json = try? JSONSerialization.jsonObject(with: response) as? [String: Any],
+                      let ok = json["ok"] as? Bool else {
+                    result(FlutterError(code: "RELOAD_ERROR", message: "Extension 未响应 reload 结果", details: nil))
+                    return
+                }
+                if ok {
+                    result(nil)
+                } else {
+                    let msg = (json["error"] as? String) ?? "reload 失败"
+                    result(FlutterError(code: "RELOAD_ERROR", message: msg, details: nil))
+                }
             }
         }
     }

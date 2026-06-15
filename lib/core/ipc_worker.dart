@@ -24,6 +24,18 @@ class IpcWorker implements LibCorePlatform {
 
   final String ipcPath;
 
+  /// VPN lifecycle hooks, injected on mobile RPC platforms (iOS) where the
+  /// kernel runs in a Network Extension and VPN is driven via MethodChannel.
+  /// Null on desktop → connectVpn/disconnectVpn throw UnsupportedError.
+  Future<void> Function(String configContent, {String? ruleSetProxy, bool? ipv6})? connectVpnImpl;
+  Future<void> Function()? disconnectVpnImpl;
+  Future<bool> Function()? isVpnRunningImpl;
+
+  /// 内核启动/重启钩子,注入于内核需重新 SetTunFd 的平台(iOS)。
+  /// iOS 上裸 RPC core.startWithContent 会因 tunFd 已被消费而失败,故走
+  /// MethodChannel 让 Extension 本地 SetTunFd + StartWithContent。null → RPC。
+  Future<void> Function(String content, {String? ruleSetProxy, bool enabledVpn})? startCoreWithContentImpl;
+
   IpcWorker({required this.ipcPath});
 
   Future<void> connect() async {
@@ -105,11 +117,16 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) =>
-      _call('core.startWithContent', {
-        'content': content,
-        'rule_set_proxy': ruleSetProxy ?? '',
-      });
+  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) {
+    final impl = startCoreWithContentImpl;
+    if (impl != null) {
+      return impl(content, ruleSetProxy: ruleSetProxy, enabledVpn: enabledVpn);
+    }
+    return _call('core.startWithContent', {
+      'content': content,
+      'rule_set_proxy': ruleSetProxy ?? '',
+    });
+  }
 
   @override
   Future<void> stopCore() => _call('core.stop');
@@ -221,16 +238,26 @@ class IpcWorker implements LibCorePlatform {
     String? ruleSetProxy,
     bool? ipv6,
   }) {
+    final impl = connectVpnImpl;
+    if (impl != null) {
+      return impl(configContent, ruleSetProxy: ruleSetProxy, ipv6: ipv6);
+    }
     throw UnsupportedError('connectVpn is only available on mobile platforms');
   }
 
   @override
   Future<void> disconnectVpn() {
+    final impl = disconnectVpnImpl;
+    if (impl != null) return impl();
     throw UnsupportedError('disconnectVpn is only available on mobile platforms');
   }
 
   @override
-  Future<bool> isVpnRunning() async => false;
+  Future<bool> isVpnRunning() {
+    final impl = isVpnRunningImpl;
+    if (impl != null) return impl();
+    return Future.value(false);
+  }
 
   Future<dynamic> _call(String method, [Map<String, dynamic>? params]) {
     if (_client == null || !_client!.isConnected) {

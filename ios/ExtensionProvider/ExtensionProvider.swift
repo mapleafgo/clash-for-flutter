@@ -39,10 +39,28 @@ class ExtensionProvider: NEPacketTunnelProvider {
             throw ExtensionError.tunnelSetupFailed
         }
 
+        // 初始化内核 home_dir(App Group 容器):日志/缓存/FakeIP 持久化目录。
+        // 幂等:仅 created 态初始化(VPN 断再连复用同一 provider 实例时不重复 init)。
+        // 不调则 home_dir 默认到 Extension 进程 cwd(常不可写),持久化异常。
+        if singcast.state() == "created", let home = Self.appGroupContainerPath() {
+            // 用 JSONSerialization 构造,避免手拼转义(与 handleAppMessage 解析侧对称)。
+            // JSONSerialization.data 必产出合法 UTF8,String 转换确定成功。
+            let data = try JSONSerialization.data(withJSONObject: ["home_dir": home])
+            try singcast.init_(String(data: data, encoding: .utf8)!)
+            // RPC server 与内核 init 一起启停:内核初始化后立即开放 RPC 接口。
+            if let rpcPath = Self.appGroupSocketPath() {
+                try singcast.startIpcServer(rpcPath)
+            }
+        }
         singcast.setTunFd(dup(rawFd))
         registerProviders()
         try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
         startDefaultInterfaceMonitor()
+    }
+
+    deinit {
+        // 内核销毁前关闭 IPC server。
+        singcast.stopIpcServer()
     }
 
     override func stopTunnel(with reason: NEProviderStopReason) async {
@@ -53,17 +71,30 @@ class ExtensionProvider: NEPacketTunnelProvider {
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
         guard let payload = try? JSONSerialization.jsonObject(with: messageData) as? [String: String],
               let configContent = payload["configContent"] else {
-            completionHandler?(nil)
+            completionHandler?(Self.encodeReloadResult(error: "invalid config payload"))
             return
         }
         let ruleSetProxy = payload["ruleSetProxy"] ?? ""
 
-        // Kernel closes the fd during hot reload; dup so packetFlow's original stays valid.
+        // VPN 断开时可能没有 TUN fd，以非 TUN 模式热重载内核。
+        // VPN 运行时提取 TUN fd 并设置。
         if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
             singcast.setTunFd(dup(tunFd))
         }
-        try? singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
-        completionHandler?(nil)
+        // 不再用 try? 吞错:reload 失败(fd 提取失败致 tunFd=0、或配置非法)回传给主 App,
+        // 让 Dart 侧感知并提示用户,而非静默停在旧配置/空白页。
+        do {
+            try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
+            completionHandler?(Self.encodeReloadResult())
+        } catch {
+            completionHandler?(Self.encodeReloadResult(error: "\(error)"))
+        }
+    }
+
+    /// 序列化 reload 结果回传主 App(成功 {"ok":true};失败 {"ok":false,"error":"…"})。
+    private static func encodeReloadResult(error: String? = nil) -> Data {
+        let obj: [String: Any] = error.map { ["ok": false, "error": $0] } ?? ["ok": true]
+        return (try? JSONSerialization.data(withJSONObject: obj)) ?? Data()
     }
 
     // MARK: - Provider registration
@@ -71,6 +102,21 @@ class ExtensionProvider: NEPacketTunnelProvider {
     private func registerProviders() {
         singcast.setInterfaceProvider(InterfaceProviderAdapter())
         singcast.setWiFiStateProvider(WiFiStateProviderAdapter())
+    }
+
+    // MARK: - App Group RPC socket
+
+    /// App Group 共享容器根目录。主 App 与 Extension 解析到同一容器。
+    private static func appGroupContainerPath() -> String? {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.cn.mapleafgo.singcast"
+        )?.path
+    }
+
+    /// App Group 共享容器里的 RPC socket 路径(容器根下 command.sock)。
+    private static func appGroupSocketPath() -> String? {
+        guard let container = appGroupContainerPath() else { return nil }
+        return (container as NSString).appendingPathComponent("command.sock")
     }
 
     // MARK: - TUN fd extraction
