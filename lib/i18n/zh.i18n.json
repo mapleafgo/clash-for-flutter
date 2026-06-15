@@ -17,7 +17,9 @@
     "waitingCore": "等待内核就绪",
     "pleaseAddProfile": "请先添加配置",
     "enable": "开启",
-    "copy": "复制"
+    "copy": "复制",
+    "vpnNotConnected": "VPN 未连接",
+    "connectVpnHint": "代理功能仅在 VPN 连接后可用"
   },
   "mode": {
     "rule": "规则",

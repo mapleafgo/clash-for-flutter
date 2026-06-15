@@ -119,6 +119,12 @@ class Translations$home$zh {
 
 	/// zh: '复制'
 	String get copy => '复制';
+
+	/// zh: 'VPN 未连接'
+	String get vpnNotConnected => 'VPN 未连接';
+
+	/// zh: '代理功能仅在 VPN 连接后可用'
+	String get connectVpnHint => '代理功能仅在 VPN 连接后可用';
 }
 
 // Path: mode
@@ -679,6 +685,8 @@ extension on Translations {
 			'home.pleaseAddProfile' => '请先添加配置',
 			'home.enable' => '开启',
 			'home.copy' => '复制',
+			'home.vpnNotConnected' => 'VPN 未连接',
+			'home.connectVpnHint' => '代理功能仅在 VPN 连接后可用',
 			'mode.rule' => '规则',
 			'mode.global' => '全局',
 			'mode.direct' => '直连',

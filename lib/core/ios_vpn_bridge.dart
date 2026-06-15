@@ -61,10 +61,9 @@ class IosVpnBridge {
 
   /// 重载内核配置:走 Extension 本地路径(SetTunFd + StartWithContent)。
   /// iOS 上裸 RPC core.startWithContent 会因 tunFd 已被消费而失败。
-  Future<void> _reloadCore(String content, {String? ruleSetProxy, bool enabledVpn = false}) =>
+  Future<void> _reloadCore(String content, {String? ruleSetProxy}) =>
       _channel.invokeMethod('reloadCore', {
         'configContent': content,
         'ruleSetProxy': ruleSetProxy ?? '',
-        'enabledVpn': enabledVpn,
       });
 }

@@ -17,7 +17,9 @@
     "waitingCore": "Waiting for core...",
     "pleaseAddProfile": "Add a profile first",
     "enable": "Enable",
-    "copy": "Copy"
+    "copy": "Copy",
+    "vpnNotConnected": "VPN Not Connected",
+    "connectVpnHint": "Proxies are only available when VPN is connected"
   },
   "mode": {
     "rule": "Rule",

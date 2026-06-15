@@ -88,8 +88,7 @@ class AppDelegate: FlutterAppDelegate {
         case "reloadCore":
             let content = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
-            let enabledVpn = args["enabledVpn"] as? Bool ?? false
-            reloadTunnel(configContent: content, ruleSetProxy: proxy, enabledVpn: enabledVpn, result: result)
+            reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
 
         default:
             result(FlutterMethodNotImplemented)
@@ -149,7 +148,7 @@ class AppDelegate: FlutterAppDelegate {
         }
     }
 
-    private func reloadTunnel(configContent: String, ruleSetProxy: String, enabledVpn: Bool, result: @escaping FlutterResult) {
+    private func reloadTunnel(configContent: String, ruleSetProxy: String, result: @escaping FlutterResult) {
         NETunnelProviderManager.loadAllFromPreferences { managers, _ in
             guard let session = managers?.first?.connection as? NETunnelProviderSession else {
                 result(FlutterError(code: "TUNNEL_ERROR", message: "No active tunnel session", details: nil))

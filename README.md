@@ -16,10 +16,11 @@
 
 Singcast is an open-source multi-platform proxy client built with Flutter and powered by a customized [sing-box](https://github.com/SagerNet/sing-box) core. It supports Clash subscription links and configuration files out of the box — just import and go.
 
-Available on **Windows**, **Linux**, **macOS**, and **Android**.
+Available on **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
 
 - **Desktop**: Core runs as an independent privileged process communicating via JSON-RPC (IPC), keeping the UI sandboxed and stable.
-- **Mobile**: Core is loaded as a native library via FFI, integrated tightly with the platform VPN service.
+- **Android**: Core is loaded as a native library via FFI, integrated with Android VPN service.
+- **iOS**: Core runs in a Network Extension process, with main app acting as a pure RPC client via App Group socket. See [Architecture](docs/architecture.md) for details.
 - **TUN mode**: Transparent proxy with automatic route management — no manual system proxy setup needed.
 
 > [Documentation](https://mapleafgo.github.io/singcast)

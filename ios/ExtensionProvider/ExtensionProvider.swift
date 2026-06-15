@@ -40,17 +40,22 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
 
         // 初始化内核 home_dir(App Group 容器):日志/缓存/FakeIP 持久化目录。
-        // 幂等:仅 created 态初始化(VPN 断再连复用同一 provider 实例时不重复 init)。
-        // 不调则 home_dir 默认到 Extension 进程 cwd(常不可写),持久化异常。
-        if singcast.state() == "created", let home = Self.appGroupContainerPath() {
-            // 用 JSONSerialization 构造,避免手拼转义(与 handleAppMessage 解析侧对称)。
-            // JSONSerialization.data 必产出合法 UTF8,String 转换确定成功。
-            let data = try JSONSerialization.data(withJSONObject: ["home_dir": home])
-            try singcast.init_(String(data: data, encoding: .utf8)!)
-            // RPC server 与内核 init 一起启停:内核初始化后立即开放 RPC 接口。
-            if let rpcPath = Self.appGroupSocketPath() {
-                try singcast.startIpcServer(rpcPath)
-            }
+        // 每次 startTunnel 系统都会创建新的 ExtensionProvider 实例，singcast 也是新创建的。
+        guard let home = Self.appGroupContainerPath() else {
+            throw ExtensionError.missingHomeDir
+        }
+        let data = try JSONSerialization.data(withJSONObject: ["home_dir": home])
+        guard let jsonStr = String(data: data, encoding: .utf8) else {
+            throw NSError(
+                domain: "ExtensionProvider",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to encode home_dir to UTF-8"]
+            )
+        }
+        try singcast.init_(jsonStr)
+        // RPC server 与内核 init 一起启停:内核初始化后立即开放 RPC 接口。
+        if let rpcPath = Self.appGroupSocketPath() {
+            try singcast.startIpcServer(rpcPath)
         }
         singcast.setTunFd(dup(rawFd))
         registerProviders()
@@ -58,14 +63,10 @@ class ExtensionProvider: NEPacketTunnelProvider {
         startDefaultInterfaceMonitor()
     }
 
-    deinit {
-        // 内核销毁前关闭 IPC server。
-        singcast.stopIpcServer()
-    }
-
     override func stopTunnel(with reason: NEProviderStopReason) async {
         stopDefaultInterfaceMonitor()
-        try? singcast.stop()
+        // 内核随 Extension 进程同生命周期：VPN 停止时彻底销毁内核，释放所有资源
+        singcast.destroy()
     }
 
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
@@ -76,13 +77,14 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
         let ruleSetProxy = payload["ruleSetProxy"] ?? ""
 
-        // VPN 断开时可能没有 TUN fd，以非 TUN 模式热重载内核。
-        // VPN 运行时提取 TUN fd 并设置。
-        if let tunFd = extractTunFd() ?? getTunnelFileDescriptor() {
-            singcast.setTunFd(dup(tunFd))
+        // Extension 进程存活意味着 VPN 已开启，TUN fd 一定可用
+        guard let tunFd = extractTunFd() ?? getTunnelFileDescriptor() else {
+            // 理论上不会走到这里，除非系统异常
+            completionHandler?(Self.encodeReloadResult(error: "TUN fd extraction failed"))
+            return
         }
-        // 不再用 try? 吞错:reload 失败(fd 提取失败致 tunFd=0、或配置非法)回传给主 App,
-        // 让 Dart 侧感知并提示用户,而非静默停在旧配置/空白页。
+        
+        singcast.setTunFd(dup(tunFd))
         do {
             try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
             completionHandler?(Self.encodeReloadResult())
@@ -177,6 +179,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
 enum ExtensionError: Error {
     case missingConfig
     case tunnelSetupFailed
+    case missingHomeDir
 }
 
 // MARK: - gomobile provider adapters

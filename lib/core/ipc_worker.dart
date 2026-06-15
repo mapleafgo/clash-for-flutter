@@ -34,7 +34,7 @@ class IpcWorker implements LibCorePlatform {
   /// 内核启动/重启钩子,注入于内核需重新 SetTunFd 的平台(iOS)。
   /// iOS 上裸 RPC core.startWithContent 会因 tunFd 已被消费而失败,故走
   /// MethodChannel 让 Extension 本地 SetTunFd + StartWithContent。null → RPC。
-  Future<void> Function(String content, {String? ruleSetProxy, bool enabledVpn})? startCoreWithContentImpl;
+  Future<void> Function(String content, {String? ruleSetProxy})? startCoreWithContentImpl;
 
   IpcWorker({required this.ipcPath});
 
@@ -120,7 +120,7 @@ class IpcWorker implements LibCorePlatform {
   Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) {
     final impl = startCoreWithContentImpl;
     if (impl != null) {
-      return impl(content, ruleSetProxy: ruleSetProxy, enabledVpn: enabledVpn);
+      return impl(content, ruleSetProxy: ruleSetProxy);
     }
     return _call('core.startWithContent', {
       'content': content,

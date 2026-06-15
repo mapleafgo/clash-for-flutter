@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -8,9 +10,9 @@ import 'package:singcast/domain/proxy_group.dart';
 import 'package:singcast/presentation/widgets/animated_fab.dart';
 import 'package:singcast/presentation/widgets/empty_state.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
+import 'package:singcast/services/app_config.dart';
 import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/log_file.dart';
-import 'package:singcast/services/app_config.dart';
 
 final _sortType = signal(SortType.defaults);
 
@@ -69,6 +71,22 @@ class _ProxiesPageState extends State<ProxiesPage> {
   @override
   Widget build(BuildContext context) {
     localeVersion.value; // rebuild on locale change
+    
+    // iOS: 内核只在 VPN 开启时运行，未开启时显示提示
+    if (Platform.isIOS) {
+      final vpnRunning = vpnConnected.value;
+      if (!vpnRunning) {
+        return Scaffold(
+          appBar: SysAppBar(title: t.proxies.title),
+          body: EmptyState(
+            icon: Icons.vpn_lock_rounded,
+            title: t.home.vpnNotConnected,
+            hint: t.home.connectVpnHint,
+          ),
+        );
+      }
+    }
+    
     return Scaffold(
       appBar: SysAppBar(title: t.proxies.title),
       floatingActionButton: ValueListenableBuilder<bool>(

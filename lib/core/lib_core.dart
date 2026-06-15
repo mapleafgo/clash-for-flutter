@@ -107,6 +107,7 @@ class LibCore {
   LibCorePlatform get platform => _platform;
 
   Future<void> init() async {
+    // Desktop (macOS/Windows/Linux): 独立进程 + RPC
     if (Constants.isDesktop) {
       _serviceManager = ServiceManager.create(Constants.homeDir.path);
       _ipcWorker = IpcWorker(ipcPath: _serviceManager!.ipcPath);
@@ -127,10 +128,8 @@ class LibCore {
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
+    // iOS: Network Extension 进程 + RPC
     } else if (Platform.isIOS) {
-      // iOS:内核跑在 Network Extension,主 App 是纯 RPC 客户端。
-      // VPN 生命周期走 MethodChannel,运行时控制复用桌面 RPC。
-      // RPC 连接延迟到 main.dart 确认隧道 running 后(见 connectIpc)。
       final bridge = IosVpnBridge();
       final socketPath = await bridge.appGroupSocketPath();
       _ipcWorker = IpcWorker(ipcPath: socketPath);
@@ -138,8 +137,9 @@ class LibCore {
       _ipcWorker!.onDisconnect = _onIpcDisconnected;
       bridge.wireInto(_ipcWorker!, onVpnDisconnected: _onVpnDisconnected);
       _platform = _ipcWorker!;
+      // iOS Extension 进程在 VPN 开启时才启动，RPC 连接延迟到 connectVpn() 后
+    // Android: 本进程 FFI
     } else {
-      // Android:内核在本进程 FFI
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
       channel.onVpnDisconnected = _onVpnDisconnected;
@@ -151,8 +151,8 @@ class LibCore {
 
   /// iOS:连接 Extension 内核的 RPC socket。
   ///
-  /// 隧道运行时由 main.dart 冷启动恢复调用。带重试以等待 Extension 开启 socket。
-  /// 桌面/Android 不使用(桌面在 init 内连,Android 走 FFI)。
+  /// 在 connectVpn() 后调用，此时 Extension 进程已启动，RPC server 可用。
+  /// 带重试以等待 Extension 开启 socket。桌面/Android 不使用。
   Future<void> connectIpc() async {
     if (_ipcWorker == null) return;
     if (!await _connectWithRetry(attempts: 20)) {
@@ -273,14 +273,25 @@ class LibCore {
   }
 
   /// Try to connect IPC with retries. Returns true on success.
-  Future<bool> _connectWithRetry({int attempts = 20}) async {
+  /// 带指数退避的 RPC 连接重试。
+  ///
+  /// [maxDelayMs] 单次延迟上限(默认 3000ms)，[totalTimeoutMs] 总超时(默认 10000ms)。
+  /// 首次立即尝试，后续延迟按 100 * 2^i 递增，直到达到上限或总超时。
+  Future<bool> _connectWithRetry({
+    int attempts = 20,
+    int maxDelayMs = 3000,
+    int totalTimeoutMs = 10000,
+  }) async {
+    final deadline = DateTime.now().add(Duration(milliseconds: totalTimeoutMs));
     for (int i = 0; i < attempts; i++) {
+      if (DateTime.now().isAfter(deadline)) break;
       try {
         await _ipcWorker!.connect();
         return true;
       } catch (_) {
-        if (i < attempts - 1) {
-          await Future.delayed(const Duration(milliseconds: 500));
+        if (i < attempts - 1 && DateTime.now().isBefore(deadline)) {
+          final delay = Duration(milliseconds: (100 * (1 << i)).clamp(100, maxDelayMs));
+          await Future.delayed(delay);
         }
       }
     }
@@ -454,6 +465,15 @@ class LibCore {
     String? ruleSetProxy,
     bool enabledVpn = false,
   }) async {
+    // iOS: 内核只在 VPN 开启时运行，非 TUN 模式下忽略热重载
+    if (Platform.isIOS && !enabledVpn) {
+      LogFileWriter.instance?.log(
+        'startCoreWithContent ignored: VPN not connected on iOS',
+        level: LogLevel.debug,
+        name: 'core',
+      );
+      return;
+    }
     await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy, enabledVpn: enabledVpn);
   }
 
@@ -511,18 +531,13 @@ class LibCore {
       ruleSetProxy: ruleSetProxy,
       ipv6: ipv6,
     );
-    // iOS:隧道开启后 Extension 已起 RPC socket,主 App 连上以恢复运行时控制。
-    // 冷启动恢复时 main.dart 已连过,此处先断旧连接再重连(幂等);首次开 VPN 时
-    // 这是 RPC 连接的唯一入口 —— 不连则 queryProxies 失败、代理页空白。
+    // iOS: VPN 开启后 Extension 进程已启动，RPC socket 可用，立即连接
     if (Platform.isIOS) {
-      try {
-        await _ipcWorker?.disconnect();
-      } catch (_) {}
       try {
         await connectIpc();
         await syncKernelState();
       } catch (e) {
-        // 隧道已成功开启,RPC 连接 Extension socket 失败不阻断 connectVpn。
+        // 隧道已成功开启，RPC 连接失败不阻断 connectVpn
         LogFileWriter.instance?.log(
           'connectIpc after VPN start failed: $e',
           level: LogLevel.warning,

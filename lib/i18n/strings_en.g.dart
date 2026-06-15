@@ -86,6 +86,8 @@ class _Translations$home$en extends Translations$home$zh {
 	@override String get pleaseAddProfile => 'Add a profile first';
 	@override String get enable => 'Enable';
 	@override String get copy => 'Copy';
+	@override String get vpnNotConnected => 'VPN Not Connected';
+	@override String get connectVpnHint => 'Proxies are only available when VPN is connected';
 }
 
 // Path: mode
@@ -356,6 +358,8 @@ extension on TranslationsEn {
 			'home.pleaseAddProfile' => 'Add a profile first',
 			'home.enable' => 'Enable',
 			'home.copy' => 'Copy',
+			'home.vpnNotConnected' => 'VPN Not Connected',
+			'home.connectVpnHint' => 'Proxies are only available when VPN is connected',
 			'mode.rule' => 'Rule',
 			'mode.global' => 'Global',
 			'mode.direct' => 'Direct',

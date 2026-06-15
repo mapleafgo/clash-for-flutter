@@ -108,20 +108,23 @@ Future<void> _initApp() async {
   _log('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
 
   if (Platform.isIOS) {
-    // iOS：内核跑在 Extension 进程，主 App 是 RPC 客户端。
-    // 先查隧道是否在跑，在跑才连 RPC socket 再同步内核状态。
+    // iOS：RPC 未连接，如果 VPN 正在运行，需要先连接 RPC 再同步状态
     final vpnRunning = await LibCore.instance.isVpnRunning();
     if (vpnRunning) {
-      await LibCore.instance.connectIpc();
+      try {
+        await LibCore.instance.connectIpc();
+      } catch (e) {
+        _log('[startup] iOS connectIpc failed: $e');
+      }
       await LibCore.instance.syncKernelState();
       vpnConnected.value = true;
       ensureTunEnabled(true);
       _log(
-        '[startup] iOS tunnel running: RPC connected, synced '
+        '[startup] iOS tunnel running: synced '
         'state=${LibCore.instance.stateSignal.peek()}',
       );
     } else {
-      _log('[startup] iOS tunnel not running, RPC deferred');
+      _log('[startup] iOS tunnel not running');
     }
   } else if (!Constants.isDesktop) {
     // Android：内核在本进程，引擎重建恢复时内核可能仍在运行，同步真实状态
