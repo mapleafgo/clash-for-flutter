@@ -35,6 +35,10 @@ jobs:
           # Inno Setup config in windows/packaging/exe/ already allows x64+arm64.
           - arch: arm64
             runner: windows-11-arm
+            # Flutter stable has no windows-arm64 host archive, so install the
+            # x64 SDK (runs under x64 emulation on Win11 ARM). The app is still
+            # compiled to arm64 by the runner's native arm64 VS toolchain.
+            flutter_arch: x64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 40
     steps:
@@ -43,6 +47,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
       - name: Sync version
@@ -60,6 +65,20 @@ jobs:
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
+
+      - name: Probe architecture
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          echo "PROCESSOR_ARCHITECTURE=$env:PROCESSOR_ARCHITECTURE"
+          echo "PROCESSOR_ARCHITEW6432=$env:PROCESSOR_ARCHITEW6432"
+          echo "--- flutter doctor ---"
+          flutter doctor -v
+          echo "--- native probe: which arch does a trivial build target? ---"
+          flutter build windows --release
+          $dll = Get-ChildItem "build\windows\arm64\runner\Release\singcast.exe" -ErrorAction SilentlyContinue
+          if (-not $dll) { $dll = Get-ChildItem "build\windows\x64\runner\Release\singcast.exe" -ErrorAction SilentlyContinue }
+          if ($dll) { dumpbin /headers $dll.FullName | Select-String "machine" } else { echo "no singcast.exe found" }
 
       - name: Build & package
         run: |
@@ -91,6 +110,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
       - name: Sync version
@@ -149,6 +169,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
       - name: Sync version
@@ -207,6 +228,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
       - name: Sync version
@@ -279,6 +301,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
+          architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
       - name: Sync version

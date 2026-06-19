@@ -75,7 +75,7 @@ targets:
           - "$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)"
 
   ExtensionProvider:
-    type: application.extension
+    type: app-extension
     platform: iOS
     sources:
       - path: Shared
