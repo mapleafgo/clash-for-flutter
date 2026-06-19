@@ -24,8 +24,19 @@ env:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: windows-latest
+          # Native ARM64 runner so fastforge resolves the build dir to
+          # build/windows/arm64/runner/Release (it keys off PROCESSOR_ARCHITECTURE).
+          # Inno Setup config in windows/packaging/exe/ already allows x64+arm64.
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -41,9 +52,9 @@ jobs:
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-amd64.tar.gz" -o "singcast-core.tar.gz"
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$env:CORE_VERSION/singcast-$env:CORE_VERSION-windows-${{ matrix.arch }}.tar.gz" -o "singcast-core.tar.gz"
           tar -zxf singcast-core.tar.gz
-          Move-Item -Force singcast-windows-amd64.exe windows/core/singcast-core.exe
+          Move-Item -Force singcast-windows-${{ matrix.arch }}.exe windows/core/singcast-core.exe
 
       - name: Setup Chinese language for Inno Setup
         run: |
@@ -61,8 +72,8 @@ jobs:
           $distDir = "dist\$ver"
           $exe = (Get-ChildItem "$distDir\*.exe")[0]
           $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-amd64.exe"
-          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-amd64-portable.zip"
+          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-${{ matrix.arch }}.exe"
+          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-${{ matrix.arch }}-portable.zip"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -251,3 +262,57 @@ jobs:
           tag_name: ${{ env.VERSION }}
           files: build/app/outputs/flutter-apk/*.apk
           overwrite_files: true
+
+  # iOS build. Produces an unsigned sideload .ipa (gopeed-style).
+  # NOTE: This is a VPN app with a Packet Tunnel Extension. The committed
+  # Runner.xcodeproj does NOT contain the ExtensionProvider target, so xcodegen
+  # regenerates the project from project.yml before building. The resulting ipa
+  # is unsigned: it can be sideloaded via TrollStore or re-signed, but the
+  # tunnel extension only runs after re-signing with a paid Apple Developer
+  # account + NetworkExtension provisioning profiles.
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Sync version
+        run: |
+          v="${VERSION#v}"
+          sed -i "" "s/^version:.*/version: $v/" pubspec.yaml
+
+      - name: Download core
+        run: |
+          rm -rf ios/Frameworks/singcast.xcframework ios/Frameworks/libsingcast-darwin.xcframework
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/libsingcast-$CORE_VERSION-ios.tar.gz" -o ios-core.tar.gz
+          tar -zxf ios-core.tar.gz -C ios/Frameworks
+          mv ios/Frameworks/singcast.xcframework ios/Frameworks/libsingcast-darwin.xcframework
+
+      - name: Regenerate Xcode project
+        run: |
+          flutter pub get
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Build (no codesign)
+        run: flutter build ios --no-codesign --release
+
+      - name: Package ipa
+        run: |
+          v="${VERSION#v}"
+          rm -rf Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry singcast-$v-ios.ipa Payload
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: singcast-*-ios.ipa
+          overwrite_files: true
+

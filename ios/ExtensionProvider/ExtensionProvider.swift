@@ -12,7 +12,7 @@ import Singcast
 
 class ExtensionProvider: NEPacketTunnelProvider {
 
-    private let singcast = FfiSingcast()
+    private let singcast = MobileSingcast()
     private var pathMonitor: NWPathMonitor?
 
     override func startTunnel(options: [String: NSObject]?) async throws {
@@ -184,13 +184,13 @@ enum ExtensionError: Error {
 
 // MARK: - gomobile provider adapters
 
-class InterfaceProviderAdapter: NSObject, FfiInterfaceProvider {
+class InterfaceProviderAdapter: NSObject, MobileInterfaceProvider {
     func GetInterfaces() -> String {
         return InterfaceReporter.getInterfacesJSON()
     }
 }
 
-class WiFiStateProviderAdapter: NSObject, FfiWiFiStateProvider {
+class WiFiStateProviderAdapter: NSObject, MobileWiFiStateProvider {
     func GetWiFiState() -> String {
         return InterfaceReporter.getWiFiStateJSON()
     }
