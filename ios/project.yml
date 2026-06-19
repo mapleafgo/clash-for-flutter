@@ -2,7 +2,7 @@ name: Runner
 options:
   bundleIdPrefix: cn.mapleafgo
   deploymentTarget:
-    iOS: "13.0"
+    iOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
