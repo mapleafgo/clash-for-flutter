@@ -321,6 +321,11 @@ jobs:
           flutter pub get
           brew install xcodegen
           cd ios && xcodegen generate
+          # Disable Swift Package Manager integration: it needs a shared
+          # Runner.xcscheme that xcodegen's output + Flutter's project patching
+          # don't reliably provide. This project uses CocoaPods (Podfile), so
+          # SPM integration is unnecessary.
+          flutter config --no-enable-swift-package-manager
 
       - name: Build (no codesign)
         run: flutter build ios --no-codesign --release
