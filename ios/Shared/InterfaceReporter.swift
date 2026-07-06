@@ -10,6 +10,10 @@ enum InterfaceReporter {
     private static let TYPE_CELLULAR = 3
     private static let TYPE_ETHERNET = 4
 
+    /// SIOCGIFMTU = _IOWR('i', 122, struct ifreq) per <net/if.h>.
+    /// Darwin 没有把该 C 宏导入 Swift，故按位常量直接定义。
+    private static let SIOCGIFMTU: UInt = 0xc020697a
+
     /// 按需回调：内核通过 InterfaceProvider.GetInterfaces() 调用。
     static func getInterfacesJSON() -> String {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
@@ -121,13 +125,15 @@ enum InterfaceReporter {
     private static func prefixLength(from mask: UnsafeMutablePointer<sockaddr>?, family: sa_family_t) -> Int {
         guard let mask = mask else { return 0 }
         if family == UInt8(AF_INET) {
-            let sin = mask.assumingMemoryBound(to: sockaddr_in.self).pointee
-            return sin.sin_addr.s_addr.bigEndian.nonzeroBitCount
+            return mask.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                $0.pointee.sin_addr.s_addr.bigEndian.nonzeroBitCount
+            }
         }
         if family == UInt8(AF_INET6) {
-            let sin6 = mask.assumingMemoryBound(to: sockaddr_in6.self).pointee
-            return withUnsafeBytes(of: sin6.sin6_addr) { ptr in
-                ptr.reduce(0) { $0 + $1.nonzeroBitCount }
+            return mask.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { sin6Ptr in
+                withUnsafeBytes(of: sin6Ptr.pointee.sin6_addr) { ptr in
+                    ptr.reduce(0) { $0 + $1.nonzeroBitCount }
+                }
             }
         }
         return 0
@@ -145,7 +151,7 @@ enum InterfaceReporter {
         let ok = storage.withUnsafeMutableBytes { buf -> Bool in
             guard let base = buf.baseAddress else { return false }
             name.withCString { strncpy(base.assumingMemoryBound(to: CChar.self), $0, 16) }
-            return Darwin.ioctl(sock, UInt(SIOCGIFMTU), base) == 0
+            return Darwin.ioctl(sock, SIOCGIFMTU, base) == 0
         }
         guard ok else { return 1500 }
         return storage.withUnsafeBytes { Int($0.baseAddress!.load(fromByteOffset: 16, as: Int32.self)) }

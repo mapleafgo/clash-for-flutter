@@ -19,7 +19,7 @@ class AppDelegate: FlutterAppDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        GeneratedPluginRegistrator.register(with: self)
+        GeneratedPluginRegistrant.register(with: self)
 
         guard let controller = window?.rootViewController as? FlutterViewController else {
             return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -162,7 +162,8 @@ class AppDelegate: FlutterAppDelegate {
                 result(FlutterError(code: "TUNNEL_ERROR", message: "Failed to serialize config", details: nil))
                 return
             }
-            session.sendProviderMessage(data) { response in
+            do {
+                try session.sendProviderMessage(data) { response in
                 // 解析 Extension 回传的 reload 结果;失败透传 FlutterError 让 Dart 感知。
                 guard let response = response,
                       let json = try? JSONSerialization.jsonObject(with: response) as? [String: Any],
@@ -176,6 +177,9 @@ class AppDelegate: FlutterAppDelegate {
                     let msg = (json["error"] as? String) ?? "reload 失败"
                     result(FlutterError(code: "RELOAD_ERROR", message: msg, details: nil))
                 }
+            }
+            } catch {
+                result(FlutterError(code: "RELOAD_ERROR", message: error.localizedDescription, details: nil))
             }
         }
     }

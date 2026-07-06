@@ -30,23 +30,61 @@ jobs:
         include:
           - arch: amd64
             runner: windows-latest
-          # Native ARM64 runner so fastforge resolves the build dir to
-          # build/windows/arm64/runner/Release (it keys off PROCESSOR_ARCHITECTURE).
-          # Inno Setup config in windows/packaging/exe/ already allows x64+arm64.
+            flutter_channel: stable
+            flutter_version: "3.44.1"
+          # Flutter stable has no windows-arm64 host archive. Following the
+          # approach used by gopeed: run on the native windows-11-arm runner
+          # with a Flutter main-channel snapshot that ships arm64 host tools,
+          # plus llvm-mingw for the native C/C++ toolchain.
           - arch: arm64
             runner: windows-11-arm
-            # Flutter stable has no windows-arm64 host archive, so install the
-            # x64 SDK (runs under x64 emulation on Win11 ARM). The app is still
-            # compiled to arm64 by the runner's native arm64 VS toolchain.
-            flutter_arch: x64
+            flutter_channel: main
+            flutter_version: "a3222d4a"
+            llvm_ver: "20251202"
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable long paths
+        run: git config --global core.longpaths true
+
+      # Install llvm-mingw (ARM64 native C/C++ toolchain) — only needed on ARM64
+      # where the runner's VS toolchain targets arm64 but Flutter plugins like
+      # local_notifier pull in jni which needs a working C compiler.
+      - name: Install llvm-mingw (ARM64 only)
+        if: matrix.arch == 'arm64'
+        run: |
+          $ver = "${{ matrix.llvm_ver }}"
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$ver/llvm-mingw-$ver-ucrt-aarch64.zip"
+          $zip = "$env:RUNNER_TEMP\llvm.zip"
+          $extract = "$env:RUNNER_TEMP\extract"
+          $target = "C:\clangarm64"
+          curl -L $url -o $zip
+          rm -r -fo $extract,$target -ea Ignore
+          mkdir $extract | Out-Null
+          tar -xf $zip -C $extract
+          mv (Get-ChildItem $extract)[0].FullName $target
+          $b = "$target\bin"
+          "CC=$b\clang.exe"        >> $env:GITHUB_ENV
+          "CXX=$b\clang++.exe"     >> $env:GITHUB_ENV
+          $b >> $env:GITHUB_PATH
+
+      # local_notifier -> jni needs a JDK at build time for jvm.lib.
+      # Must match the target architecture (ARM64), otherwise jvm.lib
+      # machine type conflicts with the build target and linking fails.
+      - name: Setup ARM64 JDK for JNI linking
+        if: matrix.arch == 'arm64'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          architecture: arm64
+
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
+          flutter-version: ${{ matrix.flutter_version }}
+          channel: ${{ matrix.flutter_channel }}
           architecture: ${{ matrix.flutter_arch || 'x64' }}
           cache: true
 
@@ -66,39 +104,93 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
-      - name: Probe architecture
-        if: matrix.arch == 'arm64'
-        shell: pwsh
-        run: |
-          echo "PROCESSOR_ARCHITECTURE=$env:PROCESSOR_ARCHITECTURE"
-          echo "PROCESSOR_ARCHITEW6432=$env:PROCESSOR_ARCHITEW6432"
-          echo "--- flutter doctor ---"
-          flutter doctor -v
-          echo "--- native probe: which arch does a trivial build target? ---"
-          flutter build windows --release
-          $dll = Get-ChildItem "build\windows\arm64\runner\Release\singcast.exe" -ErrorAction SilentlyContinue
-          if (-not $dll) { $dll = Get-ChildItem "build\windows\x64\runner\Release\singcast.exe" -ErrorAction SilentlyContinue }
-          if ($dll) { dumpbin /headers $dll.FullName | Select-String "machine" } else { echo "no singcast.exe found" }
-
-      - name: Build & package
+      - name: Build & package (x64)
+        if: matrix.arch == 'amd64'
         run: |
           dart pub global activate fastforge
           fastforge package --platform=windows --targets=exe,zip
 
-      - name: Rename artifacts
+      - name: Rename artifacts (x64)
+        if: matrix.arch == 'amd64'
         run: |
           $ver = "${{ env.VERSION }}".TrimStart('v')
           $distDir = "dist\$ver"
           $exe = (Get-ChildItem "$distDir\*.exe")[0]
           $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-${{ matrix.arch }}.exe"
-          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-${{ matrix.arch }}-portable.zip"
+          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-amd64.exe"
+          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-amd64-portable.zip"
+
+      # ARM64: Flutter main channel builds natively to build/windows/arm64/.
+      # fastforge does not reliably support main-channel ARM64, so build with
+      # flutter directly and package with Inno Setup + zip manually.
+      - name: Build (ARM64)
+        if: matrix.arch == 'arm64'
+        run: flutter build windows --release
+
+      - name: Package ARM64 portable zip
+        if: matrix.arch == 'arm64'
+        run: |
+          $ver = "${{ env.VERSION }}".TrimStart('v')
+          $release = "build\windows\arm64\runner\Release"
+          Compress-Archive -Path "$release\*" -DestinationPath "build\singcast-$ver-windows-arm64-portable.zip"
+
+      - name: Package ARM64 installer
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $ver = "${{ env.VERSION }}".TrimStart('v')
+          $release = "build\windows\arm64\runner\Release"
+          $content = @"
+          [Setup]
+          AppId={{B3039CF4-E394-42B6-971C-4BE97F322DE8}
+          AppVersion=$ver
+          AppName=Singcast
+          AppPublisher=mapleafgo
+          AppPublisherURL=https://github.com/mapleafgo/singcast
+          DefaultDirName={autopf}\Singcast
+          DisableProgramGroupPage=yes
+          OutputDir=Output
+          OutputBaseFilename=singcast-$ver-windows-arm64
+          Compression=lzma
+          SolidCompression=yes
+          SetupIconFile=..\..\windows\runner\resources\app_icon.ico
+          WizardStyle=modern
+          PrivilegesRequired=lowest
+          ArchitecturesAllowed=arm64
+          ArchitecturesInstallIn64BitMode=arm64
+          [Languages]
+          Name: "english"; MessagesFile: "compiler:Default.isl"
+          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+          [Tasks]
+          Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+          [Files]
+          Source: "arm64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{autoprograms}\Singcast"; Filename: "{app}\singcast.exe"
+          Name: "{autodesktop}\Singcast"; Filename: "{app}\singcast.exe"; Tasks: desktopicon
+          [Run]
+          Filename: "{app}\singcast.exe"; Description: "{cm:LaunchProgram,Singcast}"; Flags: nowait postinstall skipifsilent
+          [Registry]
+          Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: ""; ValueData: "URL:Singcast Protocol"; Flags: uninsdeletekey
+          Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+          Root: HKCU; Subkey: "Software\Classes\clash\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\singcast.exe,0"
+          Root: HKCU; Subkey: "Software\Classes\clash\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\singcast.exe"" ""%1"""
+          [UninstallRun]
+          Filename: "{app}\singcast-core.exe"; Parameters: "service uninstall"; Flags: runhidden
+          "@
+          New-Item -Path "build\windows" -ItemType Directory -Force | Out-Null
+          $content | Out-File -FilePath "build\windows\setup.iss" -Encoding UTF8
+          iscc.exe /Q "build\windows\setup.iss"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: dist/*/*.exe,dist/*/*.zip
+          files: |
+            dist/*/*.exe
+            dist/*/*.zip
+            build/*.zip
+            build/windows/Output/*.exe
           overwrite_files: true
 
   build-linux:
@@ -316,15 +408,113 @@ jobs:
           tar -zxf ios-core.tar.gz -C ios/Frameworks
           mv ios/Frameworks/singcast.xcframework ios/Frameworks/libsingcast-darwin.xcframework
 
-      - name: Mark core framework for app extension
-        # Xcode requires APPLICATION_EXTENSION_API_ONLY=YES for any binary
-        # linked into an app-extension target. The Go-built xcframework lacks
-        # this Mach-O flag, so set it with vtool and re-sign ad-hoc.
+      - name: Mark core framework extension-safe
+        # The Go-built static library inside the xcframework lacks the
+        # MH_APP_EXTENSION_SAFE Mach-O flag (0x02000000). Xcode requires this
+        # for any binary linked into an app-extension target. The binary is
+        # a Mach-O fat wrapper whose slices are BSD ar archives containing
+        # Mach-O object files. We patch the flag on every object in place.
         run: |
-          for bin in $(find ios/Frameworks/libsingcast-darwin.xcframework -name "Singcast" -type f); do
-            vtool -set-application-extension-api-only YES -replace "$bin"
-            codesign --force --sign - "$(dirname "$bin")"
+          python3 - <<'PY'
+          import struct, pathlib
+
+          MH_APP_EXTENSION_SAFE = 0x02000000
+          MH_MAGICS_LE = {0xFEEDFACE, 0xFEEDFACF}
+          MH_MAGICS_BE = {0xCEFAEDFE, 0xCFFAEDFE}
+
+          def is_macho(data, off):
+              if off + 4 > len(data):
+                  return False
+              be = struct.unpack(">I", data[off:off+4])[0]
+              le = struct.unpack("<I", data[off:off+4])[0]
+              return be in MH_MAGICS_BE or le in MH_MAGICS_LE
+
+          def patch_macho(data, off):
+              flags_off = off + 24
+              flags = struct.unpack("<I", data[flags_off:flags_off+4])[0]
+              if not (flags & MH_APP_EXTENSION_SAFE):
+                  flags |= MH_APP_EXTENSION_SAFE
+                  struct.pack_into("<I", data, flags_off, flags)
+                  return True
+              return False
+
+          def patch_ar_archive(data, base, length):
+              """Scan a BSD ar archive and patch Mach-O objects inside."""
+              patched = 0
+              end = min(base + length, len(data)) if length else len(data)
+              pos = base + 8  # skip "!<arch>\n"
+              while pos + 60 <= end:
+                  hdr = data[pos:pos+60]
+                  raw_name = hdr[0:16]
+                  size_str = hdr[48:58].rstrip()
+                  try:
+                      size = int(size_str)
+                  except ValueError:
+                      break
+                  member_start = pos + 60
+                  name_len = 0
+                  name = raw_name.rstrip()
+                  if name.startswith(b"#1/"):
+                      try:
+                          name_len = int(name[3:])
+                      except ValueError:
+                          name_len = 0
+                  obj_off = member_start + name_len
+                  if is_macho(data, obj_off):
+                      if patch_macho(data, obj_off):
+                          patched += 1
+                  pos = member_start + size
+                  if pos % 2 == 1:
+                      pos += 1
+              return patched
+
+          def patch_file(data):
+              patched = 0
+              magic = struct.unpack(">I", data[:4])[0]
+              if magic == 0xCAFEBABE:  # FAT_MAGIC (big-endian header)
+                  n = struct.unpack(">I", data[4:8])[0]
+                  for i in range(n):
+                      off = 8 + i * 20
+                      sl_off = struct.unpack(">I", data[off+8:off+12])[0]
+                      sl_size = struct.unpack(">I", data[off+12:off+16])[0]
+                      if data[sl_off:sl_off+8] == b"!<arch>\n":
+                          patched += patch_ar_archive(data, sl_off, sl_size)
+                      elif is_macho(data, sl_off):
+                          if patch_macho(data, sl_off):
+                              patched += 1
+              elif data[:8] == b"!<arch>\n":
+                  patched += patch_ar_archive(data, 0, 0)
+              elif is_macho(data, 0):
+                  if patch_macho(data, 0):
+                      patched += 1
+              return patched
+
+          root = pathlib.Path("ios/Frameworks/libsingcast-darwin.xcframework")
+          total = 0
+          for bin in root.rglob("Singcast"):
+              if not bin.is_file():
+                  continue
+              with open(bin, "rb") as f:
+                  data = bytearray(f.read())
+              n = patch_file(data)
+              if n > 0:
+                  with open(bin, "wb") as f:
+                      f.write(data)
+              print(f"  {bin}: patched {n} Mach-O object(s)")
+              total += n
+          print(f"Total: {total} objects patched")
+          if total == 0:
+              raise SystemExit("ERROR: no Mach-O objects found to patch")
+          PY
+          # Re-sign ad-hoc after patching binaries.
+          XCFW="ios/Frameworks/libsingcast-darwin.xcframework"
+          # Sign each .framework, then the xcframework itself
+          find "$XCFW" -name "*.framework" -type d -print0 | while IFS= read -r -d '' fw; do
+            codesign --force --deep --all-architectures --sign - "$fw"
+            codesign --verify --verbose "$fw" 2>&1 || true
           done
+          codesign --force --deep --all-architectures --sign - "$XCFW"
+          codesign --verify --verbose "$XCFW" 2>&1 || true
 
       - name: Regenerate Xcode project
         run: |

@@ -27,7 +27,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         ipv4.includedRoutes = [NEIPv4Route.default()]
         settings.ipv4Settings = ipv4
         if enableIpv6 {
-            let ipv6 = NEIPv6Settings(addresses: ["fdfe:dcba:9876::1"], prefixLengths: [128])
+            let ipv6 = NEIPv6Settings(addresses: ["fdfe:dcba:9876::1"], networkPrefixLengths: [128])
             ipv6.includedRoutes = [NEIPv6Route.default()]
             settings.ipv6Settings = ipv6
         }
@@ -59,7 +59,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         }
         singcast.setTunFd(dup(rawFd))
         registerProviders()
-        try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
+        try singcast.start(withContent: configContent, ruleSetProxy: ruleSetProxy)
         startDefaultInterfaceMonitor()
     }
 
@@ -86,7 +86,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         
         singcast.setTunFd(dup(tunFd))
         do {
-            try singcast.startWithContent(configContent, ruleSetProxy: ruleSetProxy)
+            try singcast.start(withContent: configContent, ruleSetProxy: ruleSetProxy)
             completionHandler?(Self.encodeReloadResult())
         } catch {
             completionHandler?(Self.encodeReloadResult(error: "\(error)"))
@@ -142,7 +142,12 @@ class ExtensionProvider: NEPacketTunnelProvider {
         for fd in 5..<64 {
             var addr = sockaddr_in()
             var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-            if getsockname(fd, &addr, &len) == 0 {
+            let result = withUnsafeMutablePointer(to: &addr) { p -> Int32 in
+                p.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    getsockname(Int32(fd), $0, &len)
+                }
+            }
+            if result == 0 {
                 return Int32(fd)
             }
         }
@@ -160,7 +165,7 @@ class ExtensionProvider: NEPacketTunnelProvider {
         monitor.start(queue: DispatchQueue.global())
     }
 
-    private func handlePathUpdate(_ path: NWPath) {
+    private func handlePathUpdate(_ path: Network.NWPath) {
         guard path.status != .unsatisfied,
               let iface = path.availableInterfaces.first
         else {
@@ -184,14 +189,14 @@ enum ExtensionError: Error {
 
 // MARK: - gomobile provider adapters
 
-class InterfaceProviderAdapter: NSObject, MobileInterfaceProvider {
-    func GetInterfaces() -> String {
+class InterfaceProviderAdapter: NSObject, MobileInterfaceProviderProtocol {
+    func getInterfaces() -> String {
         return InterfaceReporter.getInterfacesJSON()
     }
 }
 
-class WiFiStateProviderAdapter: NSObject, MobileWiFiStateProvider {
-    func GetWiFiState() -> String {
+class WiFiStateProviderAdapter: NSObject, MobileWiFiStateProviderProtocol {
+    func getWiFiState() -> String {
         return InterfaceReporter.getWiFiStateJSON()
     }
 }
