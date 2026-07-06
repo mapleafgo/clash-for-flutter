@@ -16,6 +16,7 @@ class JsonRpcClient {
   final _lineBuffer = <int>[];
   bool _connected = false;
   bool _intentionalDisconnect = false;
+  Future<void> _writeQueue = Future.value();
 
   final String path;
 
@@ -138,8 +139,16 @@ class JsonRpcClient {
   void _send(Map<String, dynamic> message) {
     if (!_connected || _socket == null) return;
     final data = utf8.encode('${jsonEncode(message)}\n');
-    _socket!.add(data);
-    _socket!.flush();
+    // Serialize writes: IOSink.flush() sets an internal _isBound flag that
+    // causes add() to throw "StreamSink is bound to a stream" if called again
+    // before the previous flush completes. On Windows, Win32NamedPipeSocket's
+    // platform-channel writes are slow enough that the flag stays set between
+    // back-to-back _send() calls.
+    _writeQueue = _writeQueue.then((_) async {
+      if (!_connected || _socket == null) return;
+      _socket!.add(data);
+      await _socket!.flush();
+    });
   }
 
   void _onData(List<int> data) {
