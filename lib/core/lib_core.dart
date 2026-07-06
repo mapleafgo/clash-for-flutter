@@ -11,6 +11,7 @@ import '../domain/net_speed.dart';
 import '../domain/proxy_group.dart';
 import '../utils/constants.dart';
 import '../utils/log_file.dart';
+import 'event_types.dart';
 import 'ipc_worker.dart';
 import 'ios_vpn_bridge.dart';
 import 'lib_core_channel.dart';
@@ -59,13 +60,6 @@ class LibCore {
   static const kStateStopping = 'stopping';
   static const kStateRunning = 'running';
   static const kStateDestroyed = 'destroyed';
-
-  static const _evtLog = 0;
-  static const _evtUrlTest = 1;
-  static const _evtModeUpdate = 2;
-  static const _evtConnEvent = 3;
-  static const _evtStateUpdate = 4;
-  static const _evtTrafficUpdate = 5;
 
   late final LibCorePlatform _platform;
   IpcWorker? _ipcWorker;
@@ -383,16 +377,16 @@ class LibCore {
 
   void _handleWorkerCallback(int eventType, String payload) {
     switch (eventType) {
-      case _evtLog:
+      case CoreEventType.log:
         final json = jsonDecode(payload) as Map<String, dynamic>;
         LogFileWriter.instance?.writeAll([LogEntry.fromJson(json)]);
-      case _evtUrlTest:
+      case CoreEventType.urlTest:
         _queryAndUpdate();
-      case _evtModeUpdate:
+      case CoreEventType.modeUpdate:
         modeSignal.value = payload.toLowerCase();
-      case _evtConnEvent:
+      case CoreEventType.connEvent:
         break;
-      case _evtStateUpdate:
+      case CoreEventType.stateUpdate:
         final newState = payload;
         final oldState = stateSignal.peek();
         if (newState == oldState) break;
@@ -407,7 +401,7 @@ class LibCore {
           }
           _clearRuntimeState();
         }
-      case _evtTrafficUpdate:
+      case CoreEventType.trafficUpdate:
         _handleTrafficUpdate(payload);
     }
   }

@@ -10,6 +10,7 @@ import 'package:singcast/utils/dialog.dart' show showErrorDialog;
 import 'package:desktop_tray/desktop_tray.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/i18n/strings.g.dart';
+import 'package:singcast/utils/format.dart' show modeLabel;
 import 'package:window_manager/window_manager.dart';
 
 Future<void> initTray() async {
@@ -41,12 +42,6 @@ Future<void> initTray() async {
 bool get _proxyEnabled =>
     tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
 
-String _trayModeLabel(String m) => switch (m) {
-  'rule' => t.mode.rule,
-  'global' => t.mode.global,
-  'direct' => t.mode.direct,
-  _ => m,
-};
 
 Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {
   final ready = appReady.value;
@@ -63,7 +58,7 @@ Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) asyn
         if (modes.isNotEmpty) ...[
           TrayMenuItem.separator(),
           ...modes.map((m) => TrayMenuItem.checkbox(
-            label: _trayModeLabel(m),
+            label: modeLabel(m),
             key: m,
             checked: m == current,
           )),

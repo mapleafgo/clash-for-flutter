@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../domain/connection.dart';
 import '../domain/proxy_group.dart';
 import 'ipc/json_rpc_client.dart';
+import 'event_types.dart';
 import 'lib_core.dart';
 
 /// IPC-based backend for desktop platforms.
@@ -48,38 +49,30 @@ class IpcWorker implements LibCorePlatform {
   void _subscribeEvents() {
     final c = _client!;
 
-    // event.log → eventType 0
     _logSub = c.notifications('event.log').listen((n) {
-      onCallback?.call(0, jsonEncode(n.params));
+      onCallback?.call(CoreEventType.log, jsonEncode(n.params));
     });
 
-    // event.urlTest → eventType 1
     _urlTestSub = c.notifications('event.urlTest').listen((n) {
-      onCallback?.call(1, '');
+      onCallback?.call(CoreEventType.urlTest, '');
     });
 
-    // event.modeUpdate → eventType 2
     _modeUpdateSub = c.notifications('event.modeUpdate').listen((n) {
       final mode = (n.params as Map<String, dynamic>?)?['mode'] as String? ?? '';
-      onCallback?.call(2, mode);
+      onCallback?.call(CoreEventType.modeUpdate, mode);
     });
 
-    // event.connEvent → eventType 3
     _connEventSub = c.notifications('event.connEvent').listen((n) {
-      onCallback?.call(3, jsonEncode(n.params));
+      onCallback?.call(CoreEventType.connEvent, jsonEncode(n.params));
     });
 
-    // event.stateUpdate → eventType 4
     _stateUpdateSub = c.notifications('event.stateUpdate').listen((n) {
       final state = (n.params as Map<String, dynamic>?)?['state'] as String? ?? '';
-      onCallback?.call(4, state);
+      onCallback?.call(CoreEventType.stateUpdate, state);
     });
 
-    // event.trafficUpdate → replaces _poll()
     _trafficUpdateSub = c.notifications('event.trafficUpdate').listen((n) {
-      // Re-use traffic update as stats signal update
-      // The payload is already the stats JSON from Go QueryStats()
-      onCallback?.call(5, jsonEncode(n.params));
+      onCallback?.call(CoreEventType.trafficUpdate, jsonEncode(n.params));
     });
   }
 

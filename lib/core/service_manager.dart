@@ -24,9 +24,6 @@ abstract class ServiceManager {
   /// Cleanup persistent resources on app uninstall (e.g., delete Windows Service).
   Future<void> uninstall();
 
-  /// Whether the service process is currently running.
-  Future<bool> isRunning();
-
   /// Start the service process.
   Future<bool> start();
 
@@ -57,6 +54,26 @@ abstract class ServiceManager {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     final name = Platform.isWindows ? 'singcast-core.exe' : 'singcast-core';
     return '$exeDir/$name';
+  }
+
+ /// Whether the service process is currently running (IPC reachable).
+ Future<bool> isRunning() async {
+    try {
+      final socket = await ipc.connect(ipcPath).timeout(const Duration(seconds: 1));
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Wait until IPC is no longer reachable (after stop).
+  Future<bool> _waitForIpcGone() async {
+    for (int i = 0; i < 20; i++) {
+      if (!await isRunning()) return true;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
   }
 }
 
@@ -102,8 +119,8 @@ class UnixServiceManager extends ServiceManager {
       // macOS: check setuid on the external copy (outside app bundle)
       if (!File(_elevatedBinaryPath).existsSync()) return false;
       if (!_elevatedUpToDate()) return false;
-      final stat = await FileStat.stat(_elevatedBinaryPath);
-      // 0o800 = setuid bit (S_ISUID)
+     final stat = await FileStat.stat(_elevatedBinaryPath);
+      // S_ISUID — POSIX setuid bit (decimal 2048)
       const setuidBit = 0x800;
       return (stat.mode & setuidBit) != 0;
     } catch (_) {
@@ -168,19 +185,6 @@ class UnixServiceManager extends ServiceManager {
   }
 
   @override
-  Future<bool> isRunning() async {
-    try {
-      final socket = await ipc
-          .connect(ipcPath)
-          .timeout(const Duration(seconds: 1));
-      socket.destroy();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  @override
   Future<bool> start() async {
     try {
       String svcPath = ServiceManager.serviceBinaryPath();
@@ -232,14 +236,6 @@ class UnixServiceManager extends ServiceManager {
     return true;
   }
 
-  /// Wait until IPC is no longer reachable (after stop).
-  Future<bool> _waitForIpcGone() async {
-    for (int i = 0; i < 20; i++) {
-      if (!await isRunning()) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    return false;
-  }
 }
 
 /// Windows: uses Windows Service (SCM) after one-time UAC install.
@@ -365,19 +361,6 @@ class WindowsServiceManager extends ServiceManager {
   }
 
   @override
-  Future<bool> isRunning() async {
-    try {
-      final socket = await ipc
-          .connect(ipcPath)
-          .timeout(const Duration(seconds: 1));
-      socket.destroy();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  @override
   Future<bool> start() async {
     final svc = _openService(SERVICE_QUERY_STATUS | SERVICE_START);
     if (svc != null) {
@@ -447,15 +430,5 @@ class WindowsServiceManager extends ServiceManager {
     await _waitForIpcGone();
     _elevated = false;
     return true;
-  }
-
-  /// Wait until IPC is no longer reachable (after stop).
-  /// Returns true if IPC went away within the timeout.
-  Future<bool> _waitForIpcGone() async {
-    for (int i = 0; i < 20; i++) {
-      if (!await isRunning()) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    return false;
   }
 }

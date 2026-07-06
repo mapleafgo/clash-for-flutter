@@ -1,3 +1,5 @@
+import 'package:singcast/i18n/strings.g.dart';
+
 String formatBytes(int value) {
   if (value < 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
@@ -21,3 +23,10 @@ String formatDuration(int startedAtMs) {
   if (h > 0) return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
 }
+
+String modeLabel(String m) => switch (m) {
+  'rule' => t.mode.rule,
+  'global' => t.mode.global,
+  'direct' => t.mode.direct,
+  _ => m,
+};

@@ -5,18 +5,13 @@ import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/format.dart' show modeLabel;
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 
-String _modeLabel(String m) => switch (m) {
-  'rule' => t.mode.rule,
-  'global' => t.mode.global,
-  'direct' => t.mode.direct,
-  _ => m,
-};
 
 String _logLevelLabel(LogLevel l) => switch (l) {
   LogLevel.debug => t.settings.logDebug,
@@ -89,7 +84,7 @@ class SettingsPage extends StatelessWidget {
                 description: t.settings.outboundModeDesc,
                 value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),
                 items: modes,
-                labelBuilder: _modeLabel,
+                labelBuilder: modeLabel,
                 onChanged: ready ? (m) => changeModeStr(m) : null,
               );
             }),

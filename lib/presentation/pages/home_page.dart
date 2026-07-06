@@ -9,8 +9,8 @@ import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
-import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/format.dart';
+import 'package:singcast/utils/dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -487,14 +487,6 @@ class _TrafficTotalCard extends StatelessWidget {
   }
 }
 
-// --- Mode Card ---
-
-String _modeLabel(String m) => switch (m) {
-  'rule' => t.mode.rule,
-  'global' => t.mode.global,
-  'direct' => t.mode.direct,
-  _ => m,
-};
 
 const _modeIcons = {
   'rule': Icons.rule,
@@ -528,7 +520,7 @@ class _ModeCard extends StatelessWidget {
                         padding: EdgeInsets.only(bottom: i == modes.length - 1 ? 0 : 8),
                         child: _ModeOption(
                           icon: _modeIcons[modes[i]] ?? Icons.alt_route,
-                          label: _modeLabel(modes[i]),
+                          label: modeLabel(modes[i]),
                           selected: modes[i] == current,
                           onTap: state != LibCore.kStateRunning ? null : () => changeModeStr(modes[i]),
                         ),
