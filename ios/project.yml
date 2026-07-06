@@ -95,7 +95,7 @@ targets:
           - "@loader_path/Frameworks"
         CODE_SIGN_ENTITLEMENTS: ExtensionProvider/ExtensionProvider.entitlements
         SWIFT_EMIT_LOC_STRINGS: YES
-        APPLICATION_EXTENSION_API_ONLY: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - framework: Frameworks/libsingcast-darwin.xcframework
         embed: true

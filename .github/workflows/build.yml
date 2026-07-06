@@ -63,7 +63,7 @@ jobs:
 
       - name: Setup Chinese language for Inno Setup
         run: |
-          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
       - name: Probe architecture
@@ -316,6 +316,16 @@ jobs:
           tar -zxf ios-core.tar.gz -C ios/Frameworks
           mv ios/Frameworks/singcast.xcframework ios/Frameworks/libsingcast-darwin.xcframework
 
+      - name: Mark core framework for app extension
+        # Xcode requires APPLICATION_EXTENSION_API_ONLY=YES for any binary
+        # linked into an app-extension target. The Go-built xcframework lacks
+        # this Mach-O flag, so set it with vtool and re-sign ad-hoc.
+        run: |
+          for bin in $(find ios/Frameworks/libsingcast-darwin.xcframework -name "Singcast" -type f); do
+            vtool -set-application-extension-api-only YES -replace "$bin"
+            codesign --force --sign - "$(dirname "$bin")"
+          done
+
       - name: Regenerate Xcode project
         run: |
           flutter pub get
@@ -343,4 +353,3 @@ jobs:
           tag_name: ${{ env.VERSION }}
           files: singcast-*-ios.ipa
           overwrite_files: true
-
