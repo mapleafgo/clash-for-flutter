@@ -105,6 +105,8 @@
     "autoCheckUpdate": "启动检查更新",
     "autoCheckUpdateDesc": "应用启动时自动检查新版本",
     "sectionAppearance": "外观",
+    "autoStart": "开机自启",
+    "autoStartDesc": "开机后自动启动并连接代理",
     "theme": "主题",
     "themeDesc": "切换应用外观风格",
     "themeSystem": "跟随系统",

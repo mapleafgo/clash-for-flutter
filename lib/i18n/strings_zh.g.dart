@@ -393,6 +393,12 @@ class Translations$settings$zh {
 	/// zh: '外观'
 	String get sectionAppearance => '外观';
 
+	/// zh: '开机自启'
+	String get autoStart => '开机自启';
+
+	/// zh: '开机后自动启动并连接代理'
+	String get autoStartDesc => '开机后自动启动并连接代理';
+
 	/// zh: '主题'
 	String get theme => '主题';
 
@@ -764,6 +770,8 @@ extension on Translations {
 			'settings.autoCheckUpdate' => '启动检查更新',
 			'settings.autoCheckUpdateDesc' => '应用启动时自动检查新版本',
 			'settings.sectionAppearance' => '外观',
+			'settings.autoStart' => '开机自启',
+			'settings.autoStartDesc' => '开机后自动启动并连接代理',
 			'settings.theme' => '主题',
 			'settings.themeDesc' => '切换应用外观风格',
 			'settings.themeSystem' => '跟随系统',

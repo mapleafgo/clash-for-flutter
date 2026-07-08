@@ -201,6 +201,8 @@ class _Translations$settings$en extends Translations$settings$zh {
 	@override String get autoCheckUpdate => 'Check for Updates on Startup';
 	@override String get autoCheckUpdateDesc => 'Automatically check for new versions on startup';
 	@override String get sectionAppearance => 'Appearance';
+	@override String get autoStart => 'Launch at Startup';
+	@override String get autoStartDesc => 'Automatically start and connect on boot';
 	@override String get theme => 'Theme';
 	@override String get themeDesc => 'Change app appearance';
 	@override String get themeSystem => 'System Default';
@@ -437,6 +439,8 @@ extension on TranslationsEn {
 			'settings.autoCheckUpdate' => 'Check for Updates on Startup',
 			'settings.autoCheckUpdateDesc' => 'Automatically check for new versions on startup',
 			'settings.sectionAppearance' => 'Appearance',
+			'settings.autoStart' => 'Launch at Startup',
+			'settings.autoStartDesc' => 'Automatically start and connect on boot',
 			'settings.theme' => 'Theme',
 			'settings.themeDesc' => 'Change app appearance',
 			'settings.themeSystem' => 'System Default',

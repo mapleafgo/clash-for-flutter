@@ -105,6 +105,8 @@
     "autoCheckUpdate": "Check for Updates on Startup",
     "autoCheckUpdateDesc": "Automatically check for new versions on startup",
     "sectionAppearance": "Appearance",
+    "autoStart": "Launch at Startup",
+    "autoStartDesc": "Automatically start and connect on boot",
     "theme": "Theme",
     "themeDesc": "Change app appearance",
     "themeSystem": "System Default",
