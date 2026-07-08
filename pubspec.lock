@@ -509,14 +509,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "6.14.0"
-  launch_at_startup:
-    dependency: "direct main"
-    description:
-      name: launch_at_startup
-      sha256: "7db33398b76ec0ed9e27f9f4640553e239977437564046625e215be89c91f084"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.5.1"
   leak_tracker:
     dependency: transitive
     description:
@@ -1147,7 +1139,7 @@ packages:
     source: hosted
     version: "6.3.0"
   win32_registry:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       name: win32_registry
       sha256: "73b1d78920a9d6e03f8b4e43e612b87bf3152a0e5c5e5150267762b7c4116904"
