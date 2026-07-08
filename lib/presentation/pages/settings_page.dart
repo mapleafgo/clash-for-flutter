@@ -4,6 +4,7 @@ import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
+import 'package:singcast/services/startup_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/format.dart' show modeLabel;
 import 'package:flutter/material.dart';
@@ -121,8 +122,24 @@ class SettingsPage extends StatelessWidget {
             labelBuilder: _logLevelLabel,
             onChanged: (l) => updateClashConfig(logLevel: l),
           ),
-          _Section(t.settings.sectionGeneral),
-          const _UaTile(),
+         _Section(t.settings.sectionGeneral),
+          if (Constants.isDesktop)
+            l10nBuilder((context) {
+              return SwitchListTile(
+                title: Text(t.settings.autoStart),
+                subtitle: Text(t.settings.autoStartDesc),
+                value: autoStart.value,
+                onChanged: (v) async {
+                  try {
+                    await setAutoStart(v);
+                    autoStart.value = v;
+                  } catch (e) {
+                    // 注册失败，signal 不更新，开关回弹
+                  }
+                },
+              );
+            }),
+         const _UaTile(),
           _UrlTile(
             label: t.settings.delayTestUrl,
             description: t.settings.delayTestUrlDesc,
