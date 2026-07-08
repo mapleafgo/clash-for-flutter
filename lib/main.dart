@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/data/local/core_config_storage.dart';
+import 'package:singcast/domain/enums.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/app.dart' show App;
 import 'package:singcast/presentation/app_state.dart' show appReady;
@@ -159,7 +160,24 @@ Future<void> _initApp() async {
     _log('[startup] desktop state after syncKernelState: $syncedState');
     // restart / uninstallServiceAndRestart 后统一重新激活内核
     LibCore.instance.onProcessReady = () async {
-      if (selectedFile.value != null) await asyncProfile();
+      if (selectedFile.value == null) return;
+      if (autoStartFromArgs) {
+        try {
+          if (tunIf.value == true) {
+            await toggleTun(true);
+          } else {
+            await toggleSystemProxy(true);
+          }
+        } catch (e) {
+          LogFileWriter.instance?.log(
+            '开机自启连接代理失败: $e',
+            level: LogLevel.error,
+            name: 'autostart',
+          );
+        }
+      } else {
+        await asyncProfile();
+      }
     };
   }
 
