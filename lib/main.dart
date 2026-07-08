@@ -12,6 +12,7 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
+import 'package:singcast/services/startup_service.dart';
 import 'package:singcast/services/startup_checks.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
@@ -19,8 +20,10 @@ import 'package:singcast/utils/log_file.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:window_manager/window_manager.dart';
 
-void main() async {
+void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  autoStartFromArgs = arguments.contains('--autostart');
 
   await Defaults.init();
 
@@ -42,7 +45,10 @@ void main() async {
         titleBarStyle: TitleBarStyle.hidden,
       ),
       () async {
-        await windowManager.show();
+        if (!autoStartFromArgs) {
+          await windowManager.show();
+        }
+        // 自启场景：不 show()，窗口保持隐藏到托盘
       },
     );
   }
@@ -57,6 +63,7 @@ void main() async {
 
   if (Constants.isDesktop) {
     await initTray();
+    await initStartupService();
     windowManager.addListener(_WindowListener());
   }
 
@@ -170,6 +177,9 @@ Future<void> _initApp() async {
     '[startup] done: ${sw.elapsedMilliseconds}ms finalState=${LibCore.instance.stateSignal.peek()}',
   );
 }
+
+/// 标记应用是否通过开机自启启动（命令行携带 --autostart 参数）。
+late bool autoStartFromArgs;
 
 void _log(String msg) {
   LogFileWriter.instance?.log(msg, name: 'startup');
