@@ -15,19 +15,20 @@ class MainFlutterWindow: NSWindow {
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
     .setMethodCallHandler { (_ call: FlutterMethodCall, result: @escaping FlutterResult) in
-     switch call.method {
-     case "launchAtStartupIsEnabled":
-        result(SMAppService.mainApp.status == .registered)
-     case "launchAtStartupSetEnabled":
-       if let arguments = call.arguments as? [String: Any] {
+      switch call.method {
+      case "launchAtStartupIsEnabled":
+        // 用字符串比较替代枚举 case，兼容不同 macOS SDK 的命名差异
+        result("\(SMAppService.mainApp.status)" == "registered")
+      case "launchAtStartupSetEnabled":
+        if let arguments = call.arguments as? [String: Any] {
           let enabled = arguments["setEnabledValue"] as! Bool
           if enabled {
             try? SMAppService.mainApp.register()
           } else {
             try? SMAppService.mainApp.unregister()
           }
-       }
-       result(nil)
+        }
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }
