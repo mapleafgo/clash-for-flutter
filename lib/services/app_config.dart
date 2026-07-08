@@ -22,6 +22,8 @@ final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
 final autoCheckUpdate = signal(true);
+/// 开机自启动设置（仅桌面端有效）。
+final autoStart = signal(false);
 /// 应用语言设置。null = 跟随系统。
 final appLocale = signal<String?>(null);
 /// 语言版本号，每次 locale 变化递增，用于触发全局 UI 重建。
@@ -48,6 +50,7 @@ void initAppConfig() {
   tunIf.value = stored.tunIf ?? !Constants.isDesktop;
   subUA.value = stored.subUA;
   autoCheckUpdate.value = stored.autoCheckUpdate;
+  autoStart.value = stored.autoStart;
   if (stored.themeMode != null) {
     final mode = _parseThemeMode(stored.themeMode!);
     if (mode != null) themeMode.value = mode;
@@ -104,6 +107,7 @@ void _startAutoSave() {
     subUA.value;
     themeMode.value;
     autoCheckUpdate.value;
+    autoStart.value;
     appLocale.value;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(seconds: 1), _save);
@@ -120,6 +124,7 @@ void _save() {
     subUA: subUA.value,
     themeMode: themeMode.value?.name,
     autoCheckUpdate: autoCheckUpdate.value,
+    autoStart: autoStart.value,
     locale: appLocale.value,
   ).toJson());
 }
