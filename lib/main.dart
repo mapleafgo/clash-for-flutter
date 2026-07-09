@@ -160,24 +160,24 @@ Future<void> _initApp() async {
     // restart / uninstallServiceAndRestart 后统一重新激活内核
     LibCore.instance.onProcessReady = () async {
       if (selectedFile.value == null) return;
-      if (autoStartFromArgs) {
-        try {
-          if (tunIf.value == true) {
-            await toggleTun(true);
-          } else {
-            await toggleSystemProxy(true);
-          }
-        } catch (e) {
-          LogFileWriter.instance?.log(
-            '开机自启连接代理失败: $e',
-            level: LogLevel.error,
-            name: 'autostart',
-          );
-        }
-      } else {
-        await asyncProfile();
-      }
+      await asyncProfile();
     };
+    // 自启时 onProcessReady 不触发，直接恢复上次代理模式
+    if (autoStartFromArgs && selectedFile.value != null) {
+      try {
+        if (tunIf.value == true) {
+          await toggleTun(true);
+        } else {
+          await toggleSystemProxy(true);
+        }
+      } catch (e) {
+        LogFileWriter.instance?.log(
+          '开机自启连接代理失败: $e',
+          level: LogLevel.error,
+          name: 'autostart',
+        );
+      }
+    }
   }
 
   startWatchingSelectedFile();
