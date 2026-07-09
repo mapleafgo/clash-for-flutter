@@ -21,6 +21,7 @@ object NetworkMonitor {
     private val defaultNetworkRequest = NetworkRequest.Builder()
         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
         .build()
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -103,6 +104,8 @@ object NetworkMonitor {
         for (network in allNetworks) {
             val lp = cm.getLinkProperties(network) ?: continue
             val caps = cm.getNetworkCapabilities(network) ?: continue
+            // 不上报 VPN 接口，避免内核把 tun0 当作出站接口导致路由环路
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
             val ifaceName = lp.interfaceName ?: continue
             val netIntf = networkInterfaces.find { it.name == ifaceName } ?: continue
 
@@ -141,12 +144,14 @@ object NetworkMonitor {
     private fun reportPhysicalDefaultInterface(context: Context, network: android.net.Network?) {
         if (network == null) return
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(network)
+        // 跳过 VPN 网络，避免把 tun0 当默认接口导致路由环路
+        if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) return
         val lp = cm.getLinkProperties(network) ?: return
         val ifaceName = lp.interfaceName ?: return
         if (ifaceName.isEmpty()) return
         defaultNetwork = network
         try {
-            val caps = cm.getNetworkCapabilities(network)
             val metered = caps != null && !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
             val index = try { Os.if_nametoindex(ifaceName).toLong() } catch (_: Exception) { 0L }
             Mobile.updateDefaultInterface(ifaceName, index, metered)
