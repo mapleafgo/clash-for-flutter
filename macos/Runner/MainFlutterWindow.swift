@@ -16,9 +16,8 @@ class MainFlutterWindow: NSWindow {
     )
     .setMethodCallHandler { (_ call: FlutterMethodCall, result: @escaping FlutterResult) in
       switch call.method {
-      case "launchAtStartupIsEnabled":
-        // 用字符串比较替代枚举 case，兼容不同 macOS SDK 的命名差异
-        result("\(SMAppService.mainApp.status)" == "registered")
+     case "launchAtStartupIsEnabled":
+        result(SMAppService.mainApp.status == .enabled)
       case "launchAtStartupSetEnabled":
         if let arguments = call.arguments as? [String: Any] {
           let enabled = arguments["setEnabledValue"] as! Bool

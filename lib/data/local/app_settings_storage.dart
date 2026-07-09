@@ -10,7 +10,8 @@ import 'package:singcast/utils/log_file.dart';
 const _sentinel = Object();
 
 class AppSettingsStorage {
-  static File get _file => File(p.join(Constants.homeDir.path, Constants.appSettings));
+  static File get _file =>
+      File(p.join(Constants.homeDir.path, Constants.appSettings));
 
   static Map<String, dynamic> load() {
     _migrateFromCfm();
@@ -68,57 +69,57 @@ class AppStoredConfig {
   final String subUA;
   final String? themeMode;
   final String? ignoredVersion;
- final bool autoCheckUpdate;
- final String? locale;
+  final bool autoCheckUpdate;
+  final String? locale;
   final bool autoStart;
 
- AppStoredConfig({
-   this.selectedFile,
-   required this.profiles,
-   required this.delayTestUrl,
-   this.tunIf,
-   String? subUA,
-   this.themeMode,
-   this.ignoredVersion,
-   this.autoCheckUpdate = true,
-   this.locale,
+  AppStoredConfig({
+    this.selectedFile,
+    required this.profiles,
+    required this.delayTestUrl,
+    this.tunIf,
+    String? subUA,
+    this.themeMode,
+    this.ignoredVersion,
+    this.autoCheckUpdate = true,
+    this.locale,
     this.autoStart = false,
- }) : subUA = subUA ?? Defaults.subUA;
+  }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
       AppStoredConfig(
         selectedFile: json['selected-file'] as String?,
-        profiles: (json['profiles'] as List?)
+        profiles:
+            (json['profiles'] as List?)
                 ?.map((e) => Profile.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
-        delayTestUrl: json['delay-test-url'] as String? ?? Defaults.delayTestUrl,
+        delayTestUrl:
+            json['delay-test-url'] as String? ?? Defaults.delayTestUrl,
         tunIf: json['tun-if'] as bool?,
         subUA: json['sub-ua'] as String? ?? Defaults.subUA,
         themeMode: json['theme-mode'] as String?,
         ignoredVersion: json['ignored-version'] as String?,
-       autoCheckUpdate: json['auto-check-update'] as bool? ?? true,
-       locale: json['locale'] as String?,
+        autoCheckUpdate: json['auto-check-update'] as bool? ?? true,
+        locale: json['locale'] as String?,
         autoStart: json['auto-start'] as bool? ?? false,
-     );
+      );
 
   Map<String, dynamic> toJson() => {
-        'selected-file': selectedFile,
-        'profiles': profiles.map((e) => e.toJson()).toList(),
-        'delay-test-url': delayTestUrl,
-        'tun-if': tunIf,
-        if (subUA != Defaults.subUA) 'sub-ua': subUA,
-        if (themeMode != null) 'theme-mode': themeMode,
-        if (ignoredVersion != null) 'ignored-version': ignoredVersion,
-     if (!autoCheckUpdate) 'auto-check-update': autoCheckUpdate,
-     if (locale != null) 'locale': locale,
-      if (autoStart) 'auto-start': autoStart,
-   };
+    'selected-file': selectedFile,
+    'profiles': profiles.map((e) => e.toJson()).toList(),
+    'delay-test-url': delayTestUrl,
+    'tun-if': tunIf,
+    if (subUA != Defaults.subUA) 'sub-ua': subUA,
+    if (themeMode != null) 'theme-mode': themeMode,
+    if (ignoredVersion != null) 'ignored-version': ignoredVersion,
+    if (!autoCheckUpdate) 'auto-check-update': autoCheckUpdate,
+    if (locale != null) 'locale': locale,
+    if (autoStart) 'auto-start': autoStart,
+  };
 
-  factory AppStoredConfig.empty() => AppStoredConfig(
-        profiles: [],
-        delayTestUrl: Defaults.delayTestUrl,
-      );
+  factory AppStoredConfig.empty() =>
+      AppStoredConfig(profiles: [], delayTestUrl: Defaults.delayTestUrl);
 
   AppStoredConfig copyWith({
     String? selectedFile,
@@ -128,22 +129,21 @@ class AppStoredConfig {
     String? subUA,
     String? themeMode,
     Object? ignoredVersion = _sentinel,
-   bool? autoCheckUpdate,
-   String? locale,
+    bool? autoCheckUpdate,
+    String? locale,
     bool? autoStart,
- }) =>
-     AppStoredConfig(
-       selectedFile: selectedFile ?? this.selectedFile,
-       profiles: profiles ?? this.profiles,
-       delayTestUrl: delayTestUrl ?? this.delayTestUrl,
-       tunIf: tunIf ?? this.tunIf,
-       subUA: subUA ?? this.subUA,
-       themeMode: themeMode ?? this.themeMode,
-       ignoredVersion: ignoredVersion == _sentinel
-           ? this.ignoredVersion
-           : ignoredVersion as String?,
-       autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
-       locale: locale ?? this.locale,
-        autoStart: autoStart ?? this.autoStart,
-     );
+  }) => AppStoredConfig(
+    selectedFile: selectedFile ?? this.selectedFile,
+    profiles: profiles ?? this.profiles,
+    delayTestUrl: delayTestUrl ?? this.delayTestUrl,
+    tunIf: tunIf ?? this.tunIf,
+    subUA: subUA ?? this.subUA,
+    themeMode: themeMode ?? this.themeMode,
+    ignoredVersion: ignoredVersion == _sentinel
+        ? this.ignoredVersion
+        : ignoredVersion as String?,
+    autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
+    locale: locale ?? this.locale,
+    autoStart: autoStart ?? this.autoStart,
+  );
 }

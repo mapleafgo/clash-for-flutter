@@ -1,34 +1,26 @@
 import 'dart:io' show File, Platform;
 
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:path/path.dart' as p;
 import 'package:singcast/utils/constants.dart';
 import 'package:win32/win32.dart';
 import 'package:win32_registry/win32_registry.dart';
 
+/// 自启命令行参数标记，注册时写入、启动时检测，单一来源。
+const autostartArg = '--autostart';
+
 /// 自启应用名称（注册表键名 / desktop 文件名）。
 const _appName = 'Singcast';
-/// 自启命令行参数，启动时用于判断是否为自启场景。
-const _autostartArgs = ['--autostart'];
-
-/// 初始化自启服务。
-///
-/// Windows 和 Linux 直接操作注册表 / 文件系统，无需初始化。
-/// macOS 的 platform channel 已在 MainFlutterWindow.swift 中注册。
-Future<void> initStartupService() async {
-  if (!Constants.isDesktop) return;
-}
 
 /// 返回完整的自启命令行（可执行路径 + 参数）。
 String _buildCommand() {
   final exe = Platform.resolvedExecutable;
-  if (_autostartArgs.isEmpty) return exe;
-  return '$exe ${_autostartArgs.join(' ')}';
+  return '$exe $autostartArg';
 }
 
 // --- Windows ---
 
-const _winRunKeyPath =
-    r'Software\Microsoft\Windows\CurrentVersion\Run';
+const _winRunKeyPath = r'Software\Microsoft\Windows\CurrentVersion\Run';
 
 Future<void> _enableWindows() async {
   final key = CURRENT_USER.create(_winRunKeyPath);
@@ -44,6 +36,24 @@ Future<void> _disableWindows() async {
   }
 }
 
+// --- macOS ---
+
+const _macChannel = MethodChannel('launch_at_startup');
+
+Future<void> _enableMacOS() async {
+  await _macChannel.invokeMethod(
+    'launchAtStartupSetEnabled',
+    {'setEnabledValue': true},
+  );
+}
+
+Future<void> _disableMacOS() async {
+  await _macChannel.invokeMethod(
+    'launchAtStartupSetEnabled',
+    {'setEnabledValue': false},
+  );
+}
+
 // --- Linux ---
 
 String get _linuxAutostartPath =>
@@ -53,12 +63,11 @@ String get _linuxAutostartPath =>
 Future<void> _enableLinux() async {
   final file = File(_linuxAutostartPath);
   await file.parent.create(recursive: true);
-  final exe = Platform.resolvedExecutable;
   await file.writeAsString('''
 [Desktop Entry]
 Type=Application
 Name=$_appName
-Exec="$exe" ${_autostartArgs.join(' ')}
+Exec="${Platform.resolvedExecutable}" $autostartArg
 Terminal=false
 X-GNOME-Autostart-enabled=true
 ''');
@@ -82,6 +91,12 @@ Future<void> setAutoStart(bool enabled) async {
       await _enableWindows();
     } else {
       await _disableWindows();
+    }
+  } else if (Platform.isMacOS) {
+    if (enabled) {
+      await _enableMacOS();
+    } else {
+      await _disableMacOS();
     }
   } else if (Platform.isLinux) {
     if (enabled) {

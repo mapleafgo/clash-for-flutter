@@ -13,7 +13,7 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
-import 'package:singcast/services/startup_service.dart';
+import 'package:singcast/services/startup_service.dart' show autostartArg;
 import 'package:singcast/services/startup_checks.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
@@ -24,7 +24,7 @@ import 'package:window_manager/window_manager.dart';
 void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  autoStartFromArgs = arguments.contains('--autostart');
+  autoStartFromArgs = arguments.contains(autostartArg);
 
   await Defaults.init();
 
@@ -64,7 +64,6 @@ void main(List<String> arguments) async {
 
   if (Constants.isDesktop) {
     await initTray();
-    await initStartupService();
     windowManager.addListener(_WindowListener());
   }
 
@@ -196,7 +195,7 @@ Future<void> _initApp() async {
   );
 }
 
-/// 标记应用是否通过开机自启启动（命令行携带 --autostart 参数）。
+/// 标记应用是否通过开机自启启动（命令行携带 autostartArg 参数）。
 late bool autoStartFromArgs;
 
 void _log(String msg) {

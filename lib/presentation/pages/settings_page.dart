@@ -12,8 +12,6 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-
-
 String _logLevelLabel(LogLevel l) => switch (l) {
   LogLevel.debug => t.settings.logDebug,
   LogLevel.info => t.settings.logInfo,
@@ -42,161 +40,172 @@ class SettingsPage extends StatelessWidget {
       appBar: SysAppBar(title: t.settings.title),
       body: l10nBuilder((context) {
         final config = clashConfig.value;
-        return ListView(children: [
-          _Section(t.settings.sectionCore),
-          SwitchListTile(
-            title: Text(t.settings.proxyService),
-            subtitle: Text(t.settings.proxyServiceDesc),
-            value: config.userPortEnabled || config.systemProxyEnabled,
-            onChanged: config.systemProxyEnabled
-                ? null
-                : (v) => updateClashConfig(portEnabled: v),
-          ),
-          _AnimatedExpand(
-            expanded: config.userPortEnabled || config.systemProxyEnabled,
-            children: [
-              SwitchListTile(
-                title: Text(t.settings.allowLan),
-                subtitle: Text(t.settings.allowLanDesc),
-                value: config.allowLan ?? false,
-                onChanged: (v) => updateClashConfig(allowLan: v),
-              ),
-            ],
-          ),
-          _PortTile(
-            label: t.settings.port,
-            value: config.mixedPort,
-            description: t.settings.portDesc,
-            onChanged: (v) => updateClashConfig(mixedPort: v),
-          ),
-          SwitchListTile(
-            title: Text(t.settings.ipv6),
-            subtitle: Text(t.settings.ipv6Desc),
-            value: config.ipv6 ?? false,
-            onChanged: (v) => updateClashConfig(ipv6: v),
-          ),
-          if (Constants.isDesktop)
-            l10nBuilder((context) {
-              final modes = LibCore.instance.availableModesSignal.value;
-              final current = LibCore.instance.modeSignal.value;
-              final ready = LibCore.instance.stateSignal.value == LibCore.kStateRunning;
-              return _ChoiceTile<String>(
-                title: t.settings.outboundMode,
-                description: t.settings.outboundModeDesc,
-                value: modes.contains(current) ? current : (modes.isNotEmpty ? modes.first : 'rule'),
-                items: modes,
-                labelBuilder: modeLabel,
-                onChanged: ready ? (m) => changeModeStr(m) : null,
-              );
-            }),
-          SwitchListTile(
-            title: Text(t.settings.clashApi),
-            subtitle: Text(t.settings.clashApiDesc),
-            value: config.apiEnabled,
-            onChanged: (v) => updateClashConfig(externalController: v),
-          ),
-          _AnimatedExpand(
-            expanded: config.apiEnabled,
-            children: [
-              ListTile(
-                title: Text(t.settings.apiAddress),
-                subtitle: Text(config.apiAddr, maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () async {
-                  final result = await _showEditDialog(
-                    context: context,
-                    title: t.settings.apiAddress,
-                    initialValue: config.apiAddr,
-                  );
-                  if (result != null && result.isNotEmpty) {
-                    updateClashConfig(externalControllerAddr: result);
-                  }
-                },
-              ),
-            ],
-          ),
-          _ChoiceTile<LogLevel>(
-            title: t.settings.logLevel,
-            description: t.settings.logLevelDesc,
-            value: config.logLevel ?? LogLevel.info,
-            items: LogLevel.values,
-            labelBuilder: _logLevelLabel,
-            onChanged: (l) => updateClashConfig(logLevel: l),
-          ),
-         _Section(t.settings.sectionGeneral),
-          if (Constants.isDesktop)
+        return ListView(
+          children: [
+            _Section(t.settings.sectionCore),
+            SwitchListTile(
+              title: Text(t.settings.proxyService),
+              subtitle: Text(t.settings.proxyServiceDesc),
+              value: config.userPortEnabled || config.systemProxyEnabled,
+              onChanged: config.systemProxyEnabled
+                  ? null
+                  : (v) => updateClashConfig(portEnabled: v),
+            ),
+            _AnimatedExpand(
+              expanded: config.userPortEnabled || config.systemProxyEnabled,
+              children: [
+                SwitchListTile(
+                  title: Text(t.settings.allowLan),
+                  subtitle: Text(t.settings.allowLanDesc),
+                  value: config.allowLan ?? false,
+                  onChanged: (v) => updateClashConfig(allowLan: v),
+                ),
+              ],
+            ),
+            _PortTile(
+              label: t.settings.port,
+              value: config.mixedPort,
+              description: t.settings.portDesc,
+              onChanged: (v) => updateClashConfig(mixedPort: v),
+            ),
+            SwitchListTile(
+              title: Text(t.settings.ipv6),
+              subtitle: Text(t.settings.ipv6Desc),
+              value: config.ipv6 ?? false,
+              onChanged: (v) => updateClashConfig(ipv6: v),
+            ),
+            if (Constants.isDesktop)
+              l10nBuilder((context) {
+                final modes = LibCore.instance.availableModesSignal.value;
+                final current = LibCore.instance.modeSignal.value;
+                final ready =
+                    LibCore.instance.stateSignal.value == LibCore.kStateRunning;
+                return _ChoiceTile<String>(
+                  title: t.settings.outboundMode,
+                  description: t.settings.outboundModeDesc,
+                  value: modes.contains(current)
+                      ? current
+                      : (modes.isNotEmpty ? modes.first : 'rule'),
+                  items: modes,
+                  labelBuilder: modeLabel,
+                  onChanged: ready ? (m) => changeModeStr(m) : null,
+                );
+              }),
+            SwitchListTile(
+              title: Text(t.settings.clashApi),
+              subtitle: Text(t.settings.clashApiDesc),
+              value: config.apiEnabled,
+              onChanged: (v) => updateClashConfig(externalController: v),
+            ),
+            _AnimatedExpand(
+              expanded: config.apiEnabled,
+              children: [
+                ListTile(
+                  title: Text(t.settings.apiAddress),
+                  subtitle: Text(
+                    config.apiAddr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () async {
+                    final result = await _showEditDialog(
+                      context: context,
+                      title: t.settings.apiAddress,
+                      initialValue: config.apiAddr,
+                    );
+                    if (result != null && result.isNotEmpty) {
+                      updateClashConfig(externalControllerAddr: result);
+                    }
+                  },
+                ),
+              ],
+            ),
+            _ChoiceTile<LogLevel>(
+              title: t.settings.logLevel,
+              description: t.settings.logLevelDesc,
+              value: config.logLevel ?? LogLevel.info,
+              items: LogLevel.values,
+              labelBuilder: _logLevelLabel,
+              onChanged: (l) => updateClashConfig(logLevel: l),
+            ),
+            _Section(t.settings.sectionGeneral),
+            if (Constants.isDesktop)
+              l10nBuilder((context) {
+                return SwitchListTile(
+                  title: Text(t.settings.autoStart),
+                  subtitle: Text(t.settings.autoStartDesc),
+                  value: autoStart.value,
+                  onChanged: (v) async {
+                    try {
+                      await setAutoStart(v);
+                      autoStart.value = v;
+                    } catch (e) {
+                      // 注册失败，signal 不更新，开关回弹
+                    }
+                  },
+                );
+              }),
+            const _UaTile(),
+            _UrlTile(
+              label: t.settings.delayTestUrl,
+              description: t.settings.delayTestUrlDesc,
+              value: delayTestUrl.value,
+              onChanged: (v) => delayTestUrl.value = v,
+            ),
+            _UrlTile(
+              label: t.settings.ruleSetProxy,
+              description: t.settings.ruleSetProxyDesc,
+              value: ruleSetProxy.value,
+              onChanged: (v) => ruleSetProxy.value = v,
+            ),
             l10nBuilder((context) {
               return SwitchListTile(
-                title: Text(t.settings.autoStart),
-                subtitle: Text(t.settings.autoStartDesc),
-                value: autoStart.value,
-                onChanged: (v) async {
-                  try {
-                    await setAutoStart(v);
-                    autoStart.value = v;
-                  } catch (e) {
-                    // 注册失败，signal 不更新，开关回弹
-                  }
-                },
+                title: Text(t.settings.autoCheckUpdate),
+                subtitle: Text(t.settings.autoCheckUpdateDesc),
+                value: autoCheckUpdate.value,
+                onChanged: (v) => autoCheckUpdate.value = v,
               );
             }),
-         const _UaTile(),
-          _UrlTile(
-            label: t.settings.delayTestUrl,
-            description: t.settings.delayTestUrlDesc,
-            value: delayTestUrl.value,
-            onChanged: (v) => delayTestUrl.value = v,
-          ),
-          _UrlTile(
-            label: t.settings.ruleSetProxy,
-            description: t.settings.ruleSetProxyDesc,
-            value: ruleSetProxy.value,
-            onChanged: (v) => ruleSetProxy.value = v,
-          ),
-          l10nBuilder((context) {
-            return SwitchListTile(
-              title: Text(t.settings.autoCheckUpdate),
-              subtitle: Text(t.settings.autoCheckUpdateDesc),
-              value: autoCheckUpdate.value,
-              onChanged: (v) => autoCheckUpdate.value = v,
-            );
-          }),
-          _Section(t.settings.sectionAppearance),
-          l10nBuilder((context) => _ChoiceTile<ThemeMode>(
+            _Section(t.settings.sectionAppearance),
+            l10nBuilder(
+              (context) => _ChoiceTile<ThemeMode>(
                 title: t.settings.theme,
                 description: t.settings.themeDesc,
                 value: themeMode.value ?? ThemeMode.system,
                 items: ThemeMode.values,
                 labelBuilder: _themeModeLabel,
                 onChanged: (m) => themeMode.value = m,
-              )),
-          l10nBuilder((context) {
-            final current = appLocale.value;
-            return _ChoiceTile<String>(
-              title: t.settings.language,
-              description: t.settings.languageDesc,
-              value: current ?? 'system',
-              items: const ['system', 'zh', 'en'],
-              labelBuilder: _localeLabel,
-              onChanged: (v) {
-                // 先更新 LocaleSettings，再设置 appLocale。
-                // 这样 effects 运行时 t.xxx 已是新语言的值。
-                if (v == 'system') {
-                  LocaleSettings.useDeviceLocale();
-                } else {
-                  LocaleSettings.setLocaleRaw(v);
-                }
-                appLocale.value = v == 'system' ? null : v;
-              },
-            );
-          }),
-          _Section(t.settings.sectionOther),
-          ListTile(
-            title: Text(t.settings.about),
-            subtitle: Text(t.settings.aboutDesc),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/settings/about'),
-          ),
-        ]);
+              ),
+            ),
+            l10nBuilder((context) {
+              final current = appLocale.value;
+              return _ChoiceTile<String>(
+                title: t.settings.language,
+                description: t.settings.languageDesc,
+                value: current ?? 'system',
+                items: const ['system', 'zh', 'en'],
+                labelBuilder: _localeLabel,
+                onChanged: (v) {
+                  // 先更新 LocaleSettings，再设置 appLocale。
+                  // 这样 effects 运行时 t.xxx 已是新语言的值。
+                  if (v == 'system') {
+                    LocaleSettings.useDeviceLocale();
+                  } else {
+                    LocaleSettings.setLocaleRaw(v);
+                  }
+                  appLocale.value = v == 'system' ? null : v;
+                },
+              );
+            }),
+            _Section(t.settings.sectionOther),
+            ListTile(
+              title: Text(t.settings.about),
+              subtitle: Text(t.settings.aboutDesc),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/about'),
+            ),
+          ],
+        );
       }),
     );
   }
@@ -242,26 +251,28 @@ class _PortTile extends StatelessWidget {
       title: Text(label),
       subtitle: Text(value?.toString() ?? t.settings.notSet),
       enabled: enabled,
-      onTap: enabled ? () async {
-        final result = await _showEditDialog(
-          context: context,
-          title: label,
-          description: description,
-          initialValue: value?.toString() ?? '',
-          keyboardType: TextInputType.number,
-          validator: (v) {
-            final port = int.tryParse(v ?? '');
-            if (port == null || port < 1 || port > 65535) {
-              return t.settings.portValidationError;
+      onTap: enabled
+          ? () async {
+              final result = await _showEditDialog(
+                context: context,
+                title: label,
+                description: description,
+                initialValue: value?.toString() ?? '',
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final port = int.tryParse(v ?? '');
+                  if (port == null || port < 1 || port > 65535) {
+                    return t.settings.portValidationError;
+                  }
+                  return null;
+                },
+              );
+              if (result != null) {
+                final port = int.tryParse(result);
+                if (port != null && onChanged != null) onChanged!(port);
+              }
             }
-            return null;
-          },
-        );
-        if (result != null) {
-          final port = int.tryParse(result);
-          if (port != null && onChanged != null) onChanged!(port);
-        }
-      } : null,
+          : null,
     );
   }
 }
@@ -329,7 +340,12 @@ class _UaTile extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(t.settings.subUaDialogDesc, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                child: Text(
+                  t.settings.subUaDialogDesc,
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
             TextField(
@@ -353,13 +369,20 @@ class _UaTile extends StatelessWidget {
               runSpacing: 8,
               children: [
                 ActionChip(
-                  label: Text(t.settings.defaultValue, style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    t.settings.defaultValue,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   onPressed: () => controller.text = Defaults.subUA,
                 ),
-                ...Defaults.uaPresets.skip(1).map((ua) => ActionChip(
-                      label: Text(ua, style: const TextStyle(fontSize: 12)),
-                      onPressed: () => controller.text = ua,
-                    )),
+                ...Defaults.uaPresets
+                    .skip(1)
+                    .map(
+                      (ua) => ActionChip(
+                        label: Text(ua, style: const TextStyle(fontSize: 12)),
+                        onPressed: () => controller.text = ua,
+                      ),
+                    ),
               ],
             ),
           ],
@@ -405,32 +428,41 @@ class _ChoiceTile<T> extends StatelessWidget {
       title: Text(title),
       subtitle: Text(labelBuilder(value)),
       enabled: onChanged != null,
-      onTap: onChanged == null ? null : () {
-        showDialog(
-          context: context,
-          builder: (ctx) => SimpleDialog(
-            title: Text(title),
-            children: [
-              if (description != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                  child: Text(description!, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
-                ),
-              ...items.map((item) => Material(
-                    type: MaterialType.transparency,
-                    child: ListTile(
-                      title: Text(labelBuilder(item)),
-                      selected: item == value,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        if (item != value) onChanged?.call(item);
-                      },
+      onTap: onChanged == null
+          ? null
+          : () {
+              showDialog(
+                context: context,
+                builder: (ctx) => SimpleDialog(
+                  title: Text(title),
+                  children: [
+                    if (description != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                        child: Text(
+                          description!,
+                          style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ...items.map(
+                      (item) => Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          title: Text(labelBuilder(item)),
+                          selected: item == value,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            if (item != value) onChanged?.call(item);
+                          },
+                        ),
+                      ),
                     ),
-                  )),
-            ],
-          ),
-        );
-      },
+                  ],
+                ),
+              );
+            },
     );
   }
 }
@@ -459,7 +491,12 @@ Future<String?> _showEditDialog({
                 alignment: Alignment.centerLeft,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(description, style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+                  child: Text(
+                    description,
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ),
             TextField(
@@ -520,9 +557,7 @@ class _AnimatedExpand extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubicEmphasized,
         alignment: Alignment.topCenter,
-        child: expanded
-            ? Column(children: children)
-            : const SizedBox.shrink(),
+        child: expanded ? Column(children: children) : const SizedBox.shrink(),
       ),
     );
   }
