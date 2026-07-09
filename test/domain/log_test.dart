@@ -28,18 +28,5 @@ void main() {
       expect(LogEntry.fromJson({'level': 6, 'message': ''}).type, LogLevel.debug);
     });
 
-    test('toJson outputs lowercase keys', () {
-      final entry = LogEntry(type: LogLevel.warning, payload: 'hello', timestamp: DateTime(2026));
-      final json = entry.toJson();
-      expect(json['level'], 3);
-      expect(json['message'], 'hello');
-    });
-
-    test('JSON roundtrip', () {
-      final entry = LogEntry(type: LogLevel.error, payload: 'error occurred', timestamp: DateTime(2026));
-      final restored = LogEntry.fromJson(entry.toJson());
-      expect(restored.type, LogLevel.error);
-      expect(restored.payload, 'error occurred');
-    });
   });
 }

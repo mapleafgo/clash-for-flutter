@@ -9,11 +9,6 @@ class ProxyGroupItem {
     tag: json['tag'] as String? ?? '',
     type: json['type'] as String? ?? '',
   );
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'tag': tag,
-    'type': type,
-  };
 }
 
 /// singcast-cli returns:
@@ -43,12 +38,4 @@ class ProxyGroup {
         ?.map((e) => ProxyGroupItem.fromJson(e as Map<String, dynamic>))
         .toList() ?? [],
   );
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'tag': tag,
-    'type': type,
-    'selectable': selectable,
-    'selected': selected,
-    'items': items.map((e) => e.toJson()).toList(),
-  };
 }

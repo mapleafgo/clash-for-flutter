@@ -39,13 +39,4 @@ class CoreStats {
     startedAt: raw.startedAt,
   );
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'up': up,
-    'down': down,
-    'up_total': upTotal,
-    'down_total': downTotal,
-    'memory': memory,
-    'connections': connections,
-    'started_at': startedAt,
-  };
 }

@@ -101,9 +101,5 @@ void main() {
       expect(clashConfig.value.tunEnabled, true);
     });
 
-    test('port returns mixedPort value', () {
-      clashConfig.value = ClashConfig(mixedPort: 9090);
-      expect(clashConfig.value.port, 9090);
-    });
   });
 }

@@ -10,54 +10,15 @@ import 'package:singcast/services/core_config.dart'
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 
-/// 最近一次发送到内核的合并后配置（待机/TUN 关闭）。
-final mergedConfigStandby = signal<String?>(null);
 
-/// 最近一次发送到内核的合并后配置（TUN 开启）。
-final mergedConfigProxy = signal<String?>(null);
+/// 最近一次发送到内核的合并后配置。
+final lastMergedConfig = signal<String?>(null);
 
-/// 当前生效的合并后配置（指向待机或代理开启配置）。
-final lastMergedConfig = computed(() {
-  if (mergedConfigProxy.value != null) return mergedConfigProxy.value;
-  return mergedConfigStandby.value;
-});
-
-String get _standbyPath =>
-    p.join(Constants.homeDir.path, Constants.mergedConfigCacheStandby);
-String get _proxyPath =>
-    p.join(Constants.homeDir.path, Constants.mergedConfigCacheProxy);
-
-/// 缓存待机配置（TUN 关闭）：同时写入 signal 和磁盘文件。
-void cacheMergedConfigStandby(String merged) {
-  mergedConfigStandby.value = merged;
-  File(_standbyPath).writeAsStringSync(merged);
-}
-
-/// 缓存代理开启配置（TUN 开启）：同时写入 signal 和磁盘文件。
-void cacheMergedConfigProxy(String merged) {
-  mergedConfigProxy.value = merged;
-  File(_proxyPath).writeAsStringSync(merged);
-}
-
-/// 从磁盘恢复缓存到 signal。
-void restoreMergedConfigCache() {
-  final standbyFile = File(_standbyPath);
-  if (standbyFile.existsSync()) {
-    mergedConfigStandby.value = standbyFile.readAsStringSync();
-  }
-  final proxyFile = File(_proxyPath);
-  if (proxyFile.existsSync()) {
-    mergedConfigProxy.value = proxyFile.readAsStringSync();
-  }
-}
-
-/// 根据当前 TUN 状态写入对应缓存。
-void _cacheByTunState(String merged) {
-  if (clashConfig.value.tunEnabled) {
-    cacheMergedConfigProxy(merged);
-  } else {
-    cacheMergedConfigStandby(merged);
-  }
+/// 缓存上次发送的合并配置：同时写入 signal 和磁盘文件。
+void _cacheMergedConfig(String merged) {
+  lastMergedConfig.value = merged;
+  File(p.join(Constants.homeDir.path, Constants.mergedConfigCache))
+      .writeAsStringSync(merged);
 }
 
 void startWatchingSelectedFile() {
@@ -87,12 +48,24 @@ Future<bool> _activateProfile(String yamlPath) async {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
+    final state = LibCore.instance.stateSignal.peek();
+
+    // 内核仍在启动中：跳过避免 "invalid state starting" 错误
+    // （自启时 toggleTun/toggleSystemProxy 与 startWatchingSelectedFile 并发触发）
+    if (state == LibCore.kStateStarting) {
+      LogFileWriter.instance?.log(
+        '_activateProfile: core is starting, skipping reload',
+        level: LogLevel.debug,
+        name: 'profile',
+      );
+      return true;
+    }
+
     // Flutter hot restart 重置 isolate 导致缓存为空，
     // 但内核进程仍在运行。此时同步缓存但不热重载，
     // 避免流量计数器归零
-    if (lastMergedConfig.peek() == null &&
-        LibCore.instance.stateSignal.peek() == LibCore.kStateRunning) {
-      _cacheByTunState(merged);
+    if (lastMergedConfig.peek() == null && state == LibCore.kStateRunning) {
+      _cacheMergedConfig(merged);
       return true;
     }
 
@@ -130,7 +103,7 @@ Future<bool> _activateProfile(String yamlPath) async {
       return false;
     }
 
-    _cacheByTunState(merged);
+    _cacheMergedConfig(merged);
     profileError.value = null;
     return true;
   } catch (e) {

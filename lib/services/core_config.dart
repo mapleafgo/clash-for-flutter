@@ -11,7 +11,7 @@ import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart'
-    show asyncProfile, cacheMergedConfigProxy;
+    show asyncProfile, lastMergedConfig;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -182,7 +182,7 @@ Future<void> enableTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: clashConfig.value.ipv6,
       );
-      cacheMergedConfigProxy(merged);
+      lastMergedConfig.value = merged;
     } catch (e) {
       _applyTunConfig(false);
       rethrow;

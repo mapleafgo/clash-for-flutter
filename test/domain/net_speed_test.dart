@@ -21,30 +21,6 @@ void main() {
       expect(stats.downTotal, 15000);
     });
 
-    test('JSON roundtrip with values', () {
-      final stats = CoreStats(
-        up: 500, down: 1500, upTotal: 5000, downTotal: 15000,
-        memory: 1024, connections: 8, startedAt: 12345,
-      );
-      final json = stats.toJson();
-      final restored = CoreStats.fromKernelJson(json);
-
-      expect(restored.upTotal, 500);
-      expect(restored.downTotal, 1500);
-      expect(restored.memory, 1024);
-      expect(restored.connections, 8);
-      expect(restored.startedAt, 12345);
-    });
-
-    test('JSON roundtrip with defaults', () {
-      final stats = CoreStats();
-      final json = stats.toJson();
-      final restored = CoreStats.fromKernelJson(json);
-
-      expect(restored.upTotal, 0);
-      expect(restored.downTotal, 0);
-    });
-
     test('fromKernelJson handles missing fields with defaults', () {
       final restored = CoreStats.fromKernelJson({});
       expect(restored.upTotal, 0);
@@ -67,12 +43,5 @@ void main() {
       expect(stats.startedAt, 1234567890);
     });
 
-    test('toJson outputs snake_case keys', () {
-      final stats = CoreStats(upTotal: 100, downTotal: 200, startedAt: 999);
-      final json = stats.toJson();
-      expect(json.containsKey('up_total'), true);
-      expect(json.containsKey('down_total'), true);
-      expect(json.containsKey('started_at'), true);
-    });
   });
 }

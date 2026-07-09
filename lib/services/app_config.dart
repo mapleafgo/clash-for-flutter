@@ -116,7 +116,7 @@ void _startAutoSave() {
 }
 
 void _save() {
-  AppSettingsStorage.saveAsync(AppStoredConfig(
+  AppSettingsStorage.save(AppStoredConfig(
     selectedFile: selectedFile.value,
     profiles: profiles.value,
     delayTestUrl: delayTestUrl.value,
@@ -183,12 +183,6 @@ Future<Profile> refreshProfile(Profile old) async {
   return updated;
 }
 
-Profile? get activeProfile {
-  final file = selectedFile.value;
-  if (file == null) return null;
-  final idx = profiles.value.indexWhere((e) => e.file == file);
-  return idx >= 0 ? profiles.value[idx] : null;
-}
 
 String get profilesFullPath =>
     p.join(Constants.homeDir.path, Constants.profilesDir);

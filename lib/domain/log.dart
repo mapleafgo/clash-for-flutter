@@ -23,23 +23,11 @@ class LogEntry {
     );
   }
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'level': _logLevelToInt(type),
-    'message': payload,
-  };
-
   /// sing-box level: 0=Panic, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
   static LogLevel _intToLogLevel(int level) => switch (level) {
     0 || 1 || 2 => LogLevel.error,
     3 => LogLevel.warning,
     4 => LogLevel.info,
     _ => LogLevel.debug,
-  };
-
-  static int _logLevelToInt(LogLevel level) => switch (level) {
-    LogLevel.debug => 5,
-    LogLevel.info => 4,
-    LogLevel.warning => 3,
-    LogLevel.error => 2,
   };
 }

@@ -393,12 +393,8 @@ class LibCore {
         stateSignal.value = newState;
         if (newState == kStateRunning) {
           kernelBooted.value = true;
-          proxyTogglingSignal.value = false;
           _onKernelRunning();
         } else {
-          if (newState == kStateInitialized || newState == kStateDestroyed) {
-            proxyTogglingSignal.value = false;
-          }
           _clearRuntimeState();
         }
       case CoreEventType.trafficUpdate:

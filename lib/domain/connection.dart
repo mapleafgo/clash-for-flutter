@@ -9,11 +9,6 @@ class ConnectionEvent {
     eventType: (json['event_type'] as num?)?.toInt() ?? 0,
     id: json['id'] as String? ?? '',
   );
-
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'event_type': eventType,
-    'id': id,
-  };
 }
 
 /// singcast-cli connection events payload:

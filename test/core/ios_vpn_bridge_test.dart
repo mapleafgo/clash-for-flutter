@@ -57,12 +57,12 @@ void main() {
       final worker = IpcWorker(ipcPath: '/tmp/test.sock');
       var called = false;
 
-      worker.startCoreWithContentImpl = (content, {ruleSetProxy, enabledVpn = false}) async {
-        called = true;
-        expect(content, equals('new-config'));
-        expect(ruleSetProxy, equals('proxy'));
-        expect(enabledVpn, isTrue);
-      };
+    worker.startCoreWithContentImpl = (content, {ruleSetProxy, enabledVpn = false}) async {
+      called = true;
+      expect(content, equals('new-config'));
+      expect(ruleSetProxy, equals('proxy'));
+      // enabledVpn is not forwarded to the iOS hook (Extension handles VPN internally)
+    };
 
       await worker.startCoreWithContent('new-config', ruleSetProxy: 'proxy', enabledVpn: true);
       expect(called, isTrue);

@@ -16,12 +16,6 @@ void main() {
       expect(event.id, '');
     });
 
-    test('toJson outputs correct keys', () {
-      final event = ConnectionEvent(eventType: 1, id: 'conn-456');
-      final json = event.toJson();
-      expect(json['event_type'], 1);
-      expect(json['id'], 'conn-456');
-    });
   });
 
   group('ConnectionEventsPayload', () {
