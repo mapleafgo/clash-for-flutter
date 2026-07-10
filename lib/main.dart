@@ -136,30 +136,27 @@ Future<void> _initApp() async {
   } else if (!Constants.isDesktop) {
     // Android：内核在本进程，引擎重建恢复时内核可能仍在运行，同步真实状态
     await LibCore.instance.syncKernelState();
-    final syncedState = LibCore.instance.stateSignal.peek();
-    _log(
-      '[startup] syncKernelState: ${sw.elapsedMilliseconds}ms syncedState=$syncedState',
-    );
-    if (syncedState == LibCore.kStateRunning) {
-      vpnConnected.value = true;
-      ensureTunEnabled(true);
-      _log('[startup] restored VPN state: vpnConnected=true tunEnabled=true');
-    }
-
-    // Android 覆盖安装后隧道已死，isVpnRunning=false，不影响上面逻辑。
     final vpnRunning = await LibCore.instance.isVpnRunning();
     if (vpnRunning) {
       vpnConnected.value = true;
       ensureTunEnabled(true);
-      _log('[startup] VPN tunnel still running, synced vpnConnected=true');
+      _log('[startup] VPN running, synced vpnConnected=true tunEnabled=true');
     }
   } else {
     // 桌面端：LibCore.init() 已通过 syncKernelState 恢复状态
     final syncedState = LibCore.instance.stateSignal.peek();
     _log('[startup] desktop state after syncKernelState: $syncedState');
+    // 内核仍在运行时（如前端重启但 core 存活），恢复代理开关。TUN/系统代理不
+    // 持久化，从磁盘加载为 false；若不同步到 tunIf，后续配置变更触发的重载会
+    // 生成零 inbound 配置导致 TUN 消失断网。
+    if (syncedState == LibCore.kStateRunning) {
+      ensureProxyMode(tunIf.value == true);
+    }
     // restart / uninstallServiceAndRestart 后统一重新激活内核
     LibCore.instance.onProcessReady = () async {
       if (selectedFile.value == null) return;
+      // 先恢复代理开关再重载，顺序不能反
+      ensureProxyMode(tunIf.value == true);
       await asyncProfile();
     };
     // 自启时 onProcessReady 不触发，直接恢复上次代理模式

@@ -219,6 +219,8 @@ Future<void> _enableTunDesktop() async {
     } on StateError catch (e) {
       throw TunElevationException(e.message);
     }
+    // restart → onProcessReady 已用 ensureProxyMode + asyncProfile 完成重载
+    return;
   }
   _applyTunConfig(true);
   asyncProfile();
@@ -244,6 +246,20 @@ void ensureTunEnabled(bool enabled) {
   if (clashConfig.value.tunEnabled != enabled) {
     _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enabled)));
   }
+}
+
+/// 恢复代理模式开关到指定状态，不触发重载。
+void ensureProxyMode(bool tunMode) {
+  final cur = clashConfig.value;
+  final curTun = cur.tun?.enable ?? false;
+  final curProxy = cur.mixedSystemProxy ?? false;
+  if (curTun == tunMode && curProxy == !tunMode) return;
+  _updateConfig(
+    (c) => c.copyWith(
+      tun: TunConfig(enable: tunMode),
+      mixedSystemProxy: !tunMode,
+    ),
+  );
 }
 
 String _resolveProfilePath(String file) {

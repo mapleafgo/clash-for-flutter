@@ -7,11 +7,8 @@ import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/app_state.dart';
 import 'package:singcast/presentation/router.dart';
 import 'package:singcast/services/app_config.dart';
-import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/utils/constants.dart';
-import 'package:singcast/utils/log_file.dart';
-import 'package:singcast/domain/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -63,13 +60,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       final running = await LibCore.instance.isVpnRunning();
       if (running != vpnConnected.value) {
         vpnConnected.value = running;
-        if (!running && clashConfig.value.tunEnabled) {
-          LogFileWriter.instance?.log(
-            '_syncVpnState: VPN stopped but tunEnabled, calling asyncProfile',
-            level: LogLevel.warning,
-            name: 'tun',
-          );
-          await asyncProfile();
+        if (!running) {
+          ensureTunEnabled(false);
         }
       } else if (running && LibCore.instance.proxiesSignal.value.isEmpty) {
         try {
