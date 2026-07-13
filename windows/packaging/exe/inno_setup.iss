@@ -57,9 +57,9 @@ Source: "{{SOURCE_DIR}}\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdi
 [Icons]
 Name: "{autoprograms}\\{{DISPLAY_NAME}}"; Filename: "{app}\\{{EXECUTABLE_NAME}}"
 Name: "{autodesktop}\\{{DISPLAY_NAME}}"; Filename: "{app}\\{{EXECUTABLE_NAME}}"; Tasks: desktopicon
-Name: "{userstartup}\\{{DISPLAY_NAME}}"; Filename: "{app}\\{{EXECUTABLE_NAME}}"; WorkingDir: "{app}"; Tasks: launchAtStartup
+; Auto-start: no Startup-folder shortcut — the app registers the Run-key entry itself on first launch (see [Run] --enable-autostart), keeping a single channel in sync with the in-app toggle.
 [Run]
-Filename: "{app}\\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Flags: {% if PRIVILEGES_REQUIRED == 'admin' %}runascurrentuser{% endif %} nowait postinstall skipifsilent
+Filename: "{app}\\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Parameters: "{code:GetLaunchParams}"; Flags: {% if PRIVILEGES_REQUIRED == 'admin' %}runascurrentuser{% endif %} nowait postinstall skipifsilent
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: ""; ValueData: "URL:Singcast Protocol"; Flags: uninsdeletekey
@@ -69,3 +69,17 @@ Root: HKCU; Subkey: "Software\Classes\clash\shell\open\command"; ValueType: stri
 
 [UninstallRun]
 Filename: "{app}\\singcast-core.exe"; Parameters: "service uninstall"; Flags: runhidden
+; Remove the autostart Run-key entry the app registered; /f + runhidden = silent even if absent.
+Filename: "{cmd}"; Parameters: "/c reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Singcast /f"; Flags: runhidden
+
+[Code]
+// postinstall launch params: pass --enable-autostart when launchAtStartup is
+// selected, so the app registers the Run-key autostart entry itself — a single
+// channel that stays in sync with the in-app toggle (no Startup shortcut).
+function GetLaunchParams(Value: string): string;
+begin
+  if IsTaskSelected('launchAtStartup') then
+    Result := '--enable-autostart'
+  else
+    Result := '';
+end;

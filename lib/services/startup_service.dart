@@ -9,13 +9,21 @@ import 'package:win32_registry/win32_registry.dart';
 /// 自启命令行参数标记，注册时写入、启动时检测，单一来源。
 const autostartArg = '--autostart';
 
+/// 安装器勾选"开机自启"后，首次启动传入此参数以触发注册系统自启项。
+///
+/// 与 [autostartArg] 的区别：本参数仅用于安装后注册自启，不改变本次启动行为
+/// （窗口正常显示）；[autostartArg] 表示本次由系统自启拉起，触发隐藏到托盘
+/// + 自动连接代理。
+const enableAutostartArg = '--enable-autostart';
+
 /// 自启应用名称（注册表键名 / desktop 文件名）。
 const _appName = 'Singcast';
 
 /// 返回完整的自启命令行（可执行路径 + 参数）。
 String _buildCommand() {
   final exe = Platform.resolvedExecutable;
-  return '$exe $autostartArg';
+  // 给路径加引号，避免安装路径含空格（如 Program Files）时被按空格错误切分。
+  return '"$exe" $autostartArg';
 }
 
 // --- Windows ---

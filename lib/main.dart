@@ -13,7 +13,8 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
-import 'package:singcast/services/startup_service.dart' show autostartArg;
+import 'package:singcast/services/startup_service.dart'
+    show autostartArg, enableAutostartArg, setAutoStart;
 import 'package:singcast/services/startup_checks.dart';
 import 'package:singcast/services/tray_service.dart';
 import 'package:singcast/utils/constants.dart';
@@ -25,6 +26,7 @@ void main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   autoStartFromArgs = arguments.contains(autostartArg);
+  enableAutostartRequested = arguments.contains(enableAutostartArg);
 
   await Defaults.init();
 
@@ -114,6 +116,18 @@ Future<void> _initApp() async {
   initAppConfig();
   _log('[startup] initAppConfig: ${sw.elapsedMilliseconds}ms');
 
+  // 安装器勾选"开机自启"后首次启动：统一走应用内通道注册系统自启项
+  // （注册表 Run / SMAppService / .desktop），并写入 settings.json，使设置页
+  // 开关与系统真实状态一致。由 Inno postinstall 以 --enable-autostart 启动触发。
+  if (enableAutostartRequested) {
+    try {
+      await setAutoStart(true);
+      autoStart.value = true;
+    } catch (e) {
+      _log('[startup] enable-autostart failed: $e');
+    }
+  }
+
   if (Platform.isIOS) {
     // iOS：RPC 未连接，如果 VPN 正在运行，需要先连接 RPC 再同步状态
     final vpnRunning = await LibCore.instance.isVpnRunning();
@@ -194,6 +208,9 @@ Future<void> _initApp() async {
 
 /// 标记应用是否通过开机自启启动（命令行携带 autostartArg 参数）。
 late bool autoStartFromArgs;
+
+/// 标记安装器是否请求开启自启（命令行携带 enableAutostartArg 参数）。
+late bool enableAutostartRequested;
 
 void _log(String msg) {
   LogFileWriter.instance?.log(msg, name: 'startup');
