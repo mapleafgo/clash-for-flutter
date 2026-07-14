@@ -21,7 +21,7 @@ class Constants {
 
 class Defaults {
   static const ruleSetProxy = "https://gh-proxy.org";
-  static const delayTestUrl = "http://www.gstatic.com/generate_204";
+  static const delayTestUrl = "http://cp.cloudflare.com/generate_204";
   static String appVersion = '1.0.0';
   static String subUA = 'singcast/1.0.0 clash-meta';
 
