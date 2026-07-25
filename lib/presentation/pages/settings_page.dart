@@ -4,6 +4,7 @@ import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
+import 'package:singcast/services/core_reload.dart' show asyncProfile;
 import 'package:singcast/services/startup_service.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/format.dart' show modeLabel;
@@ -105,7 +106,15 @@ class SettingsPage extends StatelessWidget {
                   value: tunStack.value,
                   items: TunStack.values,
                   labelBuilder: _tunStackLabel,
-                  onChanged: (s) => tunStack.value = s,
+                  onChanged: (s) {
+                    if (s == tunStack.value) return;
+                    tunStack.value = s;
+                    // TUN 栈切换需重建实例，热重载下发新 stack。
+                    // 内核 StartWithContent 走 Stop→Start，TUN inbound 会被销毁重建。
+                    if (clashConfig.value.tunEnabled) {
+                      asyncProfile();
+                    }
+                  },
                 );
               }),
             SwitchListTile(
