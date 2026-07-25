@@ -40,6 +40,10 @@ abstract class ServiceManager {
   /// Used for degraded/fallback startup without UAC elevation.
   Future<bool> startDirect();
 
+  /// 按是否使用提权服务返回应连接的 IPC 路径。
+  /// Linux 服务模式为系统 socket，其余为用户目录 socket。
+  String ipcPathForMode({required bool elevated});
+
   /// Create the platform-appropriate ServiceManager.
   static ServiceManager create(String homeDir) {
     if (Platform.isWindows) return WindowsServiceManager(homeDir);
@@ -102,8 +106,17 @@ class UnixServiceManager extends ServiceManager {
   /// 降级直跑模式用的用户目录 socket。
   String get directIpcPath => ServiceManager.defaultIpcPath(homeDir);
 
+  @override
+  String ipcPathForMode({required bool elevated}) {
+    if (Platform.isLinux && elevated) return kLinuxSystemIpcPath;
+    return ServiceManager.defaultIpcPath(homeDir);
+  }
+
   /// Linux: 是否已安装 systemd unit（缓存一次探测结果）。
   bool _useSystemService = false;
+
+  /// 上次 isReady() 探测结果（供 LibCore 判断降级状态）。
+  bool get isReadyCached => _useSystemService;
 
   /// macOS: path to the setuid copy outside the app bundle.
   /// Avoids chown on files inside signed/translocated app bundles.
@@ -331,6 +344,10 @@ class WindowsServiceManager extends ServiceManager {
 
   @override
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
+
+  @override
+  String ipcPathForMode({required bool elevated}) =>
+      ServiceManager.defaultIpcPath(homeDir);
 
   /// Open a handle to the installed service with [access] rights.
   /// Returns the service handle, or null if not installed or no permission.
