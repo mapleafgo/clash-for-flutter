@@ -1,4 +1,3 @@
-import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/widgets/sys_app_bar.dart';
@@ -6,7 +5,6 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/startup_service.dart';
 import 'package:singcast/utils/constants.dart';
-import 'package:singcast/utils/format.dart' show modeLabel;
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
@@ -78,25 +76,8 @@ class SettingsPage extends StatelessWidget {
               title: Text(t.settings.ipv6),
               subtitle: Text(t.settings.ipv6Desc),
               value: config.ipv6 ?? false,
-              onChanged: (v) => updateClashConfig(ipv6: v),
-            ),
-            if (Constants.isDesktop)
-              l10nBuilder((context) {
-                final modes = LibCore.instance.availableModesSignal.value;
-                final current = LibCore.instance.modeSignal.value;
-                final ready =
-                    LibCore.instance.stateSignal.value == LibCore.kStateRunning;
-                return _ChoiceTile<String>(
-                  title: t.settings.outboundMode,
-                  description: t.settings.outboundModeDesc,
-                  value: modes.contains(current)
-                      ? current
-                      : (modes.isNotEmpty ? modes.first : 'rule'),
-                  items: modes,
-                  labelBuilder: modeLabel,
-                 onChanged: ready ? (m) => changeModeStr(m) : null,
-                );
-              }),
+             onChanged: (v) => updateClashConfig(ipv6: v),
+           ),
             if (Constants.isDesktop)
               l10nBuilder((context) {
                 return _ChoiceTile<TunStack>(
