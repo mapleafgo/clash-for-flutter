@@ -19,6 +19,12 @@ String _logLevelLabel(LogLevel l) => switch (l) {
   LogLevel.error => t.settings.logError,
 };
 
+String _tunStackLabel(TunStack s) => switch (s) {
+  TunStack.gvisor => t.settings.tunStackGvisor,
+  TunStack.mixed => t.settings.tunStackMixed,
+  TunStack.system => t.settings.tunStackSystem,
+};
+
 String _themeModeLabel(ThemeMode m) => switch (m) {
   ThemeMode.system => t.settings.themeSystem,
   ThemeMode.light => t.settings.themeLight,
@@ -88,7 +94,18 @@ class SettingsPage extends StatelessWidget {
                       : (modes.isNotEmpty ? modes.first : 'rule'),
                   items: modes,
                   labelBuilder: modeLabel,
-                  onChanged: ready ? (m) => changeModeStr(m) : null,
+                 onChanged: ready ? (m) => changeModeStr(m) : null,
+                );
+              }),
+            if (Constants.isDesktop)
+              l10nBuilder((context) {
+                return _ChoiceTile<TunStack>(
+                  title: t.settings.tunStack,
+                  description: t.settings.tunStackDesc,
+                  value: tunStack.value,
+                  items: TunStack.values,
+                  labelBuilder: _tunStackLabel,
+                  onChanged: (s) => tunStack.value = s,
                 );
               }),
             SwitchListTile(

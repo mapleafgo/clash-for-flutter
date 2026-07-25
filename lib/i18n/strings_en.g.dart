@@ -179,6 +179,11 @@ class _Translations$settings$en extends Translations$settings$zh {
 	@override String get ipv6Desc => 'Support IPv6 for proxy connections';
 	@override String get outboundMode => 'Outbound Mode';
 	@override String get outboundModeDesc => 'Control traffic routing strategy';
+	@override String get tunStack => 'TUN Stack';
+	@override String get tunStackDesc => 'Try gvisor if you have no network';
+	@override String get tunStackGvisor => 'gvisor (compatible)';
+	@override String get tunStackMixed => 'mixed (high performance)';
+	@override String get tunStackSystem => 'system (kernel)';
 	@override String get clashApi => 'Clash API';
 	@override String get clashApiDesc => 'Expose proxy status and control interface';
 	@override String get apiAddress => 'API Address';
@@ -417,6 +422,11 @@ extension on TranslationsEn {
 			'settings.ipv6Desc' => 'Support IPv6 for proxy connections',
 			'settings.outboundMode' => 'Outbound Mode',
 			'settings.outboundModeDesc' => 'Control traffic routing strategy',
+			'settings.tunStack' => 'TUN Stack',
+			'settings.tunStackDesc' => 'Try gvisor if you have no network',
+			'settings.tunStackGvisor' => 'gvisor (compatible)',
+			'settings.tunStackMixed' => 'mixed (high performance)',
+			'settings.tunStackSystem' => 'system (kernel)',
 			'settings.clashApi' => 'Clash API',
 			'settings.clashApiDesc' => 'Expose proxy status and control interface',
 			'settings.apiAddress' => 'API Address',

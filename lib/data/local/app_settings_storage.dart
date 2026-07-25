@@ -65,6 +65,7 @@ class AppStoredConfig {
   final bool autoCheckUpdate;
   final String? locale;
   final bool autoStart;
+  final TunStack tunStack;
 
   AppStoredConfig({
     this.selectedFile,
@@ -77,6 +78,7 @@ class AppStoredConfig {
     this.autoCheckUpdate = true,
     this.locale,
     this.autoStart = false,
+    this.tunStack = TunStack.gvisor,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
@@ -96,6 +98,7 @@ class AppStoredConfig {
         autoCheckUpdate: json['auto-check-update'] as bool? ?? true,
         locale: json['locale'] as String?,
         autoStart: json['auto-start'] as bool? ?? false,
+        tunStack: _parseTunStack(json['tun-stack'] as String?),
       );
 
   Map<String, dynamic> toJson() => {
@@ -109,6 +112,7 @@ class AppStoredConfig {
     if (!autoCheckUpdate) 'auto-check-update': autoCheckUpdate,
     if (locale != null) 'locale': locale,
     if (autoStart) 'auto-start': autoStart,
+    if (tunStack != TunStack.gvisor) 'tun-stack': tunStack.name,
   };
 
   factory AppStoredConfig.empty() =>
@@ -125,6 +129,7 @@ class AppStoredConfig {
     bool? autoCheckUpdate,
     String? locale,
     bool? autoStart,
+    TunStack? tunStack,
   }) => AppStoredConfig(
     selectedFile: selectedFile ?? this.selectedFile,
     profiles: profiles ?? this.profiles,
@@ -138,5 +143,13 @@ class AppStoredConfig {
     autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
     locale: locale ?? this.locale,
     autoStart: autoStart ?? this.autoStart,
+    tunStack: tunStack ?? this.tunStack,
   );
+}
+
+/// 解析持久化的 tun-stack 字符串，未知值回退到默认 [TunStack.gvisor]。
+TunStack _parseTunStack(String? value) {
+  if (value == null) return TunStack.gvisor;
+  return TunStack.values
+      .firstWhere((e) => e.name == value, orElse: () => TunStack.gvisor);
 }

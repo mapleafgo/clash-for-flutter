@@ -343,7 +343,7 @@ String mergeProfileConfig(String yamlContent) {
       'auto-route': true,
       'strict-route': true,
       if (!Platform.isMacOS) 'device': 'singcast',
-      if (!Constants.isDesktop) 'stack': 'gvisor',
+      'stack': tunStack.value.name,
     });
   }
 

@@ -327,6 +327,21 @@ class Translations$settings$zh {
 	/// zh: '控制流量路由策略'
 	String get outboundModeDesc => '控制流量路由策略';
 
+	/// zh: 'TUN 协议栈'
+	String get tunStack => 'TUN 协议栈';
+
+	/// zh: '无网络时可切换为 gvisor 试试'
+	String get tunStackDesc => '无网络时可切换为 gvisor 试试';
+
+	/// zh: 'gvisor（兼容）'
+	String get tunStackGvisor => 'gvisor（兼容）';
+
+	/// zh: 'mixed（高性能）'
+	String get tunStackMixed => 'mixed（高性能）';
+
+	/// zh: 'system（内核）'
+	String get tunStackSystem => 'system（内核）';
+
 	/// zh: 'Clash API'
 	String get clashApi => 'Clash API';
 
@@ -748,6 +763,11 @@ extension on Translations {
 			'settings.ipv6Desc' => '代理连接支持 IPv6 网络协议',
 			'settings.outboundMode' => '出站模式',
 			'settings.outboundModeDesc' => '控制流量路由策略',
+			'settings.tunStack' => 'TUN 协议栈',
+			'settings.tunStackDesc' => '无网络时可切换为 gvisor 试试',
+			'settings.tunStackGvisor' => 'gvisor（兼容）',
+			'settings.tunStackMixed' => 'mixed（高性能）',
+			'settings.tunStackSystem' => 'system（内核）',
 			'settings.clashApi' => 'Clash API',
 			'settings.clashApiDesc' => '对外提供代理状态查询和控制接口',
 			'settings.apiAddress' => 'API 地址',
