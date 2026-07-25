@@ -104,6 +104,8 @@ class LibCore {
     // Desktop (macOS/Windows/Linux): 独立进程 + RPC
     if (Constants.isDesktop) {
       _serviceManager = ServiceManager.create(Constants.homeDir.path);
+      // 先探测 systemd unit，让 UnixServiceManager.ipcPath 选对路径
+      await _serviceManager!.isReady();
       _ipcWorker = IpcWorker(ipcPath: _serviceManager!.ipcPath);
       _ipcWorker!.onCallback = _handleWorkerCallback;
       _ipcWorker!.onDisconnect = _onIpcDisconnected;
@@ -302,9 +304,28 @@ class LibCore {
   Future<bool> _startAndConnectWithFallback() async {
     // Try privileged/elevated core first
     if (await _startAndConnect()) return true;
+
+    // Linux 服务模式：连接失败时补一次 ACL 刷新（包预装后 ACL 可能不含当前 uid）
+    final sm = _serviceManager;
+    if (sm is UnixServiceManager && Platform.isLinux) {
+      if (await sm.refreshCallerUid()) {
+        // unit env 已更新，重建 IpcWorker 并重试
+        _ipcWorker = IpcWorker(ipcPath: sm.ipcPath);
+        _ipcWorker!.onCallback = _handleWorkerCallback;
+        _ipcWorker!.onDisconnect = _onIpcDisconnected;
+        if (await _connectWithRetry(attempts: 10)) return true;
+      }
+    }
+
     // Fallback: stop elevated service, start direct process (no UAC)
     await _serviceManager!.stop();
     if (!await _serviceManager!.startDirect()) return false;
+    // 降级：切换到用户目录 socket
+    if (sm is UnixServiceManager && Platform.isLinux) {
+      _ipcWorker = IpcWorker(ipcPath: sm.directIpcPath);
+      _ipcWorker!.onCallback = _handleWorkerCallback;
+      _ipcWorker!.onDisconnect = _onIpcDisconnected;
+    }
     if (!await _connectWithRetry(attempts: 10)) return false;
     LogFileWriter.instance?.log(
       'Fallback: started with built-in core (TUN unavailable)',
