@@ -38,6 +38,7 @@ Future<void> initCoreConfig() async {
 
   effect(() {
     clashConfig.value; // 订阅变化
+    tunStack.value; // TUN 协议栈切换也走同一热重载链路
     if (_internalUpdate) {
       _internalUpdate = false;
       return;
