@@ -1,5 +1,10 @@
 # Linux TUN 系统级 systemd 提权设计
 
+> **实现说明（2026-07-25 更新）**：最终实现放弃了 systemd 服务方案，
+> 改为最小改动——只写一条 polkit rule 放行 resolved 三条 action。
+> 不引入系统用户、不改变进程模型、不需要双 socket / ACL。
+> 以下为原始 systemd 设计，保留作历史参考。
+
 > 日期：2026-07-25
 > 范围：`singcast`（GUI/打包）+ `singcast-cli`（core 服务管理）
 > 状态：设计待确认后进入实现计划

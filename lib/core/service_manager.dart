@@ -170,17 +170,26 @@ class UnixServiceManager extends ServiceManager {
     }
   }
 
-  @override
-  Future<void> uninstall() async {
-    if (!Platform.isMacOS) return;
-    // macOS: delete the setuid copy so start() falls back to bundle binary.
-    try {
-      if (File(_elevatedBinaryPath).existsSync()) {
-        await File(_elevatedBinaryPath).delete();
-      }
-      final marker = File(_elevatedMarkerPath);
-      if (marker.existsSync()) await marker.delete();
-    } catch (_) {}
+ @override
+ Future<void> uninstall() async {
+    if (Platform.isMacOS) {
+      // macOS: delete the setuid copy so start() falls back to bundle binary.
+      try {
+        if (File(_elevatedBinaryPath).existsSync()) {
+          await File(_elevatedBinaryPath).delete();
+        }
+        final marker = File(_elevatedMarkerPath);
+        if (marker.existsSync()) await marker.delete();
+      } catch (_) {}
+      return;
+    }
+    if (Platform.isLinux) {
+      // Linux: 删除 polkit rules（setcap 不可逆，但 cap 留着无害）
+      try {
+        final svcPath = ServiceManager.serviceBinaryPath();
+        await Process.run('pkexec', [svcPath, 'service', 'uninstall']);
+      } catch (_) {}
+    }
   }
 
   @override
