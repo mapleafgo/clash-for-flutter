@@ -8,11 +8,6 @@ import 'package:win32/win32.dart';
 import '../domain/enums.dart';
 import '../utils/log_file.dart';
 
-/// Linux 服务模式固定 IPC socket 路径。
-const String kLinuxSystemIpcPath = '/run/singcast/command.sock';
-
-/// Linux systemd unit 名称。
-const String kLinuxServiceUnitName = 'singcast-core.service';
 
 /// Manages the singcast-service process lifecycle.
 abstract class ServiceManager {
@@ -40,9 +35,6 @@ abstract class ServiceManager {
   /// Used for degraded/fallback startup without UAC elevation.
   Future<bool> startDirect();
 
-  /// 按是否使用提权服务返回应连接的 IPC 路径。
-  /// Linux 服务模式为系统 socket，其余为用户目录 socket。
-  String ipcPathForMode({required bool elevated});
 
   /// Create the platform-appropriate ServiceManager.
   static ServiceManager create(String homeDir) {
@@ -95,28 +87,7 @@ class UnixServiceManager extends ServiceManager {
   UnixServiceManager(this.homeDir);
 
   @override
-  String get ipcPath {
-    // Linux 服务模式使用系统固定 socket；直跑/降级用用户目录 socket。
-    if (Platform.isLinux && _useSystemService) {
-      return kLinuxSystemIpcPath;
-    }
-    return ServiceManager.defaultIpcPath(homeDir);
-  }
-
-  /// 降级直跑模式用的用户目录 socket。
-  String get directIpcPath => ServiceManager.defaultIpcPath(homeDir);
-
-  @override
-  String ipcPathForMode({required bool elevated}) {
-    if (Platform.isLinux && elevated) return kLinuxSystemIpcPath;
-    return ServiceManager.defaultIpcPath(homeDir);
-  }
-
-  /// Linux: 是否已安装 systemd unit（缓存一次探测结果）。
-  bool _useSystemService = false;
-
-  /// 上次 isReady() 探测结果（供 LibCore 判断降级状态）。
-  bool get isReadyCached => _useSystemService;
+  String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
 
   /// macOS: path to the setuid copy outside the app bundle.
   /// Avoids chown on files inside signed/translocated app bundles.
@@ -143,13 +114,9 @@ class UnixServiceManager extends ServiceManager {
   Future<bool> isReady() async {
     try {
       if (Platform.isLinux) {
-        final result = await Process.run('systemctl', [
-          'cat',
-          kLinuxServiceUnitName,
-        ]);
-        final ready = result.exitCode == 0;
-        _useSystemService = ready;
-        return ready;
+        final svcPath = ServiceManager.serviceBinaryPath();
+        final result = await Process.run('getcap', [svcPath]);
+        return (result.stdout ?? '').toString().contains('cap_net_admin');
       }
       // macOS: check setuid on the external copy (outside app bundle)
       if (!File(_elevatedBinaryPath).existsSync()) return false;
@@ -167,17 +134,14 @@ class UnixServiceManager extends ServiceManager {
   Future<bool> setup() async {
     try {
       if (Platform.isLinux) {
+        // setcap + polkit rules：一条 pkexec 同时完成能力设置和 resolved 免密
         final svcPath = ServiceManager.serviceBinaryPath();
         final result = await Process.run('pkexec', [
-          svcPath,
-          'service',
-          'install',
-          '--home',
-          homeDir,
+          'sh', '-c',
+          'setcap cap_net_admin+ep "\$1" && "\$1" service install --home "\$2"',
+          'sh', svcPath, homeDir,
         ]);
-        final ok = result.exitCode == 0;
-        if (ok) _useSystemService = true;
-        return ok;
+        return result.exitCode == 0;
       }
       // macOS: copy binary outside app bundle, then setuid the external copy.
       // This avoids chown on bundle contents which breaks code signing and
@@ -208,36 +172,20 @@ class UnixServiceManager extends ServiceManager {
 
   @override
   Future<void> uninstall() async {
-    if (Platform.isMacOS) {
-      // macOS: delete the setuid copy so start() falls back to bundle binary.
-      try {
-        if (File(_elevatedBinaryPath).existsSync()) {
-          await File(_elevatedBinaryPath).delete();
-        }
-        final marker = File(_elevatedMarkerPath);
-        if (marker.existsSync()) await marker.delete();
-      } catch (_) {}
-      return;
-    }
-    if (Platform.isLinux) {
-      try {
-        final svcPath = ServiceManager.serviceBinaryPath();
-        await Process.run('pkexec', [svcPath, 'service', 'uninstall']);
-      } catch (_) {}
-      _useSystemService = false;
-    }
+    if (!Platform.isMacOS) return;
+    // macOS: delete the setuid copy so start() falls back to bundle binary.
+    try {
+      if (File(_elevatedBinaryPath).existsSync()) {
+        await File(_elevatedBinaryPath).delete();
+      }
+      final marker = File(_elevatedMarkerPath);
+      if (marker.existsSync()) await marker.delete();
+    } catch (_) {}
   }
 
   @override
   Future<bool> start() async {
     try {
-      if (Platform.isLinux && _useSystemService) {
-        final result = await Process.run('systemctl', [
-          'start',
-          kLinuxServiceUnitName,
-        ]);
-        return result.exitCode == 0;
-      }
       String svcPath = ServiceManager.serviceBinaryPath();
       if (Platform.isMacOS && File(_elevatedBinaryPath).existsSync()) {
         if (_elevatedUpToDate()) {
@@ -274,13 +222,6 @@ class UnixServiceManager extends ServiceManager {
 
   @override
   Future<bool> stop() async {
-    if (Platform.isLinux && _useSystemService) {
-      final result = await Process.run('systemctl', [
-        'stop',
-        kLinuxServiceUnitName,
-      ]);
-      return result.exitCode == 0 || await _waitForIpcGone();
-    }
     _directProcess?.kill();
     _directProcess = null;
     // The caller (LibCore.restart) stops the kernel and disconnects IPC
@@ -292,30 +233,6 @@ class UnixServiceManager extends ServiceManager {
     await Process.run('pkill', ['-f', 'singcast-core.*ipc']);
     await _waitForIpcGone();
     return true;
-  }
-
-  /// Linux: 幂等刷新调用方 uid 的 socket ACL（包预装后 ACL 可能不含当前用户）。
-  Future<bool> refreshCallerUid() async {
-    if (!Platform.isLinux) return true;
-    try {
-      final svcPath = ServiceManager.serviceBinaryPath();
-      final result = await Process.run('pkexec', [
-        svcPath,
-        'service',
-        'install',
-        '--home',
-        homeDir,
-      ]);
-      final ok = result.exitCode == 0;
-      if (ok) {
-        _useSystemService = true;
-        // 重启服务使新 unit env 生效
-        await Process.run('systemctl', ['restart', kLinuxServiceUnitName]);
-      }
-      return ok;
-    } catch (_) {
-      return false;
-    }
   }
 }
 
@@ -345,9 +262,6 @@ class WindowsServiceManager extends ServiceManager {
   @override
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
 
-  @override
-  String ipcPathForMode({required bool elevated}) =>
-      ServiceManager.defaultIpcPath(homeDir);
 
   /// Open a handle to the installed service with [access] rights.
   /// Returns the service handle, or null if not installed or no permission.

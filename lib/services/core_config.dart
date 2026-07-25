@@ -223,15 +223,6 @@ Future<void> _enableTunDesktop() async {
     // restart → onProcessReady 已用 ensureProxyMode + asyncProfile 完成重载
     return;
   }
-  // unit 已装但当前降级直跑（ACL 缺当前 uid）：补一次 ACL 刷新
-  if (svc is UnixServiceManager && LibCore.instance.isDegradedService) {
-    final ok = await svc.refreshCallerUid();
-    if (!ok) {
-      throw TunElevationException(t.core.elevationFailed);
-    }
-    await LibCore.instance.restart();
-    return;
-  }
   _applyTunConfig(true);
   asyncProfile();
 }
