@@ -165,8 +165,12 @@ ICONEOF
       return 0
     }
 
-  find "$topdir/RPMS" -name '*.rpm' -exec cp {} "$PKG_DIR/" \;
-  echo "  → rpm in $PKG_DIR/"
+  # rename to consistent name: name-version-linux-arch.rpm
+  for f in "$topdir"/RPMS/*/*.rpm; do
+    [ -f "$f" ] || continue
+    cp "$f" "$PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.rpm"
+    echo "  → $PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.rpm"
+  done
 }
 
 build_zip() {
