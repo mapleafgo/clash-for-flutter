@@ -71,8 +71,8 @@ MimeType=x-scheme-handler/clash;
 EOF
 
   # icon (使用项目 assets)
-  if [ -f "$PROJECT_ROOT/assets/icon.svg" ]; then
-    cp "$PROJECT_ROOT/assets/icon.svg" "$tmp/usr/share/icons/hicolor/scalable/apps/$APP_NAME.svg"
+  if [ -f "$PROJECT_ROOT/assets/logo.svg" ]; then
+    cp "$PROJECT_ROOT/assets/logo.svg" "$tmp/usr/share/icons/hicolor/scalable/apps/$APP_NAME.svg"
   elif [ -f "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" ]; then
     cp "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" "$tmp/usr/share/icons/hicolor/scalable/apps/$APP_NAME.svg"
   fi
@@ -111,16 +111,20 @@ build_rpm() {
     return 0
   fi
 
+  # RPM 的 Version 字段不允许 '-'，预发布版本（1.2.0-beta1）必须转成 '~'。
+  # '~' 在 RPM 版本语义中排序低于空，正好表达 1.2.0~beta1 < 1.2.0。
+  local rpm_version="${VERSION//-/\~}"
+
   # 替换 spec 中的 Version 字段
   local tmp_spec; tmp_spec="$(mktemp)"
-  sed -e "s/^Version:.*/Version:        $VERSION/" -e "s/^BuildArch:.*/BuildArch:      $RPM_ARCH/" "$spec" > "$tmp_spec"
+  sed -e "s/^Version:.*/Version:        $rpm_version/" -e "s/^BuildArch:.*/BuildArch:      $RPM_ARCH/" "$spec" > "$tmp_spec"
 
   local topdir; topdir="$(mktemp -d)"
   trap 'rm -rf "$topdir" "$tmp_spec"' RETURN
   mkdir -p "$topdir"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-  # Source tar：把 bundle 打成 singcast-<version>/ 目录的 tar.gz
-  local src_dir="$topdir/SOURCES/$APP_NAME-$VERSION"
+  # Source tar：目录名必须与 spec 的 %{name}-%{version} 一致
+  local src_dir="$topdir/SOURCES/$APP_NAME-$rpm_version"
   mkdir -p "$src_dir"
   cp -a "$BUNDLE/." "$src_dir/"
 
@@ -137,8 +141,8 @@ Comment=A clash GUI client based on Flutter
 Categories=Network;
 MimeType=x-scheme-handler/clash;
 EOF
-  if [ -f "$PROJECT_ROOT/assets/icon.svg" ]; then
-    cp "$PROJECT_ROOT/assets/icon.svg" "$src_dir/$APP_NAME.svg"
+  if [ -f "$PROJECT_ROOT/assets/logo.svg" ]; then
+    cp "$PROJECT_ROOT/assets/logo.svg" "$src_dir/$APP_NAME.svg"
   elif [ -f "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" ]; then
     cp "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" "$src_dir/$APP_NAME.svg"
   elif command -v convert >/dev/null 2>&1 && [ -f "$PROJECT_ROOT/assets/icon.png" ]; then
@@ -154,15 +158,15 @@ EOF
 ICONEOF
   fi
 
-  tar czf "$topdir/SOURCES/$APP_NAME-$VERSION.tar.gz" -C "$topdir/SOURCES" "$APP_NAME-$VERSION"
+  tar czf "$topdir/SOURCES/$APP_NAME-$rpm_version.tar.gz" -C "$topdir/SOURCES" "$APP_NAME-$rpm_version"
 
   # mktemp 生成的文件名是随机的，必须显式命名为 singcast.spec
   cp "$tmp_spec" "$topdir/SPECS/singcast.spec"
   rpmbuild -bb \
     --define "_topdir $topdir" \
     "$topdir/SPECS/singcast.spec" 2>&1 || {
-      echo "  rpmbuild failed, skipping rpm" >&2
-      return 0
+      echo "  rpmbuild failed" >&2
+      return 1
     }
 
   # rename to consistent name: name-version-linux-arch.rpm
@@ -213,8 +217,8 @@ EOF
   cp "$ai_dir/$APP_NAME.desktop" "$ai_dir/usr/share/applications/$APP_NAME.desktop"
 
   # icon
-  if [ -f "$PROJECT_ROOT/assets/icon.svg" ]; then
-    cp "$PROJECT_ROOT/assets/icon.svg" "$ai_dir/$APP_NAME.svg"
+  if [ -f "$PROJECT_ROOT/assets/logo.svg" ]; then
+    cp "$PROJECT_ROOT/assets/logo.svg" "$ai_dir/$APP_NAME.svg"
   elif [ -f "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" ]; then
     cp "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" "$ai_dir/$APP_NAME.svg"
   fi
@@ -222,9 +226,9 @@ EOF
 
   local output="$PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.AppImage"
   ARCH=$APPIMAGE_ARCH APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$ai_dir" "$output" 2>&1 || {
-    echo "  appimagetool failed, skipping AppImage" >&2
+    echo "  appimagetool failed" >&2
     rm -f "$output"
-    return 0
+    return 1
   }
   echo "  → $output"
 }

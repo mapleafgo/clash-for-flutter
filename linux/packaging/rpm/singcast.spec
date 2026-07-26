@@ -1,3 +1,7 @@
+# 打包的是预编译产物，不做 debuginfo 提取，也不自动扫描 Go 二进制的依赖
+%global debug_package %{nil}
+AutoReqProv:    no
+
 Name:           singcast
 Version:        1.1.15
 Release:        1%{?dist}
@@ -8,7 +12,8 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires:       gtk3
-Requires:       libayatana-appindicator
+# Fedora 系的二进制包名带 -gtk3 后缀，不存在裸 libayatana-appindicator 的 Provides
+Requires:       libayatana-appindicator-gtk3
 Requires:       polkit
 Requires:       acl
 Requires:       libcap
