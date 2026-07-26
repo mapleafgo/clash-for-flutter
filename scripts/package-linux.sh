@@ -124,7 +124,8 @@ EOF
 
   tar czf "$topdir/SOURCES/$APP_NAME-$VERSION.tar.gz" -C "$topdir/SOURCES" "$APP_NAME-$VERSION"
 
-  cp "$tmp_spec" "$topdir/SPECS/"
+  # mktemp 生成的文件名是随机的，必须显式命名为 singcast.spec
+  cp "$tmp_spec" "$topdir/SPECS/singcast.spec"
   rpmbuild -bb \
     --define "_topdir $topdir" \
     "$topdir/SPECS/singcast.spec" 2>&1 || {
@@ -184,7 +185,8 @@ EOF
   cp "$ai_dir/$APP_NAME.svg" "$ai_dir/usr/share/icons/hicolor/scalable/apps/$APP_NAME.svg" 2>/dev/null || true
 
   local output="$PKG_DIR/$APP_NAME-$VERSION-linux-amd64.AppImage"
-  ARCH=x86_64 appimagetool "$ai_dir" "$output" >/dev/null 2>&1 || {
+  # CI runner 通常没有 FUSE，用 APPIMAGE_EXTRACT_AND_RUN 让 appimagetool 自解压运行
+  ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$ai_dir" "$output" 2>&1 || {
     echo "  appimagetool failed, skipping AppImage" >&2
     rm -f "$output"
     return 0
