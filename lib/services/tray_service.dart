@@ -11,6 +11,7 @@ import 'package:desktop_tray/desktop_tray.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/utils/format.dart' show modeLabel;
+import 'package:singcast/utils/log_file.dart' show LogFileWriter;
 import 'package:window_manager/window_manager.dart';
 
 Future<void> initTray() async {
@@ -102,9 +103,14 @@ class _TrayHandler with DesktopTrayListener {
           );
         }
       case 'exit':
+        // 先 flush 设置：防抖定时器里还压着最近 1s 的改动
+        try {
+          flushAppConfig();
+        } catch (_) {}
         try {
           await LibCore.instance.dispose();
         } catch (_) {}
+        await LogFileWriter.instance?.close();
         await windowManager.close();
         await windowManager.destroy();
       default:

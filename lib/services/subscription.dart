@@ -8,6 +8,7 @@ import 'package:singcast/domain/subscription_info.dart';
 import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/services/app_config.dart';
+import 'package:singcast/utils/log_file.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -39,6 +40,8 @@ Future<Profile> downloadSubscription({
   final client = HttpClient()
     ..userAgent = subUA.value
     ..connectionTimeout = const Duration(seconds: 15);
+  final sw = Stopwatch()..start();
+  LogFileWriter.instance?.log('downloading subscription: $url', name: 'sub');
   try {
     final req = await client.getUrl(Uri.parse(url));
     final resp = await req.close();
@@ -46,9 +49,11 @@ Future<Profile> downloadSubscription({
       throw HttpException('HTTP ${resp.statusCode}');
     }
 
+    // timeout 挂在 fold 的 Future 上限制总时长；挂在 Stream 上只限制
+    // 相邻 chunk 间隔，慢速滴流的服务器可以无限拖住下载。
     final bytes = await resp
-        .timeout(const Duration(minutes: 3))
-        .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk));
+        .fold<List<int>>([], (acc, chunk) => acc..addAll(chunk))
+        .timeout(const Duration(minutes: 3));
     final raw = utf8.decode(bytes);
     final String content;
     if (isBase64Content(raw)) {
@@ -58,6 +63,10 @@ Future<Profile> downloadSubscription({
       content = raw;
     }
     await File(savePath).writeAsString(content);
+    LogFileWriter.instance?.log(
+      'subscription saved: ${bytes.length} bytes in ${sw.elapsedMilliseconds}ms',
+      name: 'sub',
+    );
 
     return Profile(
       file: file,
@@ -115,20 +124,24 @@ Map<String, dynamic>? parseProxyUri(String uri) {
     name = Uri.decodeComponent(rest.substring(hashIdx + 1));
     body = rest.substring(0, hashIdx);
   }
-  return switch (scheme) {
+  // 不支持的协议(ssr/hysteria v1 等)直接跳过：生成空 server 占位节点
+  // 会写进 YAML 并在内核校验时报出与真实原因无关的错误。
+  final proxy = switch (scheme) {
     'ss' => parseShadowsocks(body, name),
-    'ssr' => {'name': name, 'type': 'ssr', 'server': '', 'port': 0},
     'vmess' => parseVmess(body, name),
     'vless' => parseVless(body, name),
     'trojan' => parseTrojan(body, name),
-    'hysteria' || 'hysteria2' || 'hy2' => {
-        'name': name,
-        'type': scheme == 'hysteria' ? 'hysteria' : 'hysteria2',
-        'server': '',
-        'port': 0,
-      },
+    'hysteria2' || 'hy2' => parseHysteria2(body, name),
     _ => null,
   };
+  if (proxy == null) {
+    LogFileWriter.instance?.log(
+      'unsupported proxy scheme skipped: $scheme ($name)',
+      level: LogLevel.warning,
+      name: 'sub',
+    );
+  }
+  return proxy;
 }
 
 Map<String, dynamic>? parseShadowsocks(String body, String name) {
@@ -137,28 +150,32 @@ Map<String, dynamic>? parseShadowsocks(String body, String name) {
     if (body.contains('@')) {
       final atIdx = body.indexOf('@');
       final encoded = body.substring(0, atIdx);
-      decoded = utf8.decode(base64.decode(encoded));
+      // SIP002 userinfo 是无填充 base64url，normalize 补齐 padding
+      decoded = utf8.decode(base64.decode(base64.normalize(encoded)));
       final serverPort = body.substring(atIdx + 1).split('?')[0].split(':');
+      // 只按第一个冒号切分：SS2022 等密码本身可能含冒号
+      final colonIdx = decoded.indexOf(':');
       return {
         'name': name,
         'type': 'ss',
         'server': serverPort[0],
         'port': int.tryParse(serverPort[1]) ?? 0,
-        'cipher': decoded.split(':').first,
-        'password': decoded.split(':').last,
+        'cipher': decoded.substring(0, colonIdx),
+        'password': decoded.substring(colonIdx + 1),
       };
     } else {
-      decoded = utf8.decode(base64.decode(body.split('?')[0]));
-      final parts = decoded.split('@');
-      final methodPass = parts[0].split(':');
-      final serverPort = parts[1].split(':');
+      decoded = utf8.decode(base64.decode(base64.normalize(body.split('?')[0])));
+      final atIdx = decoded.lastIndexOf('@');
+      final methodPass = decoded.substring(0, atIdx);
+      final serverPort = decoded.substring(atIdx + 1).split(':');
+      final colonIdx = methodPass.indexOf(':');
       return {
         'name': name,
         'type': 'ss',
         'server': serverPort[0],
         'port': int.tryParse(serverPort[1]) ?? 0,
-        'cipher': methodPass[0],
-        'password': methodPass[1],
+        'cipher': methodPass.substring(0, colonIdx),
+        'password': methodPass.substring(colonIdx + 1),
       };
     }
   } catch (_) {
@@ -199,6 +216,29 @@ Map<String, dynamic>? parseVless(String body, String name) {
       if (params['flow'] != null) 'flow': params['flow'],
       if (params['sni'] != null) 'servername': params['sni'],
       if (params['type'] != null) 'network': params['type'],
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+Map<String, dynamic>? parseHysteria2(String body, String name) {
+  try {
+    final uri = Uri.parse('hysteria2://$body');
+    if (uri.host.isEmpty) return null;
+    final params = uri.queryParameters;
+    return {
+      'name': name,
+      'type': 'hysteria2',
+      'server': uri.host,
+      // URI 未写端口时 Uri.port 为 0，hysteria2 约定默认 443
+      'port': uri.port == 0 ? 443 : uri.port,
+      'password': uri.userInfo,
+      if (params['sni'] != null) 'sni': params['sni'],
+      if (params['insecure'] == '1') 'skip-cert-verify': true,
+      if (params['obfs'] != null) 'obfs': params['obfs'],
+      if (params['obfs-password'] != null)
+        'obfs-password': params['obfs-password'],
     };
   } catch (_) {
     return null;

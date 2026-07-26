@@ -48,12 +48,23 @@ Future<void> initCoreConfig() async {
 }
 
 /// 保存配置到磁盘。TUN 和系统代理不持久化，每次启动需手动开启。
+///
+/// 写盘失败只记日志不上抛：调用方多是 UI 回调与 effect，
+/// 让磁盘异常冲垮设置变更得不偿失。
 void _saveToDisk() {
   final config = clashConfig.value.copyWith(
     tun: TunConfig(enable: false),
     mixedSystemProxy: false,
   );
-  CoreConfigStorage.save(config);
+  try {
+    CoreConfigStorage.save(config);
+  } catch (e) {
+    LogFileWriter.instance?.log(
+      'save core config failed: $e',
+      level: LogLevel.warning,
+      name: 'core_config',
+    );
+  }
 }
 
 /// 内部修改配置：更新 signal + 立即持久化，effect 跳过重载
@@ -134,6 +145,9 @@ void updateClashConfig({
   if (logLevel != null) {
     LogFileWriter.instance?.setMinLevel(logLevel);
   }
+  // 直接落盘，不依赖 _scheduleReload 里的持久化：无选中配置时
+  // _scheduleReload 会提前返回，这些设置将永远写不进 config.yaml。
+  _saveToDisk();
 }
 
 Future<void> toggleTun(bool enable) async {

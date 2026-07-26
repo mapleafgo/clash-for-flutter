@@ -100,6 +100,7 @@ Future<bool> _activateProfile(String yamlPath) async {
         level: LogLevel.error,
         name: 'profile',
       );
+      await _rollbackToPreviousConfig(merged);
       return false;
     }
 
@@ -114,6 +115,31 @@ Future<bool> _activateProfile(String yamlPath) async {
       name: 'profile',
     );
     return false;
+  }
+}
+
+/// 新配置启动失败后，用上一份成功下发的配置恢复内核，
+/// 避免切换订阅失败导致代理直接断线。失败原因仍保留在 [profileError]。
+Future<void> _rollbackToPreviousConfig(String failed) async {
+  final previous = lastMergedConfig.peek();
+  if (previous == null || previous == failed) return;
+  try {
+    await LibCore.instance.startCoreWithContent(
+      previous,
+      ruleSetProxy: ruleSetProxy.value,
+      enabledVpn: clashConfig.value.tunEnabled,
+    );
+    LogFileWriter.instance?.log(
+      '_activateProfile: rolled back to previous config',
+      level: LogLevel.warning,
+      name: 'profile',
+    );
+  } catch (e) {
+    LogFileWriter.instance?.log(
+      '_activateProfile: rollback failed: $e',
+      level: LogLevel.error,
+      name: 'profile',
+    );
   }
 }
 

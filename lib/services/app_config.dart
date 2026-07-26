@@ -69,9 +69,8 @@ void initAppConfig() {
     localeVersion.value++;
     // 通知 Android 重建通知栏文本（iOS 无前台服务通知栏，不调用）
     if (Platform.isAndroid) {
-      const MethodChannel('cn.mapleafgo/singcast').invokeMethod('updateNotification', {
-        'locale': appLocale.value,
-      });
+      const MethodChannel(Constants.methodChannelName)
+          .invokeMethod('updateNotification', {'locale': appLocale.value});
     }
   });
 }
@@ -120,7 +119,11 @@ void _startAutoSave() {
 }
 
 void _save() {
+  // ignored-version 不在内存 signal 里，保存前先从磁盘取回：
+  // 否则这次整份覆盖写会把用户点的"忽略此版本"抹掉，导致每次启动都弹更新框。
+  final stored = AppStoredConfig.fromJson(AppSettingsStorage.load());
   AppSettingsStorage.save(AppStoredConfig(
+    ignoredVersion: stored.ignoredVersion,
     selectedFile: selectedFile.value,
     profiles: profiles.value,
     delayTestUrl: delayTestUrl.value,
@@ -142,14 +145,14 @@ void _startSubUpdateTimer() {
 Future<void> checkSubUpdates() async {
   final now = DateTime.now();
   final expired = profiles.value.where(
-    (p) => p.type == ProfileType.url && p.url != null && p.interval > 0
-        && now.isAfter(p.time.add(Duration(hours: p.interval))),
+    (e) => e.type == ProfileType.url && e.url != null && e.interval > 0
+        && now.isAfter(e.time.add(Duration(hours: e.interval))),
   ).toList();
-  for (final p in expired) {
+  for (final profile in expired) {
     try {
-      await refreshProfile(p);
+      await refreshProfile(profile);
       LogFileWriter.instance?.log(
-        '自动更新订阅成功: ${p.name}',
+        '自动更新订阅成功: ${profile.name}',
         level: LogLevel.info,
         name: 'sub-update',
       );
@@ -176,7 +179,7 @@ Future<Profile> refreshProfile(Profile old) async {
   await validateConfigFile(path);
 
   final isActive = selectedFile.value == old.file;
-  final idx = profiles.value.indexWhere((p) => p.file == old.file);
+  final idx = profiles.value.indexWhere((e) => e.file == old.file);
   if (idx < 0) return updated; // profile 已被删除，不追加
   profiles.value = [...profiles.value]..[idx] = updated;
   if (isActive) selectedFile.value = updated.file;
@@ -191,3 +194,12 @@ Future<Profile> refreshProfile(Profile old) async {
 
 String get profilesFullPath =>
     p.join(Constants.homeDir.path, Constants.profilesDir);
+
+/// 立即落盘待保存的设置，取消 1s 防抖定时器。
+///
+/// 退出前必须调用：否则最近一次改动（切换订阅、主题、语言等）会随进程一起丢失。
+void flushAppConfig() {
+  _saveTimer?.cancel();
+  _saveTimer = null;
+  _save();
+}

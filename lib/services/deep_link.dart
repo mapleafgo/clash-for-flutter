@@ -11,23 +11,50 @@ final _appLinks = AppLinks();
 void initDeepLinks() {
   // 延迟订阅 uriLinkStream：冷启动时 getInitialLink 和 stream 可能同时投递同一链接，
   // 先处理完 initialLink 再订阅，从结构上保证只触发一次
-  _appLinks.getInitialLink().then((initial) {
-    _log('[deeplink] initialLink: $initial');
-    if (initial != null) {
-      _processDeepLink(initial).catchError((e) {
-        _log('[deeplink] initialLink processing failed: $e');
+  _appLinks
+      .getInitialLink()
+      .then((initial) {
+        _log('[deeplink] initialLink: $initial');
+        if (initial != null) {
+          _processDeepLink(initial).catchError((e) {
+            _log('[deeplink] initialLink processing failed: $e');
+          });
+        }
+      })
+      .catchError((e) {
+        // getInitialLink 抛异常（如平台通道未就绪）不能吃掉后面的订阅，
+        // 否则本次运行期间所有深链都会静默丢弃。
+        _log('[deeplink] getInitialLink failed: $e');
+      })
+      .whenComplete(() {
+        _appLinks.uriLinkStream.listen(
+          _processDeepLink,
+          onError: (e) => _log('[deeplink] stream error: $e'),
+        );
       });
-    }
-    _appLinks.uriLinkStream.listen(
-      _processDeepLink,
-      onError: (e) => _log('[deeplink] stream error: $e'),
-    );
-  });
 }
+
+/// 正在处理深链：串行化，避免叠加对话框与重复导入。
+bool _handling = false;
 
 Future<void> _processDeepLink(Uri uri) async {
   _log('[deeplink] received: $uri');
   if (uri.scheme != _deepLinkScheme) return;
+  // 连点两次订阅链接时，两个流程会在对方 importSubscription 完成前
+  // 都通过去重检查，导致同一订阅被导入两份。
+  if (_handling) {
+    _log('[deeplink] another link is being handled, ignoring: $uri');
+    return;
+  }
+  _handling = true;
+  try {
+    await _handleDeepLink(uri);
+  } finally {
+    _handling = false;
+  }
+}
+
+Future<void> _handleDeepLink(Uri uri) async {
 
   final url = uri.queryParameters['url'];
   _log('[deeplink] host=${uri.host}, url=$url');

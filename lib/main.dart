@@ -69,7 +69,14 @@ void main(List<String> arguments) async {
     windowManager.addListener(_WindowListener());
   }
 
-  await _initApp();
+  // 任何初始化异常都不能让 appReady 永远为 false —— 否则 UI 永久卡在闪屏，
+  // 用户看不到任何错误，托盘/深链/心跳也都不会启动。
+  try {
+    await _initApp();
+  } catch (e, st) {
+    _log('[startup] _initApp failed: $e\n$st');
+    initError.value ??= '$e';
+  }
   appReady.value = true;
 
   LibCore.instance.startHeartbeat();
