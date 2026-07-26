@@ -227,8 +227,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
   }
 
   void _showGroupsDialog(BuildContext context) {
-    final controller = _tabController;
-    if (controller == null) return;
+    if (_tabController == null) return;
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -240,10 +239,18 @@ class _ProxiesPageState extends State<ProxiesPage> {
             type: MaterialType.transparency,
             child: ListTile(
               title: Text(tag),
-              selected: index == controller.index,
+              selected: index == _tabController?.index,
               onTap: () {
                 Navigator.pop(ctx);
-                controller.animateTo(index);
+                // 重新读取 controller 并按 tag 定位：对话框打开期间内核可能
+                // 推送新的分组列表，_ProxiesTabView 会 dispose 旧 controller
+                // 并重建，此时捕获的引用已失效、index 也已错位。
+                final current = _tabController;
+                final target = _cachedTags.indexOf(tag);
+                if (current == null || target < 0 || target >= current.length) {
+                  return;
+                }
+                current.animateTo(target);
               },
             ),
           );

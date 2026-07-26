@@ -14,6 +14,26 @@ import 'package:singcast/utils/log_file.dart';
 /// 最近一次发送到内核的合并后配置。
 final lastMergedConfig = signal<String?>(null);
 
+/// 因内核处于 starting/stopping 等窗口期而被推迟的重载目标。
+/// 状态转 running 后由 [flushPendingReload] 补发。
+String? _pendingReloadPath;
+
+/// 正在进行的重载，用于串行化：并发下发会让内核最终跑的配置不确定，
+/// 且 lastMergedConfig 交错写入后与内核实际配置不符，回滚会滚到错的配置上。
+Future<bool>? _activating;
+
+/// 内核进入 running 后补发被推迟的重载。由 LibCore 的状态回调触发。
+void flushPendingReload() {
+  final path = _pendingReloadPath;
+  if (path == null) return;
+  _pendingReloadPath = null;
+  LogFileWriter.instance?.log(
+    'flushPendingReload: replaying deferred reload',
+    name: 'profile',
+  );
+  _activateProfile(path);
+}
+
 /// 缓存上次发送的合并配置：同时写入 signal 和磁盘文件。
 void _cacheMergedConfig(String merged) {
   lastMergedConfig.value = merged;
@@ -22,6 +42,8 @@ void _cacheMergedConfig(String merged) {
 }
 
 void startWatchingSelectedFile() {
+  // 内核转 running 时补发窗口期内被推迟的重载
+  LibCore.instance.onKernelRunning = flushPendingReload;
   effect(() {
     final file = selectedFile.value;
     if (file == null) return;
@@ -43,18 +65,37 @@ void startWatchingSelectedFile() {
 ///
 /// 内核支持热重载，切换订阅/配置变更无需重启内核。
 /// 提权重启等需要重启内核的场景由 enableTun 负责。
-Future<bool> _activateProfile(String yamlPath) async {
+Future<bool> _activateProfile(String yamlPath) {
+  // 串行化：改端口武装的 1s 防抖定时器与手动开关代理可能并发下发两份配置，
+  // 完成顺序不定会让内核最终跑旧配置。
+  final previous = _activating;
+  final next = previous == null
+      ? _doActivateProfile(yamlPath)
+      : previous
+            .then((_) => _doActivateProfile(yamlPath))
+            .catchError((_) => _doActivateProfile(yamlPath));
+  _activating = next;
+  next.whenComplete(() {
+    if (identical(_activating, next)) _activating = null;
+  });
+  return next;
+}
+
+Future<bool> _doActivateProfile(String yamlPath) async {
   try {
     final yamlContent = await File(yamlPath).readAsString();
     final merged = mergeProfileConfig(yamlContent);
 
     final state = LibCore.instance.stateSignal.peek();
 
-    // 内核仍在启动中：跳过避免 "invalid state starting" 错误
-    // （自启时 toggleTun/toggleSystemProxy 与 startWatchingSelectedFile 并发触发）
+    // 内核仍在启动中：此刻下发会报 "invalid state starting"
+    // （自启时 toggleTun/toggleSystemProxy 与 startWatchingSelectedFile 并发触发）。
+    // 但不能只是丢弃——否则 UI 已显示"已开启代理"而内核从未收到该配置，
+    // 流量实际在裸奔。挂起，等状态转 running 时由 flushPendingReload 补发。
     if (state == LibCore.kStateStarting) {
+      _pendingReloadPath = yamlPath;
       LogFileWriter.instance?.log(
-        '_activateProfile: core is starting, skipping reload',
+        '_activateProfile: core is starting, deferring reload',
         level: LogLevel.debug,
         name: 'profile',
       );

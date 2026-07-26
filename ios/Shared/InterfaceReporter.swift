@@ -56,22 +56,40 @@ enum InterfaceReporter {
 
     // MARK: - Type detection
 
+    /// NWPathMonitor 回调专用串行队列。
+    ///
+    /// 必须串行：原先用 DispatchQueue.global()（并发队列），第二个 path 更新可能
+    /// 在 pathUpdateHandler 置 nil 生效前并发进入并再次 group.leave()，
+    /// 造成 dispatch group 计数失衡而崩溃——在 Network Extension 里崩溃即断网。
+    private static let monitorQueue = DispatchQueue(
+        label: "cn.mapleafgo.singcast.pathmonitor"
+    )
+
     /// Build interface name → type map from NWPathMonitor (authoritative source).
     private static func buildTypeMap() -> [String: Int] {
         var map = [String: Int]()
         let monitor = NWPathMonitor()
         let group = DispatchGroup()
         group.enter()
+        var done = false
         monitor.pathUpdateHandler = { path in
+            // handler 只在串行队列上跑，done 无需额外加锁
+            if done { return }
+            done = true
             for iface in path.availableInterfaces {
                 map[iface.name] = swiftTypeToConst(iface.type)
             }
             group.leave()
-            monitor.pathUpdateHandler = nil
         }
-        monitor.start(queue: DispatchQueue.global())
-        group.wait()
+        monitor.start(queue: monitorQueue)
+        // 必须带超时：本函数由内核线程同步调用（InterfaceProvider.GetInterfaces），
+        // monitor 不回调会让内核线程永久阻塞。超时后退回 fallbackType 判定。
+        let waited = group.wait(timeout: .now() + 2)
         monitor.cancel()
+        if waited == .timedOut {
+            // 排空队列，确保迟到的 handler 不会与下面读 map 并发
+            monitorQueue.sync {}
+        }
         return map
     }
 

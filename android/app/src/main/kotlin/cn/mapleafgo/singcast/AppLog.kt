@@ -26,6 +26,8 @@ object AppLog {
             logFile.writeText("")
         }
 
+        // 引擎重建会再次 init：先关旧 writer，否则每次重建泄漏一个文件句柄
+        close()
         writer = BufferedWriter(FileWriter(logFile, true))
         i(TAG, "========== AppLog initialized ==========")
         return logFile
@@ -49,6 +51,19 @@ object AppLog {
     fun e(tag: String, msg: String, tr: Throwable? = null) {
         if (tr != null) Log.e(tag, msg, tr) else Log.e(tag, msg)
         write("E", tag, msg, tr)
+    }
+
+    /// 关闭日志文件句柄。init 会先调用它，Activity 销毁时也应调用。
+    @Synchronized
+    fun close() {
+        val w = writer ?: return
+        writer = null
+        try {
+            w.flush()
+            w.close()
+        } catch (_: Exception) {
+            // 关闭失败无可挽回，忽略
+        }
     }
 
     @Synchronized

@@ -90,9 +90,20 @@ ThemeMode? _parseThemeMode(String name) {
 
 List<Profile> _filterExistingProfiles(List<Profile> list) {
   final dir = Directory(p.join(Constants.homeDir.path, Constants.profilesDir));
-  if (!dir.existsSync()) return [];
-  final files = dir.listSync().map((e) => p.basename(e.path)).toSet();
-  return list.where((e) => files.contains(e.file)).toList();
+  try {
+    // 目录不存在或读不出来时保留原列表：返回空会被 1s 后的自动保存持久化，
+    // 等于永久丢掉用户的全部订阅。宁可留下指向缺失文件的条目。
+    if (!dir.existsSync()) return list;
+    final files = dir.listSync().map((e) => p.basename(e.path)).toSet();
+    return list.where((e) => files.contains(e.file)).toList();
+  } catch (e) {
+    LogFileWriter.instance?.log(
+      'list profiles dir failed, keeping stored list: $e',
+      level: LogLevel.warning,
+      name: 'settings',
+    );
+    return list;
+  }
 }
 
 String? _resolveSelected(String? file, List<Profile> list) {

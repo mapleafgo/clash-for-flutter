@@ -42,6 +42,9 @@ class IpcWorker implements LibCorePlatform {
   IpcWorker({required this.ipcPath});
 
   Future<void> connect() async {
+    // 重入保护：直接覆盖 _client 会泄漏旧 socket、6 个事件订阅和 6 个
+    // broadcast controller，且旧 client 的 onDisconnect 仍可能回调。
+    if (_client != null) await disconnect();
     _client = JsonRpcClient(path: ipcPath);
     _client!.onDisconnect = () => onDisconnect?.call();
     await _client!.connect();

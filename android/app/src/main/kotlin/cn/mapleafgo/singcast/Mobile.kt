@@ -185,4 +185,14 @@ object Mobile {
         AppLog.i(TAG, "registerCallbacks: registered unified event listener")
     }
 
+    /// 注销事件监听。
+    ///
+    /// 必须在 Activity 销毁时调用：注册进来的 lambda 捕获了 Activity
+    /// （runOnUiThread / flutterChannel），不注销会让 native 单例长期持有
+    /// 已销毁的 Activity（泄漏），且内核事件会继续投递到已 detach 的引擎。
+    fun unregisterCallbacks() {
+        singcast.setOnEvent(null)
+        AppLog.i(TAG, "unregisterCallbacks: cleared event listener")
+    }
+
 }

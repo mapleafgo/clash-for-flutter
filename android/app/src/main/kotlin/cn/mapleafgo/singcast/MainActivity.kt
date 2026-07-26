@@ -264,6 +264,10 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         SingcastVpnService.onVpnDisconnected = null
+        // 事件监听的 lambda 捕获了本 Activity，不注销会泄漏并把事件投递到
+        // 已 detach 的 Flutter 引擎
+        Mobile.unregisterCallbacks()
+        AppLog.close()
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }

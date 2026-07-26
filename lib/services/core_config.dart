@@ -252,7 +252,14 @@ Future<void> _enableTunDesktop() async {
 
 Future<void> _disableTunDesktop() async {
   _applyTunConfig(false);
-  if (LibCore.instance.stateSignal.value != LibCore.kStateRunning) return;
+  final state = LibCore.instance.stateSignal.value;
+  if (state == LibCore.kStateStarting) {
+    // starting 窗口期不能下发，但也不能丢：否则配置与 UI 都显示"已关闭"
+    // 而内核仍带着 TUN 在跑。交给 asyncProfile 挂起，转 running 后补发。
+    asyncProfile();
+    return;
+  }
+  if (state != LibCore.kStateRunning) return;
   asyncProfile();
 }
 

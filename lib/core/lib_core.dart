@@ -520,9 +520,22 @@ class LibCore {
     _prevDownTotal = 0;
   }
 
+  /// 内核进入 running 后的回调，由 app 层注入。
+  /// 用于补发在 starting 窗口期被推迟的配置重载。
+  void Function()? onKernelRunning;
+
   void _onKernelRunning() {
     _queryAndUpdate();
     _fetchAvailableModes();
+    try {
+      onKernelRunning?.call();
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'onKernelRunning failed: $e',
+        level: LogLevel.warning,
+        name: 'core',
+      );
+    }
   }
 
   /// 从后端同步内核真实状态（移动端引擎重建 / 桌面端重连时调用）。

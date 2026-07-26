@@ -10,6 +10,7 @@ import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/app.dart' show App;
 import 'package:singcast/presentation/app_state.dart' show appReady;
 import 'package:singcast/services/app_config.dart';
+import 'package:singcast/services/app_lifecycle.dart' show initTerminationHook;
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
@@ -67,6 +68,7 @@ void main(List<String> arguments) async {
   if (Constants.isDesktop) {
     await initTray();
     windowManager.addListener(_WindowListener());
+    initTerminationHook();
   }
 
   // 任何初始化异常都不能让 appReady 永远为 false —— 否则 UI 永久卡在闪屏，

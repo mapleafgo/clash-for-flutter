@@ -135,19 +135,37 @@ class ExtensionProvider: NEPacketTunnelProvider {
         return fd
     }
 
+    /// <sys/kern_control.h>: SYSPROTO_CONTROL / UTUN_OPT_IFNAME，
+    /// Darwin 未把这两个宏导入 Swift，按值直接定义。
+    private static let sysprotoControl: Int32 = 2
+    private static let utunOptIfname: Int32 = 2
+
+    /// 是否是 utun 控制 socket。
+    ///
+    /// 只有 utun socket 支持 UTUN_OPT_IFNAME，普通 socket 会失败，
+    /// 以此把 RPC 的 unix socket 与真正的隧道 fd 区分开。
+    private func isUtunSocket(_ fd: Int32) -> Bool {
+        var name = [CChar](repeating: 0, count: Int(IFNAMSIZ))
+        var len = socklen_t(name.count)
+        guard getsockopt(
+            fd,
+            Self.sysprotoControl,
+            Self.utunOptIfname,
+            &name,
+            &len
+        ) == 0 else { return false }
+        return String(cString: name).hasPrefix("utun")
+    }
+
     /// Fallback: iterate file descriptors to find the tunnel fd.
     private func getTunnelFileDescriptor() -> Int32? {
         // Darwin 默认每进程 fd soft limit 256，tunnel fd 在系统初始化阶段分配，
         // 实测落在 5-32 范围内；上限 64 足够覆盖且避免扫到无关 fd。
         for fd in 5..<64 {
-            var addr = sockaddr_in()
-            var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-            let result = withUnsafeMutablePointer(to: &addr) { p -> Int32 in
-                p.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                    getsockname(Int32(fd), $0, &len)
-                }
-            }
-            if result == 0 {
+            // 必须校验是 utun：reload 时进程内已存在 RPC unix listener 及其连接，
+            // 仅凭 getsockname 成功就返回，可能把 RPC socket 当 TUN 交给内核，
+            // 直接打断 RPC 通道。
+            if isUtunSocket(Int32(fd)) {
                 return Int32(fd)
             }
         }
@@ -166,8 +184,12 @@ class ExtensionProvider: NEPacketTunnelProvider {
     }
 
     private func handlePathUpdate(_ path: Network.NWPath) {
+        // 排除隧道自身：Extension 内 path 可能包含我们刚建立的 utun，
+        // 取 first 会把默认出口指回隧道自己，形成回环。
         guard path.status != .unsatisfied,
-              let iface = path.availableInterfaces.first
+              let iface = path.availableInterfaces.first(where: {
+                  !$0.name.hasPrefix("utun")
+              })
         else {
             singcast.updateDefaultInterface("", index: -1, expensive: false)
             return
