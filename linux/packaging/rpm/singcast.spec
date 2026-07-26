@@ -1,5 +1,5 @@
 Name:           singcast
-Version:        1.1.19
+Version:        1.1.15
 Release:        1%{?dist}
 Summary:        A clash GUI client based on Flutter
 License:        MIT
@@ -45,5 +45,5 @@ fi
 /usr/share/applications/singcast.desktop
 
 %changelog
-* Sun Jul 26 2026 mapleafgo <mapleafgo@gmail.com> - 1.1.19-1
+* Sun Jul 26 2026 mapleafgo <mapleafgo@gmail.com> - 1.1.15-1
 - 预装 systemd 服务 + polkit，保障开 TUN 零密码
