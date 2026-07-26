@@ -54,6 +54,7 @@ libclash.*
 # Native core binaries & headers (downloaded by CI from singcast-cli releases)
 linux/core/libsingcast-*
 linux/core/singcast-core
+linux/core/singcast
 windows/core/libsingcast-*
 windows/core/singcast-core.exe
 macos/Frameworks/libsingcast-*
