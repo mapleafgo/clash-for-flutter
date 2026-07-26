@@ -1,5 +1,6 @@
-import 'enums.dart';
+import 'package:singcast/utils/constants.dart';
 
+import 'enums.dart';
 
 class ClashConfig {
   final int? mixedPort;
@@ -27,8 +28,8 @@ class ClashConfig {
   });
 
   factory ClashConfig.defaults() => ClashConfig(
-      mixedPort: 7890,
-      externalControllerAddr: '127.0.0.1:9090',
+      mixedPort: Constants.defaultMixedPort,
+      externalControllerAddr: Constants.defaultApiAddr,
       portEnabled: false);
 
   ClashConfig copyWith({
@@ -59,7 +60,7 @@ class ClashConfig {
 
   bool get tunEnabled => tun?.enable ?? false;
   bool get apiEnabled => externalController ?? false;
-  String get apiAddr => externalControllerAddr ?? '127.0.0.1:9090';
+  String get apiAddr => externalControllerAddr ?? Constants.defaultApiAddr;
   bool get userPortEnabled => portEnabled ?? false;
   bool get systemProxyEnabled => mixedSystemProxy ?? false;
 }

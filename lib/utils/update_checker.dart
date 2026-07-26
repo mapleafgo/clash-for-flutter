@@ -29,8 +29,9 @@ Future<String?> checkForUpdate() async {
         .join()
         .timeout(const Duration(seconds: 15));
     final data = jsonDecode(body) as Map<String, dynamic>;
-    final latest =
-        (data['tag_name'] as String? ?? '').replaceFirst('v', '');
+    final tag = data['tag_name'] as String? ?? '';
+    // 只去掉前缀 v：replaceFirst 会误删任意位置的首个 v（如 1.2.0-dev）
+    final latest = tag.startsWith('v') ? tag.substring(1) : tag;
     if (latest.isEmpty) return null;
     final latestVersion = Version.parse(latest);
     final currentVersion = Version.parse(current);

@@ -39,8 +39,8 @@ void main() {
   });
 
   group('Defaults', () {
-    test('delayTestUrl is gstatic generate_204', () {
-      expect(Defaults.delayTestUrl, contains('gstatic.com'));
+    test('delayTestUrl is cloudflare generate_204', () {
+      expect(Defaults.delayTestUrl, contains('cp.cloudflare.com'));
       expect(Defaults.delayTestUrl, contains('generate_204'));
     });
   });

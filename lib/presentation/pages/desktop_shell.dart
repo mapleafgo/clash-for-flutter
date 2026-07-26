@@ -58,7 +58,8 @@ class DesktopShell extends StatelessWidget {
   }
 
   void _navigate(BuildContext context, int index) {
-    if (shell.currentIndex == index) return;
+    // initialLocation: 重复点击当前项时回到分支根路由（与 MobileShell 一致），
+    // 否则无法从 /settings/about 这类子页通过侧栏返回
     shell.goBranch(index, initialLocation: index == shell.currentIndex);
   }
 }

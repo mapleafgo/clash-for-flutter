@@ -5,6 +5,7 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/startup_service.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/log_file.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
@@ -139,6 +140,16 @@ class SettingsPage extends StatelessWidget {
                       autoStart.value = v;
                     } catch (e) {
                       // 注册失败，signal 不更新，开关回弹
+                      LogFileWriter.instance?.log(
+                        'setAutoStart($v) failed: $e',
+                        level: LogLevel.warning,
+                        name: 'settings',
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                          ..clearSnackBars()
+                          ..showSnackBar(SnackBar(content: Text('$e')));
+                      }
                     }
                   },
                 );
@@ -326,7 +337,7 @@ class _UaTile extends StatelessWidget {
 
   void _showUaPicker(BuildContext context) {
     final controller = TextEditingController(text: subUA.value);
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.settings.subUaDialogTitle),
@@ -400,7 +411,7 @@ class _UaTile extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }
 
@@ -476,7 +487,7 @@ Future<String?> _showEditDialog({
   final controller = TextEditingController(text: initialValue);
   final errorText = signal<String?>(null);
 
-  return showDialog<String>(
+  final result = showDialog<String>(
     context: context,
     builder: (ctx) => l10nBuilder((context) {
       return AlertDialog(
@@ -541,6 +552,8 @@ Future<String?> _showEditDialog({
       );
     }),
   );
+  result.whenComplete(controller.dispose);
+  return result;
 }
 
 class _AnimatedExpand extends StatelessWidget {

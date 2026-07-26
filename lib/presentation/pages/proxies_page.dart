@@ -36,13 +36,14 @@ class _ProxiesPageState extends State<ProxiesPage> {
   final _fabVisible = ValueNotifier<bool>(true);
   TabController? _tabController;
   List<String> _cachedTags = [];
+  void Function()? _disposeTagsEffect;
 
   @override
   void initState() {
     super.initState();
     _syncTags();
 
-    effect(() {
+    _disposeTagsEffect = effect(() {
       final newTags = LibCore.instance.proxiesSignal.value
           .map((g) => g.tag)
           .toList();
@@ -64,6 +65,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
 
   @override
   void dispose() {
+    _disposeTagsEffect?.call();
     _fabVisible.dispose();
     super.dispose();
   }
@@ -185,7 +187,12 @@ class _ProxiesPageState extends State<ProxiesPage> {
       if (delays.isNotEmpty) {
         LibCore.instance.updateProxyDelays(delays);
       }
-    } catch (_) {
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'testGroupDelay(${group.tag}) failed: $e',
+        level: LogLevel.warning,
+        name: 'proxies',
+      );
     } finally {
       _groupTesting.value = false;
     }
@@ -370,17 +377,23 @@ class _ProxyList extends StatelessWidget {
 
   List<ProxyGroupItem> _sortedItems(List<ProxyGroupItem> items) {
     final delays = LibCore.instance.proxyDelaysSignal.peek();
+    // 复制后排序：入参是 proxiesSignal 持有的原始列表，
+    // 原地 sort 会永久丢失默认顺序。
+    final sorted = [...items];
     switch (_sortType.value) {
       case SortType.name:
-        items.sort((a, b) => a.tag.compareTo(b.tag));
+        sorted.sort((a, b) => a.tag.compareTo(b.tag));
       case SortType.delay:
-        items.sort(
-          (a, b) => (delays[a.tag] ?? 99999).compareTo(delays[b.tag] ?? 99999),
+        // 未测速的节点排在最后
+        const untested = 1 << 31;
+        sorted.sort(
+          (a, b) =>
+              (delays[a.tag] ?? untested).compareTo(delays[b.tag] ?? untested),
         );
       case SortType.defaults:
         break;
     }
-    return items;
+    return sorted;
   }
 }
 
@@ -511,19 +524,17 @@ Future<void> _testSingleDelay(String tag, Signal<Set<String>> testingTags) async
   }
 }
 
+/// 延迟分级阈值(ms)：≤ good 绿色，≤ medium 橙色，其余红色。
+const _delayGoodMax = 500;
+const _delayMediumMax = 1000;
+
 Widget _delayText(int delay, BuildContext context) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
-  final color = delay <= 500
-      ? isDark
-            ? _delayColorGoodDark
-            : _delayColorGood
-      : delay <= 1000
-      ? isDark
-            ? _delayColorMediumDark
-            : _delayColorMedium
-      : isDark
-      ? _delayColorBadDark
-      : _delayColorBad;
+  final color = switch (delay) {
+    <= _delayGoodMax => isDark ? _delayColorGoodDark : _delayColorGood,
+    <= _delayMediumMax => isDark ? _delayColorMediumDark : _delayColorMedium,
+    _ => isDark ? _delayColorBadDark : _delayColorBad,
+  };
   return Text('${delay}ms', style: TextStyle(color: color, fontSize: 13));
 }
 

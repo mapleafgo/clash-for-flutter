@@ -82,7 +82,7 @@ class _KernelVersionTileState extends State<_KernelVersionTile> {
       title: Text(t.about.kernelVersion),
       subtitle: Text(_version.isEmpty ? t.about.loading : _version),
       trailing: const Icon(Icons.open_in_new),
-      onTap: () => launchUrl(Uri.parse('https://github.com/mapleafgo/singcast-cli')),
+      onTap: () => launchUrl(Uri.parse(Constants.coreRepoUrl)),
     );
   }
 }
@@ -94,16 +94,12 @@ class _CheckUpdateTile extends StatefulWidget {
   State<_CheckUpdateTile> createState() => _CheckUpdateTileState();
 }
 
+enum _CheckState { idle, checking, upToDate, hasUpdate, failed }
+
 class _CheckUpdateTileState extends State<_CheckUpdateTile> {
-  int _state = 0;
+  _CheckState _state = _CheckState.idle;
   final String _currentVersion = Defaults.appVersion;
   String _latestVersion = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _state = 0;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,38 +107,40 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
       title: Text(t.about.version),
       subtitle: Text(_currentVersion),
       trailing: _trailing(),
-      onTap: _state == 1 ? null : _check,
+      onTap: _state == _CheckState.checking ? null : _check,
     );
   }
 
   Widget _trailing() {
     return switch (_state) {
-      1 => const SizedBox(
+      _CheckState.checking => const SizedBox(
           width: 20,
           height: 20,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      2 => const Icon(Icons.check_circle_outline, color: Colors.green),
-      3 => const Icon(Icons.system_update, color: Colors.blue),
-      -1 => const Icon(Icons.error_outline, color: Colors.red),
-      _ => const Icon(Icons.refresh),
+      _CheckState.upToDate =>
+        const Icon(Icons.check_circle_outline, color: Colors.green),
+      _CheckState.hasUpdate =>
+        const Icon(Icons.system_update, color: Colors.blue),
+      _CheckState.failed => const Icon(Icons.error_outline, color: Colors.red),
+      _CheckState.idle => const Icon(Icons.refresh),
     };
   }
 
   Future<void> _check() async {
-    setState(() => _state = 1);
+    setState(() => _state = _CheckState.checking);
     try {
       final latest = await checkForUpdate();
       if (!mounted) return;
       if (latest == null) {
-        setState(() => _state = 2);
+        setState(() => _state = _CheckState.upToDate);
       } else {
         _latestVersion = latest;
-        setState(() => _state = 3);
+        setState(() => _state = _CheckState.hasUpdate);
         _showUpdateDialog();
       }
     } catch (_) {
-      if (mounted) setState(() => _state = -1);
+      if (mounted) setState(() => _state = _CheckState.failed);
     }
   }
 

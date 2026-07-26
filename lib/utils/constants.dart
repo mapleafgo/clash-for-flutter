@@ -7,8 +7,12 @@ class Constants {
   static late final Directory homeDir;
 
   static const sourceUrl = "https://github.com/mapleafgo/singcast";
+  static const coreRepoUrl = "https://github.com/mapleafgo/singcast-cli";
   static const homeUrl = "https://mapleafgo.github.io/singcast";
   static const releaseUrl = "https://api.github.com/repos/mapleafgo/singcast/releases/latest";
+
+  /// 与原生层(Android/iOS)通信的 MethodChannel 名，需与原生端注册名一致。
+  static const methodChannelName = "cn.mapleafgo/singcast";
 
   static const profilesDir = "profiles";
   static const clashConfig = "config.yaml";
@@ -16,6 +20,7 @@ class Constants {
   static const mergedConfigCache = "cache-merged.yaml";
   static const localhost = "127.0.0.1";
   static const defaultMixedPort = 7890;
+  static const defaultApiAddr = "$localhost:9090";
   static const logsCapacity = 1000;
 }
 

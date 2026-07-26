@@ -17,6 +17,7 @@ import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/subscription.dart';
 import 'package:singcast/utils/dialog.dart';
 import 'package:singcast/utils/format.dart';
+import 'package:singcast/utils/log_file.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 final _updatingFile = signal<String?>(null);
@@ -162,7 +163,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
     if (sourcePath == null) return;
 
     final fileName = p.basename(sourcePath);
-    if (profiles.value.any((p) => p.name == fileName)) {
+    if (profiles.value.any((e) => e.name == fileName)) {
       if (context.mounted) showErrorDialog(context, t.profiles.configExists(name: fileName));
       return;
     }
@@ -181,7 +182,10 @@ class _ProfilesPageState extends State<ProfilesPage> {
     try {
       await validateConfigFile(destPath);
     } catch (e) {
-      File(destPath).delete().catchError((_) => File(destPath));
+      // 清理校验失败的副本，删除失败可忽略（下次同名导入会另起文件名）
+      try {
+        await File(destPath).delete();
+      } catch (_) {}
       if (context.mounted) showErrorDialog(context, '$e');
       return;
     }
@@ -195,7 +199,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
     );
     final wasEmpty = profiles.value.isEmpty;
     profiles.value = [...profiles.value, profile];
-    if (!context.mounted) return;
+    // 信号赋值不依赖 context，页面切走也要保证首个配置被选中
     if (wasEmpty) selectedFile.value = savedName;
   }
 
@@ -378,17 +382,17 @@ class _ProfileCard extends StatelessWidget {
     // URL 未变更，仅更新名称/间隔/URL 微调（refreshProfile 已处理 URL 变更）
     final list = profiles.value
         .map(
-          (p) => p.file == profile.file
+          (e) => e.file == profile.file
               ? Profile(
-                  file: p.file,
+                  file: e.file,
                   name: result.name,
-                  type: p.type,
-                  time: p.time,
+                  type: e.type,
+                  time: e.time,
                   url: result.url,
                   interval: result.interval,
-                  userinfo: p.userinfo,
+                  userinfo: e.userinfo,
                 )
-              : p,
+              : e,
         )
         .toList();
     profiles.value = list;
@@ -417,13 +421,22 @@ class _ProfileCard extends StatelessWidget {
     );
     if (confirmed != true) return;
     final file = profile.file;
-    final list = profiles.value.where((p) => p.file != file).toList();
+    final list = profiles.value.where((e) => e.file != file).toList();
     profiles.value = list;
     if (selectedFile.value == file) {
       selectedFile.value = list.isEmpty ? null : list.first.file;
     }
     final path = p.join(profilesFullPath, file);
-    if (File(path).existsSync()) await File(path).delete();
+    try {
+      if (File(path).existsSync()) await File(path).delete();
+    } catch (e) {
+      // 列表已移除，删除失败不回滚：残留文件仅占磁盘，不再出现在列表中
+      LogFileWriter.instance?.log(
+        'delete profile file failed: $e',
+        level: LogLevel.warning,
+        name: 'profiles',
+      );
+    }
   }
 
   Future<void> _update(BuildContext context) async {
@@ -594,12 +607,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         ),
         FilledButton(
           onPressed: () {
-            final p = widget.profile;
-            final newName = _nameCtl.text.isEmpty ? p.name : _nameCtl.text;
-            final newUrl = p.type == ProfileType.url
+            final profile = widget.profile;
+            final newName =
+                _nameCtl.text.isEmpty ? profile.name : _nameCtl.text;
+            final newUrl = profile.type == ProfileType.url
                 ? _urlCtl.text.trim()
-                : p.url;
-            if (p.type == ProfileType.url &&
+                : profile.url;
+            if (profile.type == ProfileType.url &&
                 (newUrl == null || newUrl.isEmpty)) {
               return;
             }
@@ -609,7 +623,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 name: newName,
                 url: newUrl,
                 interval: int.tryParse(_intervalCtl.text) ?? 0,
-                urlChanged: newUrl != p.url,
+                urlChanged: newUrl != profile.url,
               ),
             );
           },
