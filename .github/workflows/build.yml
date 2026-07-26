@@ -107,22 +107,41 @@ jobs:
       - name: Build & package (x64)
         if: matrix.arch == 'amd64'
         run: |
-          dart pub global activate fastforge
-          fastforge package --platform=windows --targets=exe,zip
+          flutter build windows --release
+          $ver = "${{ env.VERSION }}".TrimStart('v')
+          $distDir = "dist\$ver"
+          New-Item -Path $distDir -ItemType Directory -Force | Out-Null
+          # portable zip
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "$distDir\singcast-$ver-windows-amd64-portable.zip"
+          # installer via Inno Setup（模板替换 + 去 Jinja 循环）
+          $iss = Get-Content "windows\packaging\exe\inno_setup.iss" -Raw
+          $iss = $iss `
+            -replace '\{\{APP_ID\}\}', '{{B3039CF4-E394-42B6-971C-4BE97F322DE8}}' `
+            -replace '\{\{APP_VERSION\}\}', $ver `
+            -replace '\{\{APP_NAME\}\}', 'Singcast' `
+            -replace '\{\{PUBLISHER_NAME\}\}', 'mapleafgo' `
+            -replace '\{\{PUBLISHER_URL\}\}', 'https://github.com/mapleafgo/singcast' `
+            -replace '\{\{INSTALL_DIR_NAME\}\}', 'Singcast' `
+            -replace '\{\{OUTPUT_BASE_FILENAME\}\}', "singcast-$ver-windows-amd64" `
+            -replace '\{\{SETUP_ICON_FILE\}\}', '..\..\windows\runner\resources\app_icon.ico' `
+            -replace '\{\{PRIVILEGES_REQUIRED\}\}', 'admin' `
+            -replace '\{\{SOURCE_DIR\}\}', 'build\windows\x64\runner\Release' `
+            -replace '\{\{EXECUTABLE_NAME\}\}', 'singcast.exe' `
+            -replace '\{\{DISPLAY_NAME\}\}', 'Singcast' `
+            -replace '\{\{CREATE_DESKTOP_ICON\}\}', 'true' `
+            -replace '\{\{LAUNCH_AT_STARTUP\}\}', 'false'
+          $iss = ($iss -split "`n" | Where-Object { $_ -notmatch '^\s*\{%.*%\}' }) -join "`n"
+          $iss | Set-Content "build\windows\setup.iss" -Encoding UTF8
+          iscc.exe /Q "build\windows\setup.iss"
+          Move-Item -Force "build\windows\singcast-$ver-windows-amd64.exe" "$distDir\singcast-$ver-windows-amd64.exe"
 
       - name: Rename artifacts (x64)
         if: matrix.arch == 'amd64'
         run: |
-          $ver = "${{ env.VERSION }}".TrimStart('v')
-          $distDir = "dist\$ver"
-          $exe = (Get-ChildItem "$distDir\*.exe")[0]
-          $zip = (Get-ChildItem "$distDir\*.zip")[0]
-          Move-Item -Force $exe.FullName "$distDir\singcast-$ver-windows-amd64.exe"
-          Move-Item -Force $zip.FullName "$distDir\singcast-$ver-windows-amd64-portable.zip"
+          # artifacts already named correctly above
 
       # ARM64: Flutter main channel builds natively to build/windows/arm64/.
-      # fastforge does not reliably support main-channel ARM64, so build with
-      # flutter directly and package with Inno Setup + zip manually.
+      # Build with flutter directly and package with Inno Setup + zip manually.
       - name: Build (ARM64)
         if: matrix.arch == 'arm64'
         run: flutter build windows --release
@@ -187,8 +206,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           files: |
-            dist/*/*.exe
-            dist/*/*.zip
+            dist/**/*
             build/*.zip
             build/windows/Output/*.exe
           overwrite_files: true
@@ -213,7 +231,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev rpm
           wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x /tmp/appimagetool
           sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
@@ -227,16 +245,9 @@ jobs:
 
       - name: Build & package
         run: |
-          dart pub global activate fastforge
-          fastforge package --platform=linux --targets=appimage,deb,zip
-
-      - name: Rename artifacts
-        run: |
+          flutter build linux --release
           v="${VERSION#v}"
-          d="dist/$v"
-          mv "$d/singcast-$v-linux.AppImage" "$d/singcast-$v-linux-amd64.AppImage"
-          mv "$d/singcast-$v-linux.deb" "$d/singcast-$v-linux-amd64.deb"
-          mv "$d/singcast-$v-linux.zip" "$d/singcast-$v-linux-amd64.zip"
+          bash scripts/package-linux.sh "$v" dist
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2

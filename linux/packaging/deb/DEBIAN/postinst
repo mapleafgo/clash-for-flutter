@@ -1,0 +1,15 @@
+#!/bin/sh
+# deb postinst：symlink + 统一 systemd 服务预装。
+set -e
+
+# symlink: /usr/bin/singcast -> /opt/Singcast/singcast
+ln -sf /opt/Singcast/singcast /usr/bin/singcast 2>/dev/null || true
+
+case "$1" in
+  configure)
+    # 只写 unit/rules；运行中进程不重启，下次 start/用户开 TUN 才加载新 core
+    /opt/Singcast/singcast-core service install 2>/dev/null || true
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,22 @@
+version: '3'
+
+vars:
+  VERSION: 1.1.19
+  PKGNAME: singcast
+  BUNDLE: build/linux/x64/release/bundle
+  DIST: dist
+
+tasks:
+  bundle:
+    desc: 构建 release bundle 并复制最新 core
+    cmds:
+      - flutter build linux --release
+      - cp -f ../singcast-cli/bin/singcast {{.BUNDLE}}/singcast-core
+      - cp -f ../singcast-cli/bin/singcast linux/core/singcast-core
+      - chmod +x {{.BUNDLE}}/singcast-core linux/core/singcast-core
+
+  package:
+    desc: 构建 deb + zip + AppImage
+    deps: [bundle]
+    cmds:
+      - bash scripts/package-linux.sh {{.VERSION}} {{.DIST}}

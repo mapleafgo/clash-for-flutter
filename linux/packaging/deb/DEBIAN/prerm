@@ -1,0 +1,12 @@
+#!/bin/sh
+# deb prerm：卸载 systemd 服务 + 清理 symlink。
+set -e
+
+case "$1" in
+  remove|deconfigure|failed-upgrade)
+    /opt/Singcast/singcast-core service uninstall 2>/dev/null || true
+    rm -f /usr/bin/singcast 2>/dev/null || true
+    ;;
+esac
+
+exit 0
