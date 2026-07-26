@@ -214,7 +214,17 @@ jobs:
           overwrite_files: true
 
   build-linux:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            core_arch: amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            core_arch: arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -222,7 +232,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-          architecture: ${{ matrix.flutter_arch || 'x64' }}
+          architecture: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
           cache: true
 
       - name: Sync version
@@ -234,28 +244,34 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libnotify-dev rpm
+          # AppImage 工具（按架构下载）
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-aarch64.AppImage"
+          else
           wget -O /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          fi
           chmod +x /tmp/appimagetool
           sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
 
       - name: Download core
         run: |
-          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-linux-amd64.tar.gz" -o singcast-core.tar.gz
+          curl -L "https://github.com/mapleafgo/singcast-cli/releases/download/$CORE_VERSION/singcast-$CORE_VERSION-linux-${{ matrix.core_arch }}.tar.gz" -o singcast-core.tar.gz
           tar -zxf singcast-core.tar.gz
-          chmod +x singcast-linux-amd64
-          mv singcast-linux-amd64 linux/core/singcast-core
+          chmod +x singcast-linux-${{ matrix.core_arch }}
+          mv singcast-linux-${{ matrix.core_arch }} linux/core/singcast-core
 
       - name: Build & package
         run: |
           flutter build linux --release
           v="${VERSION#v}"
-          bash scripts/package-linux.sh "$v" dist
+          bash scripts/package-linux.sh "$v" dist "${{ matrix.arch }}"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          files: dist/*/*
+          files: |
+            dist/*/*
           overwrite_files: true
 
   build-macos:

@@ -1,16 +1,37 @@
 #!/bin/bash
-# Linux 打包脚本：flutter build → deb + rpm + zip + AppImage
-# 用 dpkg-deb / rpmbuild / appimagetool / zip 手工打包。
+# Linux 打包脚本：flutter build → deb + rpm + zip + AppImage（支持 amd64 / arm64）
 set -euo pipefail
 
-VERSION="${1:?usage: package-linux.sh <version> [output-dir]}"
+VERSION="${1:?usage: package-linux.sh <version> [output-dir] [arch]}"
 OUTPUT_DIR="${2:-dist}"
+ARCH="${3:-amd64}"
 APP_NAME="singcast"
 DISPLAY_NAME="Singcast"
 INSTALL_PATH="/opt/$DISPLAY_NAME"
-BUNDLE="build/linux/x64/release/bundle"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 架构映射
+case "$ARCH" in
+  amd64)
+    DEB_ARCH="amd64"
+    RPM_ARCH="x86_64"
+    APPIMAGE_ARCH="x86_64"
+    BUNDLE="build/linux/x64/release/bundle"
+    ARTIFACT_ARCH="amd64"
+    ;;
+  arm64)
+    DEB_ARCH="arm64"
+    RPM_ARCH="aarch64"
+    APPIMAGE_ARCH="aarch64"
+    BUNDLE="build/linux/arm64/release/bundle"
+    ARTIFACT_ARCH="arm64"
+    ;;
+  *)
+    echo "Unsupported arch: $ARCH" >&2
+    exit 1
+    ;;
+esac
 
 if [ ! -x "$BUNDLE/$APP_NAME" ]; then
   echo "Error: bundle not found at $BUNDLE. Run 'flutter build linux --release' first." >&2
@@ -61,7 +82,7 @@ EOF
   cat > "$tmp/DEBIAN/control" <<EOF
 Package: $APP_NAME
 Version: $VERSION
-Architecture: amd64
+Architecture: $DEB_ARCH
 Maintainer: mapleafgo <mapleafgo@gmail.com>
 Installed-Size: $size_kb
 Depends: libgtk-3-0, libblkid1, liblzma5, libayatana-appindicator3-1, libnotify4, policykit-1, acl, libcap2-bin
@@ -71,8 +92,8 @@ Description: A clash GUI client based on Flutter
  A multi-platform Clash client powered by sing-box.
 EOF
 
-  dpkg-deb --build --root-owner-group "$tmp" "$PKG_DIR/$APP_NAME-$VERSION-linux.deb"
-  echo "  → $PKG_DIR/$APP_NAME-$VERSION-linux.deb"
+  dpkg-deb --build --root-owner-group "$tmp" "$PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.deb"
+  echo "  → $PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.deb"
 }
 
 # ── ZIP (portable) ───────────────────────────────────────────────────
@@ -92,7 +113,7 @@ build_rpm() {
 
   # 替换 spec 中的 Version 字段
   local tmp_spec; tmp_spec="$(mktemp)"
-  sed "s/^Version:.*/Version:        $VERSION/" "$spec" > "$tmp_spec"
+  sed -e "s/^Version:.*/Version:        $VERSION/" -e "s/^BuildArch:.*/BuildArch:      $RPM_ARCH/" "$spec" > "$tmp_spec"
 
   local topdir; topdir="$(mktemp -d)"
   trap 'rm -rf "$topdir" "$tmp_spec"' RETURN
@@ -150,7 +171,7 @@ ICONEOF
 
 build_zip() {
   echo "Building zip..."
-  local zip_path="$PKG_DIR/$APP_NAME-$VERSION-linux-amd64-portable.zip"
+  local zip_path="$PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH-portable.zip"
   (cd "$BUNDLE" && zip -r -y "$PROJECT_ROOT/$zip_path" .)
   echo "  → $zip_path"
 }
@@ -195,9 +216,8 @@ EOF
   fi
   cp "$ai_dir/$APP_NAME.svg" "$ai_dir/usr/share/icons/hicolor/scalable/apps/$APP_NAME.svg" 2>/dev/null || true
 
-  local output="$PKG_DIR/$APP_NAME-$VERSION-linux-amd64.AppImage"
-  # CI runner 通常没有 FUSE，用 APPIMAGE_EXTRACT_AND_RUN 让 appimagetool 自解压运行
-  ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$ai_dir" "$output" 2>&1 || {
+  local output="$PKG_DIR/$APP_NAME-$VERSION-linux-$ARTIFACT_ARCH.AppImage"
+  ARCH=$APPIMAGE_ARCH APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$ai_dir" "$output" 2>&1 || {
     echo "  appimagetool failed, skipping AppImage" >&2
     rm -f "$output"
     return 0
