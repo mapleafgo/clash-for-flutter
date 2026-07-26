@@ -41,20 +41,20 @@ class CoreConfigStorage {
   }
 
   static void save(ClashConfig config) {
-    final SettingsYaml yaml;
+    SettingsYaml yaml;
     try {
       yaml = SettingsYaml.load(pathToSettings: _path);
     } catch (e) {
       // 配置文件损坏时 load 会抛异常，若不拦截会穿透到启动流程导致卡在闪屏。
-      // 直接重建：内存中的 config 就是完整状态，丢掉坏文件不损失有效数据。
+      // 清空重建：内存中的 config 就是完整状态，丢掉坏文件不损失有效数据。
       LogFileWriter.instance?.log(
         'core config unreadable, rebuilding: $e',
         level: LogLevel.warning,
         name: 'settings',
       );
+      // 只重试一次，不递归：load 若持续失败（目录不可写等）会无限递归爆栈
       File(_path).writeAsStringSync('');
-      save(config);
-      return;
+      yaml = SettingsYaml.load(pathToSettings: _path);
     }
     if (config.mixedPort != null) yaml['mixed-port'] = config.mixedPort;
     if (config.allowLan != null) yaml['allow-lan'] = config.allowLan;

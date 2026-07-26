@@ -1,6 +1,5 @@
-# 打包的是预编译产物，不做 debuginfo 提取，也不自动扫描 Go 二进制的依赖
+# 打包的是预编译产物，不做 debuginfo 提取
 %global debug_package %{nil}
-AutoReqProv:    no
 
 Name:           singcast
 Version:        1.1.15
@@ -11,6 +10,8 @@ URL:            https://github.com/mapleafgo/singcast
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      x86_64
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
+# 依赖手工声明：捆绑的 Flutter/Go 产物自带私有库，自动扫描会引入无法满足的项
+AutoReqProv:    no
 Requires:       gtk3
 # Fedora 系的二进制包名带 -gtk3 后缀，不存在裸 libayatana-appindicator 的 Provides
 Requires:       libayatana-appindicator-gtk3

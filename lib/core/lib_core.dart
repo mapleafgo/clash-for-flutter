@@ -68,6 +68,9 @@ class LibCore {
 
   // 非 final：elevate/restart/fallback 会通过 _rebindIpcWorker 切换 IPC 实现
   late LibCorePlatform _platform;
+  /// _platform 是 late：init 失败时从未赋值，此时任何访问都会抛
+  /// LateInitializationError。心跳跑在 Timer 里，异常无人接管。
+  bool _platformReady = false;
   IpcWorker? _ipcWorker;
   ServiceManager? _serviceManager;
 
@@ -169,6 +172,7 @@ class LibCore {
         }
       }
       _platform = _ipcWorker!;
+      _platformReady = true;
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
@@ -181,6 +185,7 @@ class LibCore {
       _ipcWorker!.onDisconnect = _onIpcDisconnected;
       bridge.wireInto(_ipcWorker!, onVpnDisconnected: _onVpnDisconnected);
       _platform = _ipcWorker!;
+      _platformReady = true;
       // iOS Extension 进程在 VPN 开启时才启动，RPC 连接延迟到 connectVpn() 后
       // Android: 本进程 FFI
     } else {
@@ -188,6 +193,7 @@ class LibCore {
       channel.onCallback = _handleWorkerCallback;
       channel.onVpnDisconnected = _onVpnDisconnected;
       _platform = channel;
+      _platformReady = true;
       await _platform.init();
     }
     await LogFileWriter.init('${Constants.homeDir.path}/singcast.log');
@@ -290,6 +296,9 @@ class LibCore {
   }
 
   void _startHeartbeat() {
+    // init 失败时 _platform 从未赋值，探测会抛 LateInitializationError；
+    // 心跳跑在 Timer 回调里，异常无人接管且每 10 秒复现一次。
+    if (!_platformReady) return;
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
       _heartbeatProbe();
@@ -298,6 +307,7 @@ class LibCore {
 
   /// Send a queryState RPC to probe IPC liveness.
   Future<void> _heartbeatProbe() async {
+    if (!_platformReady) return;
     if (_disposed || _reconnecting || _transition != null) return;
     if (_heartbeatInProgress) return;
     _heartbeatInProgress = true;
@@ -393,6 +403,7 @@ class LibCore {
     _ipcWorker!.onCallback = _handleWorkerCallback;
     _ipcWorker!.onDisconnect = _onIpcDisconnected;
     _platform = _ipcWorker!;
+    _platformReady = true;
   }
 
   /// Stop the service process, start a fresh one, and reconnect.

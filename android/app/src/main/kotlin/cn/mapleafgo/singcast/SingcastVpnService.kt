@@ -30,6 +30,9 @@ class SingcastVpnService : VpnService() {
             lastNonTunProxy = proxy
         }
 
+        /// Dart 侧主动发起的断开，不需要回传事件（见 disconnect）。
+        const val REASON_USER_DISCONNECT = "user_disconnect"
+
         /// VPN 断开通知回调，由 MainActivity 注入转发给 Flutter。
         /// 所有断开路径（用户操作、通知栏按钮、系统撤销、内核启动失败、服务销毁）
         /// 都必须触发，否则 Dart 侧 vpnConnected 会永远停在 true。
@@ -216,10 +219,14 @@ class SingcastVpnService : VpnService() {
         }
         // 统一在此通知 Flutter：onRevoke / onDestroy / core_start_failed 等路径
         // 此前都不上报，UI 会一直显示"已连接"而流量早已直连。
-        try {
-            onVpnDisconnected?.invoke()
-        } catch (e: Throwable) {
-            AppLog.e(TAG, "disconnect: notify flutter failed", e)
+        // 例外是 user_disconnect：Dart 侧发起时已自行更新状态，再回传一次的话，
+        // 若用户紧接着重新开启 TUN，这个迟到事件会把它又关掉。
+        if (reason != REASON_USER_DISCONNECT) {
+            try {
+                onVpnDisconnected?.invoke()
+            } catch (e: Throwable) {
+                AppLog.e(TAG, "disconnect: notify flutter failed", e)
+            }
         }
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }

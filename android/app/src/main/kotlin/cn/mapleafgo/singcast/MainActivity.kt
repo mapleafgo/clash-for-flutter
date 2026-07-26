@@ -255,7 +255,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun stopVpn() {
-        vpnService?.disconnect("user_disconnect")
+        vpnService?.disconnect(SingcastVpnService.REASON_USER_DISCONNECT)
         try { unbindService(vpnConnection) } catch (_: Exception) {}
         stopService(Intent(this, SingcastVpnService::class.java))
         vpnBound = false
