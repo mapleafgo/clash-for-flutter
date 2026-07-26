@@ -52,11 +52,3 @@ rm -rf %{buildroot}
 /usr/bin/singcast
 /usr/share/icons/hicolor/scalable/apps/singcast.svg
 /usr/share/applications/singcast.desktop
-
-%changelog
-* Sun Jul 26 2026 mapleafgo <mapleafgo@gmail.com> - 1.1.16-1
-- 修复 Android VPN 路由环路导致整机断网
-- 内核升级到 v1.1.20；修复多项打包与 CI 缺陷
-
-* Sun Jul 26 2026 mapleafgo <mapleafgo@gmail.com> - 1.1.15-1
-- 预装 systemd 服务 + polkit，保障开 TUN 零密码
