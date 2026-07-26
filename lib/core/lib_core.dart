@@ -100,6 +100,12 @@ class LibCore {
   bool _reconnecting = false;
   bool _disposed = false;
 
+  /// 正在进行的连接迁移（init / restart / elevate / uninstall / 自动重连）。
+  ///
+  /// 这些操作都会 stop 进程并重建 IPC worker，并发执行会互相拆掉对方刚建好的
+  /// 连接、甚至拉起两个 core 抢同一 socket。用单飞 future 串行化，见 [_exclusive]。
+  Future<void>? _transition;
+
   /// Heartbeat: actively probe IPC with queryState to detect zombie connections.
   Timer? _heartbeatTimer;
   bool _heartbeatInProgress = false;
@@ -115,7 +121,32 @@ class LibCore {
     return sm is LinuxServiceManager && sm.isDegradedRun;
   }
 
-  Future<void> init() async {
+  /// 串行执行一次连接迁移：等待前一次结束，期间屏蔽自动重连并暂停心跳，
+  /// 结束后（无论成败）恢复心跳——心跳同时充当失败后的重试引擎。
+  Future<T> _exclusive<T>(String name, Future<T> Function() action) async {
+    while (_transition != null) {
+      try {
+        await _transition;
+      } catch (_) {}
+    }
+    final gate = Completer<void>();
+    // 以下三行之间不能有 await，否则互斥会漏
+    _transition = gate.future;
+    _reconnecting = true;
+    _heartbeatTimer?.cancel();
+    try {
+      return await action();
+    } finally {
+      _reconnecting = false;
+      _transition = null;
+      gate.complete();
+      if (!_disposed && Constants.isDesktop) _startHeartbeat();
+    }
+  }
+
+  Future<void> init() => _exclusive('init', _init);
+
+  Future<void> _init() async {
     // Desktop (macOS/Windows/Linux): 独立进程 + RPC
     if (Constants.isDesktop) {
       _serviceManager = ServiceManager.create(Constants.homeDir.path);
@@ -191,7 +222,7 @@ class LibCore {
   }
 
   Future<void> _attemptReconnect() async {
-    if (_disposed || _reconnecting) return;
+    if (_disposed || _reconnecting || _transition != null) return;
     // 移动端无独立内核进程:iOS 内核跑在 Extension、Android 走本进程 FFI,
     // _serviceManager 仅桌面 init() 创建(为 null)。桌面端的进程重启逻辑在此
     // 不适用 —— 直接走到 `_serviceManager!.stop()` 会解引用 null 而崩溃。
@@ -205,17 +236,13 @@ class LibCore {
       );
       return;
     }
-    _reconnecting = true;
-    _heartbeatTimer?.cancel();
-
-    try {
+    await _exclusive('reconnect', () async {
       // Quick probe: 1 attempt to see if the existing process is still alive.
       // If the kernel is frozen, connect succeeds but syncKernelState will
       // timeout — fall through to restart the process.
       try {
         if (await _connectWithRetry(attempts: 1)) {
           await syncKernelState();
-          _startHeartbeat();
           return;
         }
       } catch (_) {}
@@ -234,10 +261,11 @@ class LibCore {
               name: 'ipc',
             );
           }
-          _startHeartbeat();
         } else {
+          // 心跳在 _exclusive 结束时恢复，下一次探测失败会再触发一轮重连，
+          // 相当于 10s 间隔的自动重试——不能在此放弃。
           LogFileWriter.instance?.log(
-            'IPC reconnect failed',
+            'IPC reconnect failed, will retry on next heartbeat',
             level: LogLevel.error,
             name: 'ipc',
           );
@@ -249,9 +277,7 @@ class LibCore {
           name: 'ipc',
         );
       }
-    } finally {
-      _reconnecting = false;
-    }
+    });
   }
 
   /// Start the IPC heartbeat timer.
@@ -272,11 +298,17 @@ class LibCore {
 
   /// Send a queryState RPC to probe IPC liveness.
   Future<void> _heartbeatProbe() async {
-    if (_disposed || _reconnecting || _heartbeatInProgress) return;
+    if (_disposed || _reconnecting || _transition != null) return;
+    if (_heartbeatInProgress) return;
     _heartbeatInProgress = true;
+    // 探测期间 restart/elevate 可能换掉 _ipcWorker：必须记住本次探测用的那个，
+    // 否则超时后会把刚重建好的新连接拆掉，且因是主动断开不触发重连，IPC 彻底死掉。
+    final probed = _ipcWorker;
     try {
       await _platform.queryState().timeout(_heartbeatTimeout);
     } catch (e) {
+      if (_disposed || _reconnecting || _transition != null) return;
+      if (!identical(probed, _ipcWorker)) return; // 连接已被换掉，本次结果作废
       // IPC is dead — disconnect and trigger reconnect.
       LogFileWriter.instance?.log(
         'IPC heartbeat failed: $e, reconnecting',
@@ -285,7 +317,7 @@ class LibCore {
       );
       _heartbeatTimer?.cancel();
       try {
-        await _ipcWorker?.disconnect();
+        await probed?.disconnect();
       } catch (_) {}
       _onIpcDisconnected();
     } finally {
@@ -366,8 +398,7 @@ class LibCore {
   /// Stop the service process, start a fresh one, and reconnect.
   Future<void> restart() async {
     if (!Constants.isDesktop) return;
-    _reconnecting = true;
-    try {
+    return _exclusive('restart', () async {
       stateSignal.value = kStateDestroyed;
       _clearRuntimeState();
       try {
@@ -383,34 +414,26 @@ class LibCore {
       }
       await syncKernelState();
       await onProcessReady?.call();
-    } finally {
-      _reconnecting = false;
-    }
+    });
   }
 
   /// One-time privilege setup for TUN mode.
   /// Disconnects IPC and blocks automatic reconnection during elevation
   /// to prevent _attemptReconnect() from spawning a non-elevated process
   /// that would race with the elevated service.install RPC.
-  Future<bool> elevateService() async {
-    _reconnecting = true;
-    try {
-      await _ipcWorker?.disconnect();
-      final ok = await _serviceManager!.setup();
-      if (!ok) return false;
-      // setup 成功后切到服务模式 socket（setup 内已 markSystemRun）
-      await _rebindIpcWorker(_serviceManager!.ipcPath);
-      return true;
-    } finally {
-      _reconnecting = false;
-    }
-  }
+  Future<bool> elevateService() => _exclusive('elevate', () async {
+    await _ipcWorker?.disconnect();
+    final ok = await _serviceManager!.setup();
+    if (!ok) return false;
+    // setup 成功后切到服务模式 socket（setup 内已 markSystemRun）
+    await _rebindIpcWorker(_serviceManager!.ipcPath);
+    return true;
+  });
 
   /// Uninstall elevated/privileged service, then restart with built-in core.
   Future<void> uninstallServiceAndRestart() async {
     if (!Constants.isDesktop) return;
-    _reconnecting = true; // Block automatic reconnect during transition
-    try {
+    return _exclusive('uninstall', () async {
       stateSignal.value = kStateDestroyed;
       _clearRuntimeState();
       try {
@@ -429,9 +452,7 @@ class LibCore {
       }
       await syncKernelState();
       await onProcessReady?.call();
-    } finally {
-      _reconnecting = false;
-    }
+    });
   }
 
   void _handleWorkerCallback(int eventType, String payload) {
@@ -461,8 +482,12 @@ class LibCore {
     }
   }
 
+  /// 合并写入延迟结果。
+  ///
+  /// 必须 merge 不能整表替换：组测速只返回本组节点，替换会把其它组
+  /// 已测出的延迟全部抹回"未测速"。
   void updateProxyDelays(Map<String, int> delays) {
-    _proxyDelays.value = delays;
+    _proxyDelays.value = {..._proxyDelays.peek(), ...delays};
   }
 
   void updateProxyDelay(String tag, int delay) {
@@ -608,16 +633,27 @@ class LibCore {
 
   // --- Proxy query helper ---
 
+  /// 已发出的 queryProxies 序号，用于丢弃过期响应。
+  int _querySeq = 0;
+
   void _queryAndUpdate() async {
+    // urlTest 事件可能密集推送，多份查询并发在飞；若旧的后完成，
+    // 会用旧快照覆盖新结果，表现为"点了节点又跳回去"。
+    final seq = ++_querySeq;
     try {
       final result = await _platform.queryProxies();
+      if (seq != _querySeq) return; // 已有更新的查询发出，本次结果作废
       proxiesSignal.value = result.$1;
       final selected = <String, String>{};
       for (final g in result.$1) {
         if (g.selected.isNotEmpty) selected[g.tag] = g.selected;
       }
       selectedProxySignal.value = selected;
-      if (result.$2.isNotEmpty) _proxyDelays.value = result.$2;
+      // 同样 merge：整表替换会让在飞行中的这次查询用旧快照覆盖掉
+      // 刚手动测出的延迟。
+      if (result.$2.isNotEmpty) {
+        _proxyDelays.value = {..._proxyDelays.peek(), ...result.$2};
+      }
     } catch (e) {
       LogFileWriter.instance?.log(
         '$e',
