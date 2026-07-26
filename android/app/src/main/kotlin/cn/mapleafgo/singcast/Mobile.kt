@@ -1,5 +1,6 @@
 package cn.mapleafgo.singcast
 
+import android.os.ParcelFileDescriptor
 import cn.mapleafgo.mobile.EventListener
 import cn.mapleafgo.mobile.InterfaceProvider
 import cn.mapleafgo.mobile.Mobile as NativeMobile
@@ -64,7 +65,21 @@ object Mobile {
             if (tunFd >= 0) {
                 singcast.setTunFd(tunFd)
             }
-            singcast.startWithContent(content, ruleSetProxy)
+            try {
+                singcast.startWithContent(content, ruleSetProxy)
+            } catch (e: Throwable) {
+                // establish() 后 detachFd() 已交出所有权，内核启动失败时没人关它：
+                // fd 泄漏且 Android VPN 路由残留（图标常亮 + 流量黑洞）。
+                if (tunFd >= 0) {
+                    try {
+                        ParcelFileDescriptor.adoptFd(tunFd).close()
+                        AppLog.i(TAG, "startWithContent: closed orphan tunFd=$tunFd")
+                    } catch (ce: Throwable) {
+                        AppLog.e(TAG, "startWithContent: close orphan tunFd failed", ce)
+                    }
+                }
+                throw e
+            }
             AppLog.i(TAG, "startWithContent: done")
         }
     }

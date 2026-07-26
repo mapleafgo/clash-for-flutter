@@ -30,7 +30,10 @@ class SingcastVpnService : VpnService() {
             lastNonTunProxy = proxy
         }
 
-        var onNotificationDisconnect: (() -> Unit)? = null
+        /// VPN 断开通知回调，由 MainActivity 注入转发给 Flutter。
+        /// 所有断开路径（用户操作、通知栏按钮、系统撤销、内核启动失败、服务销毁）
+        /// 都必须触发，否则 Dart 侧 vpnConnected 会永远停在 true。
+        var onVpnDisconnected: (() -> Unit)? = null
 
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
@@ -100,9 +103,12 @@ class SingcastVpnService : VpnService() {
                     disconnect("notification_button")
                     // disconnect 已 stopCore；有缓存配置则拉起非 VPN 实例
                     if (config != null) {
-                        Mobile.startWithContent(config, proxy)
+                        try {
+                            Mobile.startWithContent(config, proxy)
+                        } catch (e: Throwable) {
+                            AppLog.e(TAG, "restart non-tun core failed", e)
+                        }
                     }
-                    onNotificationDisconnect?.invoke()
                     stopSelf()
                 }, "vpn-disconnect").start()
             }
@@ -130,11 +136,22 @@ class SingcastVpnService : VpnService() {
                 showNotification()
 
                 Mobile.startWithContent(configContent, ruleSetProxy, onPrepare = {
+                    // 在 coreLock 临界区内复查：disconnect() 可能已经抢先跑完
+                    // stopCore，此处若照常 establish 会把 TUN 又拉起来，
+                    // 出现"UI 已断开但内核带 TUN 在跑"。
+                    if (disconnected.get()) {
+                        throw IllegalStateException("disconnected before TUN establish")
+                    }
                     Mobile.setVpnService(this@SingcastVpnService)
                     val fd = establishTun(enableIpv6)
                     AppLog.i(TAG, "connect: TUN established, fd=$fd")
                     fd
                 })
+                if (disconnected.get()) {
+                    AppLog.w(TAG, "connect: disconnected during startup, stopping core")
+                    Mobile.stopCore()
+                    return@Thread
+                }
                 isServiceRunning = true
 
                 // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
@@ -196,6 +213,13 @@ class SingcastVpnService : VpnService() {
             Mobile.stopCore()
         } catch (e: Throwable) {
             AppLog.e(TAG, "disconnect: stopCore failed", e)
+        }
+        // 统一在此通知 Flutter：onRevoke / onDestroy / core_start_failed 等路径
+        // 此前都不上报，UI 会一直显示"已连接"而流量早已直连。
+        try {
+            onVpnDisconnected?.invoke()
+        } catch (e: Throwable) {
+            AppLog.e(TAG, "disconnect: notify flutter failed", e)
         }
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }

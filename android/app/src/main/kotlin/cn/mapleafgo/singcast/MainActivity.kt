@@ -21,7 +21,7 @@ class MainActivity : FlutterFragmentActivity() {
     private lateinit var flutterChannel: MethodChannel
     @Volatile private var vpnService: SingcastVpnService? = null
     private var vpnBound = false
-    private var pendingVpn: VpnRequest? = null
+    @Volatile private var pendingVpn: VpnRequest? = null
 
     private data class VpnRequest(
         val configContent: String,
@@ -93,7 +93,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        SingcastVpnService.onNotificationDisconnect = {
+        SingcastVpnService.onVpnDisconnected = {
             runOnUiThread {
                 flutterChannel.invokeMethod("onVpnDisconnected", null)
             }
@@ -219,17 +219,24 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun requestVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
-        requestNotificationPermission()
-        try {
-            val intent = VpnService.prepare(this)
-            if (intent != null) {
-                pendingVpn = VpnRequest(configContent, ruleSetProxy, ipv6, result)
-                vpnPermissionLauncher.launch(intent)
-            } else {
-                startVpn(configContent, ruleSetProxy, ipv6, result)
+        // channel handler 跑在后台任务队列上，而 ActivityResultLauncher.launch
+        // 必须在主线程调用，否则部分 ROM 上授权窗不弹或直接抛异常。
+        runOnUiThread {
+            requestNotificationPermission()
+            try {
+                val intent = VpnService.prepare(this)
+                if (intent != null) {
+                    // 授权窗期间再次请求会覆盖 pending，被覆盖的 Result 若不回调，
+                    // Dart 侧 Future 会永久挂起。
+                    pendingVpn?.result?.error("VPN_BUSY", "Superseded by a newer VPN request", null)
+                    pendingVpn = VpnRequest(configContent, ruleSetProxy, ipv6, result)
+                    vpnPermissionLauncher.launch(intent)
+                } else {
+                    startVpn(configContent, ruleSetProxy, ipv6, result)
+                }
+            } catch (e: Exception) {
+                result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
             }
-        } catch (e: Exception) {
-            result.error("VPN_PREPARE_FAILED", "Failed to prepare VPN: ${e.message}", null)
         }
     }
 
@@ -256,7 +263,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
-        SingcastVpnService.onNotificationDisconnect = null
+        SingcastVpnService.onVpnDisconnected = null
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }
