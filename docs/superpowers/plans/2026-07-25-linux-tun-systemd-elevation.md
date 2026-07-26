@@ -1,5 +1,7 @@
 # Linux TUN systemd 提权实现计划
 
+> **状态（2026-07-25）**：systemd 主路径已恢复实现；polkit 额外放行 `resolve1.revert`，manage-units 限 start/stop/restart。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 让 Linux 开 TUN 时 `resolvectl` 三连弹窗消失——安装包预装 systemd 服务 + polkit 规则，便携包首次一次 pkexec 安装，之后零密码。

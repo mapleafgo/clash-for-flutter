@@ -5,7 +5,9 @@
 ## 前置
 
 - 部署最新 GUI + core（v1.1.18+）
-- `getcap /opt/Singcast/singcast-core` 含 `cap_net_admin`
+- `systemctl cat singcast-core.service` 可查看 unit（安装/首次 setup 后）
+- `/usr/share/polkit-1/rules.d/singcast.rules` 存在
+- 系统用户 `singcast` 存在（`id singcast`）
 - 设置页 TUN 协议栈默认 gvisor
 
 ## 验收项
@@ -20,7 +22,7 @@
    - 之后：0 次
 
 3. **关开 TUN / 热重载**
-   - 无 resolved 三连弹（set-domains / set-default-route / set-dns-servers）
+   - 无 resolved 弹窗（set-domains / set-default-route / set-dns-servers / revert）
    - 关闭时无 revert 弹窗
 
 4. **关于页「移除提权」**
@@ -30,6 +32,7 @@
 5. **服务状态**
    - `systemctl status singcast-core` 在 TUN 开时 running
    - socket `/run/singcast/command.sock` 存在
+   - 便携/AppImage 首次 install 后 ExecStart 指向 `/var/lib/singcast/singcast-core`（非 `/tmp/.mount_*`）
 
 6. **软链**
    - `readlink /usr/bin/singcast` 指向 `/opt/Singcast/singcast`

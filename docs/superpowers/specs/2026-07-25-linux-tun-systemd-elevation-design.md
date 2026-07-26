@@ -1,13 +1,13 @@
 # Linux TUN 系统级 systemd 提权设计
 
-> **实现说明（2026-07-25 更新）**：最终实现放弃了 systemd 服务方案，
-> 改为最小改动——只写一条 polkit rule 放行 resolved 三条 action。
-> 不引入系统用户、不改变进程模型、不需要双 socket / ACL。
-> 以下为原始 systemd 设计，保留作历史参考。
+> **实现说明（2026-07-25 更新）**：按本设计落地系统级 systemd 服务方案
+> （`User=singcast` + AmbientCapabilities + polkit 放行 resolve1 set/revert +
+> 本地 active 用户 start/stop/restart unit + `/run/singcast/command.sock` ACL）。
+> 不以用户态 setcap 作为 Linux 主路径。
 
 > 日期：2026-07-25
 > 范围：`singcast`（GUI/打包）+ `singcast-cli`（core 服务管理）
-> 状态：设计待确认后进入实现计划
+> 状态：实现中（systemd 主路径）
 
 ## 问题
 
@@ -75,7 +75,7 @@ systemd: singcast-core
         | resolvectl x3
         v
 polkit: singcast.rules
-  放行 set-domains / set-default-route / set-dns-servers
+  放行 set-domains / set-default-route / set-dns-servers / revert
 ```
 
 ### 组件
@@ -89,7 +89,7 @@ polkit: singcast.rules
 1. 确保系统用户 `singcast` 存在（useradd --system 或依赖 sysusers.d 已应用）。
 2. 写入 unit 到 `/etc/systemd/system/singcast-core.service`。
 3. 写入 polkit rules：
-   - resolved 三条 action 对 `singcast` 用户 YES
+   - resolved set-* 与 revert 对 `singcast` 用户 YES
    - 本地 active 用户可管理该 unit 的 start/stop/restart
 4. 依赖 unit 的 `RuntimeDirectory=singcast` 与 `StateDirectory=singcast`。
 5. `systemctl daemon-reload`。
@@ -137,6 +137,10 @@ WantedBy=multi-user.target
 ```
 
 ExecStart 的二进制路径以 install 时 `os.Executable()` 解析结果写入，兼容 `/opt/Singcast/singcast-core` 与其他前缀。
+
+若检测到 AppImage（`APPIMAGE` 环境变量）或可执行文件位于 `/tmp/`（含 FUSE 挂载点），install 会先把 core 复制到 `/var/lib/singcast/singcast-core`，unit 的 ExecStart 写该稳定路径，避免下次挂载点变化导致服务失效。
+
+开发态路径（`/home/...`、`/root/...`）同样强制复制：systemd 以 `User=singcast` 运行时无法穿越用户 home 的 `0700` 目录，否则会出现 `status=203/EXEC`，GUI 降级直跑后 `TUNSETIFF: operation not permitted`。
 
 **socket 权限（写死）**
 
@@ -229,7 +233,7 @@ install/start 失败 -> startDirect() + 用户 socket；TUN 可能仍三连弹�
 ### singcast-cli
 
 1. unit 生成内容含 User=singcast、AmbientCapabilities、ExecStart 路径。
-2. polkit rules 含三条 resolve1 action 与 singcast 用户。
+2. polkit rules 含 resolve1 set-* + revert 与 singcast 用户；manage-units 限 start/stop/restart。
 3. 集成（需 root 或 skip）：install 后文件存在，uninstall 后消失。
 4. socket ACL/权限路径有测试或文档化手工步骤。
 

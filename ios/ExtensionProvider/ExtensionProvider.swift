@@ -137,8 +137,8 @@ class ExtensionProvider: NEPacketTunnelProvider {
 
     /// Fallback: iterate file descriptors to find the tunnel fd.
     private func getTunnelFileDescriptor() -> Int32? {
-        // Tunnel fds are typically low-numbered (5-32). Limit range to avoid
-        // accidentally picking up unrelated file descriptors.
+        // Darwin 默认每进程 fd soft limit 256，tunnel fd 在系统初始化阶段分配，
+        // 实测落在 5-32 范围内；上限 64 足够覆盖且避免扫到无关 fd。
         for fd in 5..<64 {
             var addr = sockaddr_in()
             var len = socklen_t(MemoryLayout<sockaddr_in>.size)

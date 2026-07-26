@@ -102,43 +102,53 @@ object NetworkMonitor {
         }
         val arr = org.json.JSONArray()
         for (network in allNetworks) {
-            val lp = cm.getLinkProperties(network) ?: continue
-            val caps = cm.getNetworkCapabilities(network) ?: continue
-            // 不上报 VPN 接口，避免内核把 tun0 当作出站接口导致路由环路
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
-            val ifaceName = lp.interfaceName ?: continue
-            val netIntf = networkInterfaces.find { it.name == ifaceName } ?: continue
-
-            val addrs = org.json.JSONArray()
-            for (ia in netIntf.interfaceAddresses) {
-                val host = ia.address.hostAddress?.substringBefore('%') ?: continue
-                addrs.put("$host/${ia.networkPrefixLength}")
-            }
-            val type = when {
-                netIntf.isLoopback -> TYPE_LOOPBACK
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> TYPE_WIFI
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> TYPE_CELLULAR
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> TYPE_ETHERNET
-                else -> TYPE_OTHER
-            }
-            val index = try { Os.if_nametoindex(ifaceName) } catch (_: Exception) { 0 }
-            var flags = 0
-            if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                flags = flags or OsConstants.IFF_UP or OsConstants.IFF_RUNNING
-            }
-            if (netIntf.isLoopback) flags = flags or OsConstants.IFF_LOOPBACK
-            if (netIntf.isPointToPoint) flags = flags or OsConstants.IFF_POINTOPOINT
-            if (netIntf.supportsMulticast()) flags = flags or OsConstants.IFF_MULTICAST
-            arr.put(org.json.JSONObject().apply {
-                put("name", ifaceName)
-                put("index", index)
-                put("mtu", netIntf.mtu)
-                put("addresses", addrs)
-                put("flags", flags)
-                put("type", type)
-            })
+            val entry = buildInterfaceEntry(network, cm, networkInterfaces) ?: continue
+            arr.put(entry)
         }
         return arr.toString()
+    }
+
+    /// 把单个网络组装成内核可识别的接口 JSON entry；非物理接口返回 null。
+    private fun buildInterfaceEntry(
+        network: android.net.Network,
+        cm: ConnectivityManager,
+        networkInterfaces: List<java.net.NetworkInterface>,
+    ): org.json.JSONObject? {
+        val lp = cm.getLinkProperties(network) ?: return null
+        val caps = cm.getNetworkCapabilities(network) ?: return null
+        // 不上报 VPN 接口，避免内核把 tun0 当作出站接口导致路由环路
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return null
+        val ifaceName = lp.interfaceName ?: return null
+        val netIntf = networkInterfaces.find { it.name == ifaceName } ?: return null
+
+        val addrs = org.json.JSONArray()
+        for (ia in netIntf.interfaceAddresses) {
+            val host = ia.address.hostAddress?.substringBefore('%') ?: continue
+            addrs.put("$host/${ia.networkPrefixLength}")
+        }
+        val type = when {
+            netIntf.isLoopback -> TYPE_LOOPBACK
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> TYPE_WIFI
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> TYPE_CELLULAR
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> TYPE_ETHERNET
+            else -> TYPE_OTHER
+        }
+        val index = try { Os.if_nametoindex(ifaceName) } catch (_: Exception) { 0 }
+        var flags = 0
+        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            flags = flags or OsConstants.IFF_UP or OsConstants.IFF_RUNNING
+        }
+        if (netIntf.isLoopback) flags = flags or OsConstants.IFF_LOOPBACK
+        if (netIntf.isPointToPoint) flags = flags or OsConstants.IFF_POINTOPOINT
+        if (netIntf.supportsMulticast()) flags = flags or OsConstants.IFF_MULTICAST
+        return org.json.JSONObject().apply {
+            put("name", ifaceName)
+            put("index", index)
+            put("mtu", netIntf.mtu)
+            put("addresses", addrs)
+            put("flags", flags)
+            put("type", type)
+        }
     }
 
     private fun reportPhysicalDefaultInterface(context: Context, network: android.net.Network?) {
