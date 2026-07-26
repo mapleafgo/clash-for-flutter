@@ -125,7 +125,7 @@ jobs:
             -replace '\{\{OUTPUT_BASE_FILENAME\}\}', "singcast-$ver-windows-amd64" `
             -replace '\{\{SETUP_ICON_FILE\}\}', '..\..\windows\runner\resources\app_icon.ico' `
             -replace '\{\{PRIVILEGES_REQUIRED\}\}', 'admin' `
-            -replace '\{\{SOURCE_DIR\}\}', 'build\windows\x64\runner\Release' `
+            -replace '\{\{SOURCE_DIR\}\}', 'x64\runner\Release' `
             -replace '\{\{EXECUTABLE_NAME\}\}', 'singcast.exe' `
             -replace '\{\{DISPLAY_NAME\}\}', 'Singcast' `
             -replace '\{\{CREATE_DESKTOP_ICON\}\}', 'true' `
