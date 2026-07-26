@@ -6,6 +6,7 @@ License:        MIT
 URL:            https://github.com/mapleafgo/singcast
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      x86_64
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires:       gtk3
 Requires:       libayatana-appindicator
 Requires:       polkit
@@ -17,7 +18,7 @@ A clash GUI client based on Flutter with sing-box core.
 
 %prep
 %setup -q
-# Source tar 内含 bundle 全部文件 + singcast.desktop + singcast.svg
+# Source tar 内含 bundle 全部文件 + singcast.desktop + singcast.svg + singcast-core
 
 %install
 install -d %{buildroot}/opt/Singcast
@@ -37,6 +38,9 @@ install -Dpm644 singcast.desktop %{buildroot}/usr/share/applications/singcast.de
 if [ "$1" = 0 ]; then
   /opt/Singcast/singcast-core service uninstall 2>/dev/null || true
 fi
+
+%clean
+rm -rf %{buildroot}
 
 %files
 /opt/Singcast

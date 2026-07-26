@@ -127,7 +127,7 @@ EOF
   cp "$tmp_spec" "$topdir/SPECS/"
   rpmbuild -bb \
     --define "_topdir $topdir" \
-    "$topdir/SPECS/singcast.spec" >/dev/null 2>&1 || {
+    "$topdir/SPECS/singcast.spec" 2>&1 || {
       echo "  rpmbuild failed, skipping rpm" >&2
       return 0
     }

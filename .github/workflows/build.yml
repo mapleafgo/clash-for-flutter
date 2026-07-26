@@ -113,7 +113,7 @@ jobs:
           New-Item -Path $distDir -ItemType Directory -Force | Out-Null
           # portable zip
           Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "$distDir\singcast-$ver-windows-amd64-portable.zip"
-          # installer via Inno Setup（模板替换 + 去 Jinja 循环）
+          # installer via Inno Setup（模板替换）
           $iss = Get-Content "windows\packaging\exe\inno_setup.iss" -Raw
           $iss = $iss `
             -replace '\{\{APP_ID\}\}', '{{B3039CF4-E394-42B6-971C-4BE97F322DE8}}' `
@@ -129,8 +129,10 @@ jobs:
             -replace '\{\{EXECUTABLE_NAME\}\}', 'singcast.exe' `
             -replace '\{\{DISPLAY_NAME\}\}', 'Singcast' `
             -replace '\{\{CREATE_DESKTOP_ICON\}\}', 'true' `
-            -replace '\{\{LAUNCH_AT_STARTUP\}\}', 'false'
-          $iss = ($iss -split "`n" | Where-Object { $_ -notmatch '^\s*\{%.*%\}' }) -join "`n"
+            -replace '\{\{LAUNCH_AT_STARTUP\}\}', 'false' `
+            -replace '\{\{DESKTOP_ICON_FLAGS\}\}', 'checkedonce' `
+            -replace '\{\{LAUNCH_AT_STARTUP_FLAGS\}\}', 'unchecked' `
+            -replace '\{\{RUN_FLAGS\}\}', 'runascurrentuser'
           $iss | Set-Content "build\windows\setup.iss" -Encoding UTF8
           iscc.exe /Q "build\windows\setup.iss"
           Move-Item -Force "build\windows\singcast-$ver-windows-amd64.exe" "$distDir\singcast-$ver-windows-amd64.exe"
