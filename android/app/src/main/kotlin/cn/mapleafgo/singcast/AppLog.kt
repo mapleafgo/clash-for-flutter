@@ -13,7 +13,10 @@ import java.util.Locale
 object AppLog {
     private const val TAG = "SingcastVpn"
     private const val MAX_LOG_SIZE = 5L * 1024 * 1024 // 5MB
-    private const val LOG_FILE = "singcast.log"
+    /// 独立文件名：不能与 Dart 侧 LogFileWriter 的 singcast.log 同名。
+    /// 两侧各持独立句柄和缓冲写同一路径时，原生日志会被丢掉——曾导致
+    /// VPN 建立/断开/热重载的原生记录全部缺失，故障完全无法排查。
+    const val LOG_FILE = "singcast-native.log"
 
     @Volatile private var writer: BufferedWriter? = null
     private val dateFormat = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)

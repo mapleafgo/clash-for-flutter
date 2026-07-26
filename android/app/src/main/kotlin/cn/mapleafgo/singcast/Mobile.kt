@@ -24,15 +24,24 @@ object Mobile {
 
     private val wifiStateProvider = WiFiStateProvider { NetworkMonitor.getWiFiStateJSON() }
 
+    /// 绑定/解绑 VpnService。
+    ///
+    /// 【不要在 svc == null 时调用 singcast.setSocketProtector(null)】
+    /// protector 一旦从内核摘除，内核所有出站 socket 都无法绕过 TUN：
+    ///   - VPN 关闭时：内核自身连接建不起来，表现为只有本应用上不了网；
+    ///   - VPN 开启时：内核连节点的包被自己刚建的 TUN 捕获，自己转发给自己，
+    ///     形成路由环路，整机断网。
+    /// socketProtector 内部已处理 vpnService == null（返回 false），
+    /// 因此始终保持注册即可，无需摘除。
+    /// 见 8e6b6f2「接入内核 SocketProtector 防止 VPN 路由环路」；
+    /// 该保护曾在 6d7cfd3 的重构中被误加 else 分支撤销，导致问题复发。
     fun setVpnService(svc: SingcastVpnService?) {
         vpnService = svc
         if (svc != null) {
-            AppLog.i(TAG, "setVpnService: registering socket protector (thread=${Thread.currentThread().name})")
             singcast.setSocketProtector(socketProtector)
-            AppLog.i(TAG, "setVpnService: socket protector registered successfully")
+            AppLog.i(TAG, "setVpnService: bound, socket protector registered")
         } else {
-            singcast.setSocketProtector(null)
-            AppLog.w(TAG, "setVpnService: cleared (svc=null), socket protector removed")
+            AppLog.i(TAG, "setVpnService: unbound (protector kept registered)")
         }
     }
 

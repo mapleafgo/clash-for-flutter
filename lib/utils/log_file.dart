@@ -18,6 +18,38 @@ class LogFileWriter {
   static LogFileWriter? get instance => _instance;
   static String? get logFilePath => _instance?._path;
 
+  /// Android 原生侧（AppLog）的日志文件，与本文件同目录、不同文件名。
+  /// 两侧写同一路径会互相丢日志，故分开；导出时由 [exportBundle] 合并。
+  static String? get nativeLogFilePath {
+    final path = _instance?._path;
+    if (path == null || !Platform.isAndroid) return null;
+    return '${File(path).parent.path}/singcast-native.log';
+  }
+
+  /// 导出用的完整日志内容：Dart 日志 + Android 原生日志。
+  ///
+  /// 两份文件各自按时间顺序追加，合并后按行首时间戳排序，
+  /// 使原生的 VPN 生命周期记录与内核/应用日志能对齐阅读。
+  static Future<String> exportBundle() async {
+    await _instance?.flush();
+    final buffer = StringBuffer();
+    final dartPath = logFilePath;
+    if (dartPath != null) {
+      final f = File(dartPath);
+      if (f.existsSync()) buffer.write(await f.readAsString());
+    }
+    final nativePath = nativeLogFilePath;
+    if (nativePath != null) {
+      final f = File(nativePath);
+      if (f.existsSync()) {
+        buffer.writeln();
+        buffer.writeln('===== native (AppLog) =====');
+        buffer.write(await f.readAsString());
+      }
+    }
+    return buffer.toString();
+  }
+
   static Future<void> init(String path) async {
     final writer = LogFileWriter._(path);
     final file = File(path);

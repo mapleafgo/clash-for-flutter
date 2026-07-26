@@ -240,7 +240,12 @@ class SingcastVpnService : VpnService() {
         }
         AppLog.i(TAG, "refreshConfig: config=${content.length} chars, enabledVpn=$enabledVpn")
         if (enabledVpn) {
-            Mobile.startWithContent(content, ruleSetProxy, onPrepare = { establishTun(ipv6Enabled) })
+            Mobile.startWithContent(content, ruleSetProxy, onPrepare = {
+                // 必须与 connect() 一样重新绑定：重建 TUN 却不绑定 VpnService，
+                // 内核出站就拿不到 protect，会被自己的 TUN 捕获形成路由环路。
+                Mobile.setVpnService(this@SingcastVpnService)
+                establishTun(ipv6Enabled)
+            })
         } else {
             Mobile.startWithContent(content, ruleSetProxy)
         }

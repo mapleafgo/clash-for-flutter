@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert' show utf8;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -331,21 +332,21 @@ class _ExportLogTileState extends State<_ExportLogTile> {
   Future<void> _export() async {
     setState(() => _loading = true);
     try {
-      await LogFileWriter.instance?.flush();
       final path = LogFileWriter.logFilePath;
       if (path == null) {
         _showMessage(t.about.logNotInitialized);
         return;
       }
-      final logFile = File(path);
-      if (!await logFile.exists()) {
+      if (!await File(path).exists()) {
         _showMessage(t.about.logFileNotExist);
         return;
       }
+      // 合并 Dart 与 Android 原生两份日志：原生记录着 VPN 建立/断开/热重载，
+      // 少了它 Android 端的故障基本无法排查。
+      final bytes = utf8.encode(await LogFileWriter.exportBundle());
 
       final name = _exportFileName();
       if (Platform.isAndroid || Platform.isIOS) {
-        final bytes = await logFile.readAsBytes();
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile.fromData(bytes)],
@@ -354,7 +355,6 @@ class _ExportLogTileState extends State<_ExportLogTile> {
           ),
         );
       } else {
-        final bytes = await logFile.readAsBytes();
         final savePath = await FilePicker.saveFile(
           dialogTitle: t.about.exportLog,
           fileName: name,
