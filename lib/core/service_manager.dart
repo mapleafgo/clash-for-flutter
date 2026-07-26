@@ -77,11 +77,16 @@ abstract class ServiceManager {
     }
   }
 
+  /// stop 后等待 IPC 消失的轮询上限：20 × 500ms = 10s。
+  /// 覆盖内核优雅退出(关闭 TUN/连接排水)的最坏耗时，各平台 stop 语义都依赖它。
+  static const _ipcGoneMaxAttempts = 20;
+  static const _ipcGonePollInterval = Duration(milliseconds: 500);
+
   /// Wait until IPC is no longer reachable (after stop).
   Future<bool> waitForIpcGone() async {
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < _ipcGoneMaxAttempts; i++) {
       if (!await isRunning()) return true;
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(_ipcGonePollInterval);
     }
     return false;
   }

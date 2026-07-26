@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/utils/constants.dart';
+import 'package:singcast/utils/log_file.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 
 class CoreConfigStorage {
@@ -28,13 +29,33 @@ class CoreConfigStorage {
         portEnabled: yaml['port-enabled'] as bool?,
         mixedSystemProxy: yaml['mixed-system-proxy'] as bool?,
       );
-    } catch (_) {
+    } catch (e) {
+      // 配置损坏时回退默认值，留痕便于解释"端口/模式怎么变回默认了"
+      LogFileWriter.instance?.log(
+        'Failed to load core config, using defaults: $e',
+        level: LogLevel.warning,
+        name: 'settings',
+      );
       return ClashConfig();
     }
   }
 
   static void save(ClashConfig config) {
-    final yaml = SettingsYaml.load(pathToSettings: _path);
+    final SettingsYaml yaml;
+    try {
+      yaml = SettingsYaml.load(pathToSettings: _path);
+    } catch (e) {
+      // 配置文件损坏时 load 会抛异常，若不拦截会穿透到启动流程导致卡在闪屏。
+      // 直接重建：内存中的 config 就是完整状态，丢掉坏文件不损失有效数据。
+      LogFileWriter.instance?.log(
+        'core config unreadable, rebuilding: $e',
+        level: LogLevel.warning,
+        name: 'settings',
+      );
+      File(_path).writeAsStringSync('');
+      save(config);
+      return;
+    }
     if (config.mixedPort != null) yaml['mixed-port'] = config.mixedPort;
     if (config.allowLan != null) yaml['allow-lan'] = config.allowLan;
     if (config.mode != null) yaml['mode'] = config.mode!.name;

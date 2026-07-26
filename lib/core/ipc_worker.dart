@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../domain/connection.dart';
+import '../domain/enums.dart';
 import '../domain/proxy_group.dart';
+import '../utils/log_file.dart';
 import 'ipc/json_rpc_client.dart';
 import 'event_types.dart';
 import 'lib_core.dart';
@@ -93,7 +95,13 @@ class IpcWorker implements LibCorePlatform {
     _trafficUpdateSub = null;
     try {
       await _client?.disconnect().timeout(const Duration(seconds: 3));
-    } catch (_) {}
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'IPC disconnect timed out: $e',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
+    }
     _client?.dispose();
     _client = null;
   }

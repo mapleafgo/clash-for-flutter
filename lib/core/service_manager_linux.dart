@@ -202,7 +202,12 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
       '-f',
       'singcast-core ipc --home $homeDir',
     ]);
-    await waitForIpcGone();
+    if (!await waitForIpcGone()) {
+      logMsg(
+        'IPC still reachable after pkill fallback',
+        level: LogLevel.warning,
+      );
+    }
     _directPid = null;
     return true;
   }

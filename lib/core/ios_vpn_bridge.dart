@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 
+import '../utils/constants.dart';
 import 'ipc_worker.dart';
 
 /// iOS 专属:把 VPN 生命周期(由 Network Extension 管理)和 App Group socket
@@ -9,7 +10,7 @@ import 'ipc_worker.dart';
 /// 必须经原生(`NETunnelProviderManager`),RPC 只承载运行时控制。本类把这两者
 /// 接到同一个 [IpcWorker] 上,使 LibCore 的平台无关调用在 iOS 仍能工作。
 class IosVpnBridge {
-  static const _channel = MethodChannel('cn.mapleafgo/singcast');
+  static const _channel = MethodChannel(Constants.methodChannelName);
   static const _socketName = 'command.sock';
 
   /// App Group 共享容器里的 RPC socket 路径。

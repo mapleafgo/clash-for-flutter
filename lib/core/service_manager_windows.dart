@@ -61,10 +61,13 @@ class WindowsServiceManager extends ServiceManager with ServiceManagerLogging {
     return true;
   }
 
-  /// UAC-elevate via ShellExecuteExW with "runas" verb.
+  /// UAC-elevate the core binary via ShellExecuteExW with "runas" verb.
   /// Returns the process HANDLE, or null on failure.
-  HANDLE? _runas(String params) {
-    final svcPath = ServiceManager.serviceBinaryPath();
+  HANDLE? _runas(String params) =>
+      _runasExe(ServiceManager.serviceBinaryPath(), params);
+
+  /// UAC-elevate an arbitrary executable. Returns the process HANDLE, or null.
+  HANDLE? _runasExe(String svcPath, String params) {
     final exePtr = svcPath.toNativeUtf16();
     final paramsPtr = params.toNativeUtf16();
     final verbPtr = 'runas'.toNativeUtf16();
@@ -106,7 +109,19 @@ class WindowsServiceManager extends ServiceManager with ServiceManagerLogging {
       logMsg('ShellExecuteEx runas failed', level: LogLevel.error);
       return false;
     }
+    // 提权 installer 挂死时不能永远等：上限 60s，超时放弃本次 setup。
+    // WaitForSingleObject(100ms) 同步阻塞 UI isolate，故用短片轮询 + 异步让出。
+    const maxWait = Duration(seconds: 60);
+    final sw = Stopwatch()..start();
     while (WaitForSingleObject(handle, 100).value == WAIT_TIMEOUT) {
+      if (sw.elapsed > maxWait) {
+        logMsg(
+          'Service installer did not exit within ${maxWait.inSeconds}s, giving up',
+          level: LogLevel.error,
+        );
+        handle.close();
+        return false;
+      }
       await Future.delayed(const Duration(milliseconds: 100));
     }
     handle.close();
@@ -199,15 +214,49 @@ class WindowsServiceManager extends ServiceManager with ServiceManagerLogging {
           level: LogLevel.warning,
         );
         await Process.run('taskkill', ['/F', '/IM', 'singcast-core.exe']);
-        await waitForIpcGone();
+        if (!await waitForIpcGone()) {
+          logMsg(
+            'IPC still reachable after force kill',
+            level: LogLevel.warning,
+          );
+        }
       }
       return true;
     }
     // Kill direct process
     _directProcess?.kill();
     _directProcess = null;
-    await waitForIpcGone();
-    _elevated = false;
-    return true;
+    if (await waitForIpcGone()) {
+      _elevated = false;
+      return true;
+    }
+
+    // 便携版的 core 是 _runas 提权拉起的分离进程，_directProcess 为 null，
+    // 上面的 kill() 是空转；不兜底会留下旧进程占着命名管道，
+    // 新进程起来后应用可能连回旧进程，新配置不生效。
+    logMsg(
+      'Direct process still alive, force killing singcast-core.exe',
+      level: LogLevel.warning,
+    );
+    await Process.run('taskkill', ['/F', '/IM', 'singcast-core.exe']);
+    if (await waitForIpcGone()) {
+      _elevated = false;
+      return true;
+    }
+
+    // 非提权的 taskkill 杀不掉提权进程，再提权重试一次
+    if (_elevated) {
+      final taskkill =
+          '${Platform.environment['SystemRoot'] ?? r'C:\Windows'}\\System32\\taskkill.exe';
+      final handle = _runasExe(taskkill, '/F /IM singcast-core.exe');
+      handle?.close();
+      if (await waitForIpcGone()) {
+        _elevated = false;
+        return true;
+      }
+    }
+
+    logMsg('IPC still reachable after force kill', level: LogLevel.error);
+    return false;
   }
 }

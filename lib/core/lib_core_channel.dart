@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 
 import 'lib_core.dart';
 import '../domain/connection.dart';
+import '../domain/enums.dart';
 import '../domain/proxy_group.dart';
+import '../utils/constants.dart';
+import '../utils/log_file.dart';
 
 /// Android: 通过 MethodChannel (FFI 本进程内核) 实现 LibCorePlatform。
 class LibCoreChannel implements LibCorePlatform {
-  static const _channel = MethodChannel('cn.mapleafgo/singcast');
+  static const _channel = MethodChannel(Constants.methodChannelName);
 
   void Function(int eventType, String payload)? onCallback;
   void Function()? onVpnDisconnected;
@@ -36,7 +40,15 @@ class LibCoreChannel implements LibCorePlatform {
     if (raw == null || raw.isEmpty) return null;
     try {
       return jsonDecode(raw);
-    } catch (_) {
+    } catch (e) {
+      // 畸形 JSON 返回 null 会被上层当成空结果(如"代理列表为空")，
+      // 必须留痕否则无法定位
+      LogFileWriter.instance?.log(
+        '$method returned malformed JSON: $e '
+        '(${raw.length > 100 ? raw.substring(0, 100) : raw})',
+        level: LogLevel.warning,
+        name: 'channel',
+      );
       return null;
     }
   }
@@ -47,7 +59,7 @@ class LibCoreChannel implements LibCorePlatform {
   Future<void> initCore(String homeDir) async {
     final optionsJSON = jsonEncode({
       'home_dir': homeDir,
-      'debug': true,
+      'debug': kDebugMode,
     });
     await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
   }
@@ -186,7 +198,12 @@ class LibCoreChannel implements LibCorePlatform {
   Future<bool> isVpnRunning() async {
     try {
       return await _channel.invokeMethod<bool>('isVpnRunning') ?? false;
-    } catch (_) {
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'isVpnRunning failed: $e',
+        level: LogLevel.warning,
+        name: 'channel',
+      );
       return false;
     }
   }

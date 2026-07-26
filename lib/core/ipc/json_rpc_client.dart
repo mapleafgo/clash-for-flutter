@@ -56,6 +56,7 @@ class JsonRpcClient {
   Future<void> connect({Duration timeout = const Duration(seconds: 10)}) async {
     if (_connected) return;
 
+    final sw = Stopwatch()..start();
     try {
       _socket = await ipc.connect(path).timeout(timeout);
       _connected = true;
@@ -65,8 +66,17 @@ class JsonRpcClient {
         onError: _onError,
         onDone: _onDone,
       );
+      LogFileWriter.instance?.log(
+        'IPC connected: $path (${sw.elapsedMilliseconds}ms)',
+        name: 'ipc',
+      );
     } catch (e) {
       _connected = false;
+      LogFileWriter.instance?.log(
+        'IPC connect failed: $path ($e)',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
       rethrow;
     }
   }
@@ -144,10 +154,18 @@ class JsonRpcClient {
     // before the previous flush completes. On Windows, Win32NamedPipeSocket's
     // platform-channel writes are slow enough that the flag stays set between
     // back-to-back _send() calls.
+    // 写失败必须在链尾捕获：否则 _writeQueue 变为失败态 Future，
+    // 后续所有 .then 永不执行，每个请求只能等超时。
     _writeQueue = _writeQueue.then((_) async {
       if (!_connected || _socket == null) return;
       _socket!.add(data);
       await _socket!.flush();
+    }).catchError((Object e) {
+      LogFileWriter.instance?.log(
+        'IPC write failed: $e',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
     });
   }
 
@@ -225,6 +243,12 @@ class JsonRpcClient {
     }
     _pending.clear();
     if (!_intentionalDisconnect) {
+      // 意外断线是排查内核崩溃的第一现场，必须留痕
+      LogFileWriter.instance?.log(
+        'IPC connection closed unexpectedly: $path',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
       onDisconnect?.call();
     }
   }

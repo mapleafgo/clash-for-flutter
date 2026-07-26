@@ -24,15 +24,23 @@ class AppSettingsStorage {
         level: LogLevel.warning,
         name: 'settings',
       );
+      // 保留损坏文件供手动恢复：settings.json 存有全部订阅列表，
+      // 直接丢弃等于静默清空用户数据。
+      try {
+        _file.renameSync('${_file.path}.bak');
+      } catch (_) {}
       return {};
     }
   }
 
   static void save(Map<String, dynamic> settings) {
-    _file.createSync(recursive: true);
-    _file.writeAsStringSync(
+    // 先写临时文件再 rename 原子替换，避免写入中途崩溃产生半截 JSON。
+    final tmp = File('${_file.path}.tmp');
+    tmp.createSync(recursive: true);
+    tmp.writeAsStringSync(
       const JsonEncoder.withIndent('  ').convert(settings),
     );
+    tmp.renameSync(_file.path);
   }
 
   /// 一次性迁移 cfm.json → settings.json，迁移后删除旧文件。
