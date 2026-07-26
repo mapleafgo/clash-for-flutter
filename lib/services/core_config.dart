@@ -223,6 +223,15 @@ Future<void> _enableTunDesktop() async {
     // restart → onProcessReady 已用 ensureProxyMode + asyncProfile 完成重载
     return;
   }
+  // unit 已装但当前降级直跑（ACL 缺当前 uid）：补一次 ACL 刷新
+  if (svc is LinuxServiceManager && svc.isDegradedRun) {
+    final ok = await svc.reinstallForCurrentUser();
+    if (!ok) {
+      throw TunElevationException(t.core.elevationFailed);
+    }
+    await LibCore.instance.restart();
+    return;
+  }
   _applyTunConfig(true);
   asyncProfile();
 }
@@ -339,13 +348,16 @@ String mergeProfileConfig(String yamlContent) {
     editor.update(['ipv6'], config.ipv6);
   }
   if (config.tun?.enable == true) {
-    editor.update(['tun'], <String, dynamic>{
-      'enable': true,
-      'auto-route': true,
-      'strict-route': true,
-      if (!Platform.isMacOS) 'device': 'singcast',
-      'stack': tunStack.value.name,
-    });
+    editor.update(
+      ['tun'],
+      <String, dynamic>{
+        'enable': true,
+        'auto-route': true,
+        'strict-route': true,
+        if (!Platform.isMacOS) 'device': 'singcast',
+        'stack': tunStack.value.name,
+      },
+    );
   }
 
   if (config.apiEnabled) {

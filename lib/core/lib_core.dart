@@ -16,11 +16,16 @@ import 'ipc_worker.dart';
 import 'ios_vpn_bridge.dart';
 import 'lib_core_channel.dart';
 import 'service_manager.dart';
+export 'service_manager.dart' show LinuxServiceManager, UnixServiceManager;
 
 abstract class LibCorePlatform {
   Future<void> init();
   Future<void> initCore(String homeDir);
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false});
+  Future<void> startCoreWithContent(
+    String content, {
+    String? ruleSetProxy,
+    bool enabledVpn = false,
+  });
   Future<void> stopCore();
   Future<(List<ProxyGroup>, Map<String, int>)> queryProxies();
   Future<ConnectionEventsPayload> queryConnections();
@@ -61,7 +66,8 @@ class LibCore {
   static const kStateRunning = 'running';
   static const kStateDestroyed = 'destroyed';
 
-  late final LibCorePlatform _platform;
+  // 非 final：elevate/restart/fallback 会通过 _rebindIpcWorker 切换 IPC 实现
+  late LibCorePlatform _platform;
   IpcWorker? _ipcWorker;
   ServiceManager? _serviceManager;
 
@@ -81,8 +87,10 @@ class LibCore {
     'direct',
   ]);
   final proxyTogglingSignal = signal(false);
+
   /// True once the kernel has reached running state at least once since app launch.
   final kernelBooted = signal(false);
+
   /// Called after process restart (restart / uninstall) completes and IPC reconnects.
   /// The app layer uses this to re-activate the kernel profile.
   Future<void> Function()? onProcessReady;
@@ -100,10 +108,21 @@ class LibCore {
 
   LibCorePlatform get platform => _platform;
 
+  /// Linux: 当前是否处于降级直跑模式（unit 已装但连不上系统 socket）。
+  /// 用于 _enableTunDesktop 判断是否需要补一次 ACL 刷新。
+  bool get isDegradedService {
+    final sm = _serviceManager;
+    return sm is LinuxServiceManager && sm.isDegradedRun;
+  }
+
   Future<void> init() async {
     // Desktop (macOS/Windows/Linux): 独立进程 + RPC
     if (Constants.isDesktop) {
       _serviceManager = ServiceManager.create(Constants.homeDir.path);
+      // Linux: 先探测 unit，使 ipcPath 在服务模式指向系统 socket
+      if (Platform.isLinux) {
+        await _serviceManager!.isReady();
+      }
       _ipcWorker = IpcWorker(ipcPath: _serviceManager!.ipcPath);
       _ipcWorker!.onCallback = _handleWorkerCallback;
       _ipcWorker!.onDisconnect = _onIpcDisconnected;
@@ -122,7 +141,7 @@ class LibCore {
 
       // Recover state from running service (reconnect scenario)
       await syncKernelState();
-    // iOS: Network Extension 进程 + RPC
+      // iOS: Network Extension 进程 + RPC
     } else if (Platform.isIOS) {
       final bridge = IosVpnBridge();
       final socketPath = await bridge.appGroupSocketPath();
@@ -132,7 +151,7 @@ class LibCore {
       bridge.wireInto(_ipcWorker!, onVpnDisconnected: _onVpnDisconnected);
       _platform = _ipcWorker!;
       // iOS Extension 进程在 VPN 开启时才启动，RPC 连接延迟到 connectVpn() 后
-    // Android: 本进程 FFI
+      // Android: 本进程 FFI
     } else {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
@@ -217,10 +236,18 @@ class LibCore {
           }
           _startHeartbeat();
         } else {
-          LogFileWriter.instance?.log('IPC reconnect failed', level: LogLevel.error, name: 'ipc');
+          LogFileWriter.instance?.log(
+            'IPC reconnect failed',
+            level: LogLevel.error,
+            name: 'ipc',
+          );
         }
       } catch (e) {
-        LogFileWriter.instance?.log('IPC reconnect failed: $e', level: LogLevel.error, name: 'ipc');
+        LogFileWriter.instance?.log(
+          'IPC reconnect failed: $e',
+          level: LogLevel.error,
+          name: 'ipc',
+        );
       }
     } finally {
       _reconnecting = false;
@@ -284,7 +311,9 @@ class LibCore {
         return true;
       } catch (_) {
         if (i < attempts - 1 && DateTime.now().isBefore(deadline)) {
-          final delay = Duration(milliseconds: (100 * (1 << i)).clamp(100, maxDelayMs));
+          final delay = Duration(
+            milliseconds: (100 * (1 << i)).clamp(100, maxDelayMs),
+          );
           await Future.delayed(delay);
         }
       }
@@ -302,16 +331,36 @@ class LibCore {
   Future<bool> _startAndConnectWithFallback() async {
     // Try privileged/elevated core first
     if (await _startAndConnect()) return true;
-    
+    final sm = _serviceManager;
+    if (sm is LinuxServiceManager && sm.isUnitInstalled && !sm.isDegradedRun) {
+      LogFileWriter.instance?.log(
+        'System service IPC connect failed; falling back to direct core',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
+    }
     // Fallback: stop elevated service, start direct process (no UAC)
     await _serviceManager!.stop();
     if (!await _serviceManager!.startDirect()) return false;
+    // 降级直跑：按 ServiceManager 当前 runMode 选 socket（startDirect 已 markDirectRun）
+    await _rebindIpcWorker(_serviceManager!.ipcPath);
     if (!await _connectWithRetry(attempts: 10)) return false;
     LogFileWriter.instance?.log(
       'Fallback: started with built-in core (TUN unavailable)',
       name: 'ipc',
     );
     return true;
+  }
+
+  /// 按目标路径重建 IPC worker，避免 elevate/uninstall/fallback 后连错 socket。
+  Future<void> _rebindIpcWorker(String path) async {
+    try {
+      await _ipcWorker?.disconnect();
+    } catch (_) {}
+    _ipcWorker = IpcWorker(ipcPath: path);
+    _ipcWorker!.onCallback = _handleWorkerCallback;
+    _ipcWorker!.onDisconnect = _onIpcDisconnected;
+    _platform = _ipcWorker!;
   }
 
   /// Stop the service process, start a fresh one, and reconnect.
@@ -326,6 +375,9 @@ class LibCore {
       } catch (_) {}
       await _ipcWorker?.disconnect();
       await _serviceManager?.stop();
+      // 刷新 unit 安装态，但 socket 跟当前 runMode（含降级 sticky）
+      await _serviceManager?.isReady();
+      await _rebindIpcWorker(_serviceManager!.ipcPath);
       if (!await _startAndConnectWithFallback()) {
         throw StateError('Failed to connect to service process');
       }
@@ -344,7 +396,11 @@ class LibCore {
     _reconnecting = true;
     try {
       await _ipcWorker?.disconnect();
-      return await _serviceManager!.setup();
+      final ok = await _serviceManager!.setup();
+      if (!ok) return false;
+      // setup 成功后切到服务模式 socket（setup 内已 markSystemRun）
+      await _rebindIpcWorker(_serviceManager!.ipcPath);
+      return true;
     } finally {
       _reconnecting = false;
     }
@@ -363,6 +419,8 @@ class LibCore {
       await _ipcWorker?.disconnect();
       await _serviceManager?.stop();
       await _serviceManager!.uninstall();
+      // uninstall 后切回用户目录 socket，再 startDirect
+      await _rebindIpcWorker(_serviceManager!.ipcPath);
       if (!await _serviceManager!.startDirect()) {
         throw StateError('Failed to start direct process');
       }
@@ -465,7 +523,11 @@ class LibCore {
       );
       return;
     }
-    await _platform.startCoreWithContent(content, ruleSetProxy: ruleSetProxy, enabledVpn: enabledVpn);
+    await _platform.startCoreWithContent(
+      content,
+      ruleSetProxy: ruleSetProxy,
+      enabledVpn: enabledVpn,
+    );
   }
 
   Future<void> stopCore() async {
@@ -576,11 +638,7 @@ class LibCore {
             .toList();
       }
     } catch (e) {
-      LogFileWriter.instance?.log(
-        '$e',
-        level: LogLevel.warning,
-        name: 'modes',
-      );
+      LogFileWriter.instance?.log('$e', level: LogLevel.warning, name: 'modes');
     }
   }
 

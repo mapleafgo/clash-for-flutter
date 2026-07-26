@@ -7,6 +7,7 @@ import 'lib_core.dart';
 import '../domain/connection.dart';
 import '../domain/proxy_group.dart';
 
+/// Android: 通过 MethodChannel (FFI 本进程内核) 实现 LibCorePlatform。
 class LibCoreChannel implements LibCorePlatform {
   static const _channel = MethodChannel('cn.mapleafgo/singcast');
 

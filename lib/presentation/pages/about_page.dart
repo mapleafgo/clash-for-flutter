@@ -43,7 +43,8 @@ class AboutPage extends StatelessWidget {
         ),
         const _KernelVersionTile(),
         const _ExportLogTile(),
-        if (Platform.isWindows || Platform.isMacOS) const _UninstallServiceTile(),
+        if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
+          const _UninstallServiceTile(),
       ]),
     );
     });
