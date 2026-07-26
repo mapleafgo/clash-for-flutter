@@ -45,6 +45,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch 时必须检出目标 tag，否则产物版本号与源码不符
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Enable long paths
         run: git config --global core.longpaths true
@@ -116,7 +119,7 @@ jobs:
           # installer via Inno Setup（模板替换）
           $iss = Get-Content "windows\packaging\exe\inno_setup.iss" -Raw
           $iss = $iss `
-            -replace '\{\{APP_ID\}\}', '{{B3039CF4-E394-42B6-971C-4BE97F322DE8}}' `
+            -replace '\{\{APP_ID\}\}', '{{B3039CF4-E394-42B6-971C-4BE97F322DE8}' `
             -replace '\{\{APP_VERSION\}\}', $ver `
             -replace '\{\{APP_NAME\}\}', 'Singcast' `
             -replace '\{\{PUBLISHER_NAME\}\}', 'mapleafgo' `
@@ -137,11 +140,6 @@ jobs:
           iscc.exe /Q "build\windows\setup.iss"
           Move-Item -Force "build\windows\singcast-$ver-windows-amd64.exe" "$distDir\singcast-$ver-windows-amd64.exe"
 
-      - name: Rename artifacts (x64)
-        if: matrix.arch == 'amd64'
-        run: |
-          # artifacts already named correctly above
-
       # ARM64: Flutter main channel builds natively to build/windows/arm64/.
       # Build with flutter directly and package with Inno Setup + zip manually.
       - name: Build (ARM64)
@@ -159,49 +157,31 @@ jobs:
         if: matrix.arch == 'arm64'
         shell: pwsh
         run: |
-          $ver = "${{ env.VERSION }}".TrimStart('v')
-          $release = "build\windows\arm64\runner\Release"
-          $content = @"
-          [Setup]
-          AppId={{B3039CF4-E394-42B6-971C-4BE97F322DE8}
-          AppVersion=$ver
-          AppName=Singcast
-          AppPublisher=mapleafgo
-          AppPublisherURL=https://github.com/mapleafgo/singcast
-          DefaultDirName={autopf}\Singcast
-          DisableProgramGroupPage=yes
-          OutputDir=Output
-          OutputBaseFilename=singcast-$ver-windows-arm64
-          Compression=lzma
-          SolidCompression=yes
-          SetupIconFile=..\..\windows\runner\resources\app_icon.ico
-          WizardStyle=modern
-          PrivilegesRequired=lowest
-          ArchitecturesAllowed=arm64
-          ArchitecturesInstallIn64BitMode=arm64
-          [Languages]
-          Name: "english"; MessagesFile: "compiler:Default.isl"
-          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-          [Tasks]
-          Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-          [Files]
-          Source: "arm64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-          [Icons]
-          Name: "{autoprograms}\Singcast"; Filename: "{app}\singcast.exe"
-          Name: "{autodesktop}\Singcast"; Filename: "{app}\singcast.exe"; Tasks: desktopicon
-          [Run]
-          Filename: "{app}\singcast.exe"; Description: "{cm:LaunchProgram,Singcast}"; Flags: nowait postinstall skipifsilent
-          [Registry]
-          Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: ""; ValueData: "URL:Singcast Protocol"; Flags: uninsdeletekey
-          Root: HKCU; Subkey: "Software\Classes\clash"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-          Root: HKCU; Subkey: "Software\Classes\clash\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\singcast.exe,0"
-          Root: HKCU; Subkey: "Software\Classes\clash\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\singcast.exe"" ""%1"""
-          [UninstallRun]
-          Filename: "{app}\singcast-core.exe"; Parameters: "service uninstall"; Flags: runhidden
-          "@
-          New-Item -Path "build\windows" -ItemType Directory -Force | Out-Null
-          $content | Out-File -FilePath "build\windows\setup.iss" -Encoding UTF8
+          $ver = "$env:VERSION".TrimStart('v')
+          # 与 amd64 共用同一模板：此前 ARM64 用内联 iss，导致 AppId、
+          # 自启任务、卸载时的服务/注册表清理与 amd64 全部不一致。
+          $iss = Get-Content "windows\packaging\exe\inno_setup.iss" -Raw
+          $iss = $iss `
+            -replace '\{\{APP_ID\}\}', '{{B3039CF4-E394-42B6-971C-4BE97F322DE8}' `
+            -replace '\{\{APP_VERSION\}\}', $ver `
+            -replace '\{\{APP_NAME\}\}', 'Singcast' `
+            -replace '\{\{PUBLISHER_NAME\}\}', 'mapleafgo' `
+            -replace '\{\{PUBLISHER_URL\}\}', 'https://github.com/mapleafgo/singcast' `
+            -replace '\{\{INSTALL_DIR_NAME\}\}', 'Singcast' `
+            -replace '\{\{OUTPUT_BASE_FILENAME\}\}', "singcast-$ver-windows-arm64" `
+            -replace '\{\{SETUP_ICON_FILE\}\}', '..\..\windows\runner\resources\app_icon.ico' `
+            -replace '\{\{PRIVILEGES_REQUIRED\}\}', 'admin' `
+            -replace '\{\{SOURCE_DIR\}\}', 'arm64\runner\Release' `
+            -replace '\{\{EXECUTABLE_NAME\}\}', 'singcast.exe' `
+            -replace '\{\{DISPLAY_NAME\}\}', 'Singcast' `
+            -replace '\{\{CREATE_DESKTOP_ICON\}\}', 'true' `
+            -replace '\{\{LAUNCH_AT_STARTUP\}\}', 'false' `
+            -replace '\{\{DESKTOP_ICON_FLAGS\}\}', 'checkedonce' `
+            -replace '\{\{LAUNCH_AT_STARTUP_FLAGS\}\}', 'unchecked' `
+            -replace '\{\{RUN_FLAGS\}\}', 'runascurrentuser'
+          $iss | Set-Content "build\windows\setup.iss" -Encoding UTF8
           iscc.exe /Q "build\windows\setup.iss"
+          Move-Item -Force "build\windows\singcast-$ver-windows-arm64.exe" "build\singcast-$ver-windows-arm64.exe"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -210,7 +190,7 @@ jobs:
           files: |
             dist/**/*
             build/*.zip
-            build/windows/Output/*.exe
+            build/*.exe
           overwrite_files: true
 
   build-linux:
@@ -228,6 +208,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch 时必须检出目标 tag，否则产物版本号与源码不符
+          ref: ${{ inputs.tag || github.ref }}
       # ARM64：Flutter 无稳定版 SDK 发布，用 main channel git clone
       - name: Setup Flutter (ARM64)
         if: matrix.arch == 'arm64'
@@ -296,6 +279,9 @@ jobs:
             core_arch: arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch 时必须检出目标 tag，否则产物版本号与源码不符
+          ref: ${{ inputs.tag || github.ref }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -351,6 +337,9 @@ jobs:
             core_arch: amd64
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch 时必须检出目标 tag，否则产物版本号与源码不符
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: liberica
@@ -375,8 +364,9 @@ jobs:
             n="${pre//[!0-9]/}"
             vc=$((base + 500 + ${n:-0}))
           elif [[ "$pre" == rc* ]]; then
+            # rc 必须高于 beta、低于 stable(999)，否则 beta→rc 在设备上是降级
             n="${pre//[!0-9]/}"
-            vc=$((base + ${n:-0}))
+            vc=$((base + 800 + ${n:-0}))
           else
             n="${pre//[!0-9]/}"
             vc=$((base + ${n:-0}))
@@ -428,6 +418,9 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_dispatch 时必须检出目标 tag，否则产物版本号与源码不符
+          ref: ${{ inputs.tag || github.ref }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -573,6 +566,7 @@ jobs:
         run: |
           v="${VERSION#v}"
           rm -rf Payload
+          mkdir -p Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
           zip -qry singcast-$v-ios.ipa Payload
 
