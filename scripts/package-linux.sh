@@ -120,6 +120,17 @@ EOF
     cp "$PROJECT_ROOT/assets/icon.svg" "$src_dir/$APP_NAME.svg"
   elif [ -f "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" ]; then
     cp "$PROJECT_ROOT/aurpkg/singcast/singcast.svg" "$src_dir/$APP_NAME.svg"
+  elif command -v convert >/dev/null 2>&1 && [ -f "$PROJECT_ROOT/assets/icon.png" ]; then
+    # 从 PNG 生成 SVG 占位（rpm %files 需要）
+    convert "$PROJECT_ROOT/assets/icon.png" "$src_dir/$APP_NAME.svg"
+  else
+    # 兜底：生成一个最小 SVG 占位图标
+    cat > "$src_dir/$APP_NAME.svg" <<-'ICONEOF'
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+      <rect width="256" height="256" rx="48" fill="#6366f1"/>
+      <path d="M80 192V64l96 64z" fill="#fff"/>
+    </svg>
+ICONEOF
   fi
 
   tar czf "$topdir/SOURCES/$APP_NAME-$VERSION.tar.gz" -C "$topdir/SOURCES" "$APP_NAME-$VERSION"
