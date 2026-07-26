@@ -13,6 +13,8 @@ import NetworkExtension
 class AppDelegate: FlutterAppDelegate {
 
     private var vpnConnected = false
+    /// 是否观察到过 connecting/connected：用于区分"启动失败"与"本来就没连"。
+    private var vpnActivating = false
     private var methodChannel: FlutterMethodChannel!
 
     override func application(
@@ -47,11 +49,20 @@ class AppDelegate: FlutterAppDelegate {
 
     @objc private func vpnStatusDidChange(_ notification: Notification) {
         guard let session = notification.object as? NETunnelProviderSession else { return }
-        let connected = session.status == .connected
+        let status = session.status
+        let connected = status == .connected
         let wasConnected = vpnConnected
+        let wasActivating = vpnActivating
         vpnConnected = connected
+        if status == .connecting || status == .connected {
+            vpnActivating = true
+        }
 
-        if wasConnected && !connected {
+        // 掉线要报，启动失败(connecting → disconnected，从未 connected)也要报，
+        // 否则 Extension 起不来时 Dart 侧 vpnConnected 会一直停在 true。
+        let died = status == .disconnected || status == .invalid
+        if died && (wasConnected || wasActivating) {
+            vpnActivating = false
             DispatchQueue.main.async {
                 self.methodChannel.invokeMethod("onVpnDisconnected", arguments: nil)
             }
@@ -127,15 +138,25 @@ class AppDelegate: FlutterAppDelegate {
                     return
                 }
 
-                do {
-                    try (manager.connection as? NETunnelProviderSession)?.startVPNTunnel(options: [
-                        "configContent": configContent as NSObject,
-                        "ruleSetProxy": ruleSetProxy as NSObject,
-                        "ipv6": ipv6 as NSObject,
-                    ])
-                    result(true)
-                } catch {
-                    result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
+                // 必须 reload 后再 start：saveToPreferences 完成时 manager 仍是 stale 的，
+                // 直接 startVPNTunnel 会抛 NEVPNErrorConfigurationInvalid
+                // ("Missing protocol or protocol has invalid type")，
+                // 表现为首次连接失败、第二次才成功。
+                manager.loadFromPreferences { error in
+                    if let error = error {
+                        result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
+                        return
+                    }
+                    do {
+                        try (manager.connection as? NETunnelProviderSession)?.startVPNTunnel(options: [
+                            "configContent": configContent as NSObject,
+                            "ruleSetProxy": ruleSetProxy as NSObject,
+                            "ipv6": ipv6 as NSObject,
+                        ])
+                        result(true)
+                    } catch {
+                        result(FlutterError(code: "TUNNEL_ERROR", message: error.localizedDescription, details: nil))
+                    }
                 }
             }
         }

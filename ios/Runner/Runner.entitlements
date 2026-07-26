@@ -4,10 +4,7 @@
 <dict>
 	<key>com.apple.developer.networking.networkextension</key>
 	<array>
-		<dict>
-			<key>NEPacketTunnelProvider</key>
-			<string>cn.mapleafgo.singcast.tunnel</string>
-		</dict>
+		<string>packet-tunnel-provider</string>
 	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
