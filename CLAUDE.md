@@ -59,26 +59,26 @@ ios/Frameworks/libsingcast-darwin.xcframework
 ### 主要模块
 ```
 lib/
-├── app/                 # 主应用代码
-│   ├── bean/           # 数据模型
-│   ├── component/      # UI 组件
-│   ├── pages/          # 应用页面（主页、代理页、日志页、连接页、订阅页、设置页）
-│   ├── source/         # 数据源和服务
-│   └── utils/          # 工具类
-├── main.dart           # 应用入口点
-└── core_control.dart   # 内核管理
+├── core/               # 内核控制：LibCore、IPC (JSON-RPC)、MethodChannel、ServiceManager (各平台提权/服务)
+├── data/local/         # 本地存储（settings.json、config.yaml）
+├── domain/             # 领域模型（Profile、ClashConfig、ProxyGroup 等）
+├── presentation/       # UI：pages（主页/代理/订阅/设置/关于）、widgets、router
+├── services/           # 应用服务：订阅下载、配置合并热重载、托盘、自启、深链
+├── utils/              # 工具类（常量、日志文件、格式化）
+├── i18n/               # slang 生成的多语言
+└── main.dart           # 应用入口点
 ```
 
 ### 关键技术栈
-- Flutter 3.16+ with Dart 3.2+
-- Flutter Modular (导航)
-- MobX (状态管理)
-- Dio (网络请求)
-- Tray Manager (系统托盘)
-- Window Manager (窗口控制)
-- Proxy Manager (系统代理设置)
-- ffi (Dart-C 接口)
+- Flutter 3.x with Dart 3.x
+- go_router (导航，StatefulShellRoute 双端 Shell)
+- signals_flutter (状态管理)
+- dart:io HttpClient (网络请求)
+- desktop_tray (系统托盘)
+- window_manager (窗口控制)
+- dart_ipc (Unix Socket / Named Pipe IPC)
+- slang (i18n)
 
 ## 测试
 - 运行标准 Flutter 测试: `flutter test`
-- UI 测试文件: `test/widget_test.dart`
+- 测试目录: `test/`（domain/services/utils/presentation 分层组织）
