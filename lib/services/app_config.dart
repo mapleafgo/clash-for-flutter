@@ -25,7 +25,7 @@ final autoCheckUpdate = signal(true);
 /// 开机自启动设置（仅桌面端有效）。
 final autoStart = signal(false);
 /// TUN 协议栈选择（仅桌面端 TUN 模式生效）。
-final tunStack = signal(TunStack.gvisor);
+final tunStack = signal(TunStack.mixed);
 /// 应用语言设置。null = 跟随系统。
 final appLocale = signal<String?>(null);
 /// 语言版本号，每次 locale 变化递增，用于触发全局 UI 重建。

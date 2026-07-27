@@ -86,7 +86,7 @@ class AppStoredConfig {
     this.autoCheckUpdate = true,
     this.locale,
     this.autoStart = false,
-    this.tunStack = TunStack.gvisor,
+    this.tunStack = TunStack.mixed,
   }) : subUA = subUA ?? Defaults.subUA;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
