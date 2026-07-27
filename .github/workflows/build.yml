@@ -20,6 +20,8 @@ permissions:
 env:
   FLUTTER_VERSION: "3.44.1"
   CORE_VERSION: "v1.1.21"
+  # pubspec.lock 由该镜像生成；CI 必须使用同源，避免 Pub 重解析并升级依赖。
+  PUB_HOSTED_URL: "https://pub.flutter-io.cn"
   VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
 jobs:
@@ -253,9 +255,12 @@ jobs:
           chmod +x singcast-linux-${{ matrix.core_arch }}
           mv singcast-linux-${{ matrix.core_arch }} linux/core/singcast-core
 
+      - name: Verify locked dependencies
+        run: flutter pub get --enforce-lockfile
+
       - name: Build & package
         run: |
-          flutter build linux --release
+          flutter build linux --release --no-pub
           v="${VERSION#v}"
           bash scripts/package-linux.sh "$v" dist "${{ matrix.arch }}"
 
