@@ -375,7 +375,7 @@ String mergeProfileConfig(String yamlContent) {
         'enable': true,
         'auto-route': true,
         'strict-route': true,
-        if (!Platform.isMacOS) 'device': 'singcast',
+        if (Platform.isLinux) 'auto-redirect': true,
         'stack': tunStack.value.name,
       },
     );
