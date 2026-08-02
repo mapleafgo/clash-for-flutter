@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart' show ThemeMode;
@@ -15,8 +16,6 @@ import 'package:singcast/services/core_reload.dart'
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:yaml/yaml.dart';
-import 'package:yaml_edit/yaml_edit.dart';
 
 final coreConfig = signal(SingboxConfig.defaults());
 
@@ -306,88 +305,83 @@ class TunElevationException implements Exception {
   String toString() => 'TunElevationException: $message';
 }
 
-/// Overlay [SingboxConfig] values onto the profile YAML string.
-String mergeProfileConfig(String yamlContent) {
+/// Overlay [SingboxConfig] values onto the profile JSON.
+String mergeProfileConfig(String jsonContent) {
+  final doc = jsonDecode(jsonContent) as Map<String, dynamic>;
   final config = coreConfig.value;
-  final editor = YamlEditor(yamlContent);
 
-  // 剔除订阅中可能误导应用的配置项，由应用自行管理
-  const stripKeys = [
-    // 代理端口 — 应用按需管理
-    'port',
-    'socks-port',
-    'mixed-port',
-    'redir-port',
-    'tproxy-port',
-    'bind-address',
-    'authentication',
-    'listeners',
-    // 外部控制 — 应用自行管理 API 鉴权与 UI
-    'external-controller',
-    'external-controller-cors',
-    'external-controller-unix',
-    'external-controller-pipe',
-    'external-controller-tls',
-    'external-doh-server',
-    'external-ui',
-    'external-ui-name',
-    'external-ui-url',
-    'secret',
-    'tls',
-    // 应用覆盖 — 由 SingboxConfig 控制
-    'allow-lan',
-    'mode',
-    'log-level',
-    'ipv6',
-    'tun',
-    'mixed-system-proxy',
-  ];
-  final doc = loadYaml(editor.toString());
-  if (doc is YamlMap) {
-    for (final key in stripKeys) {
-      if (doc.containsKey(key)) {
-        editor.remove([key]);
-      }
-    }
-  }
+  const managedTypes = {'mixed', 'http', 'socks', 'tun'};
+  final inbounds = (doc['inbounds'] as List?)
+          ?.whereType<Map<String, dynamic>>()
+          .where((e) => !managedTypes.contains(e['type']))
+          .toList() ??
+      <Map<String, dynamic>>[];
 
-  // 系统代理依赖 mixed-port，开启时隐式需要端口
   final portOn = config.userPortEnabled || config.systemProxyEnabled;
-  if (portOn && config.mixedPort != null) {
-    editor.update(['mixed-port'], config.mixedPort);
+  if (portOn) {
+    inbounds.add({
+      'type': 'mixed',
+      'tag': 'mixed-in',
+      'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
+      'listen_port': config.mixedPort ?? Constants.defaultMixedPort,
+      if (config.systemProxyEnabled) 'set_system_proxy': true,
+    });
   }
-  if (config.allowLan != null) {
-    editor.update(['allow-lan'], config.allowLan);
-  }
-  if (config.mode != null) {
-    editor.update(['mode'], config.mode!.name);
-  }
-  if (config.logLevel != null) {
-    editor.update(['log-level'], config.logLevel!.name);
-  }
-  if (config.ipv6 != null) {
-    editor.update(['ipv6'], config.ipv6);
-  }
+
   if (config.tun?.enable == true) {
-    editor.update(
-      ['tun'],
-      <String, dynamic>{
-        'enable': true,
-        'auto-route': true,
-        'strict-route': true,
-        if (Platform.isLinux) 'auto-redirect': true,
-        'stack': tunStack.value.name,
-      },
-    );
+    inbounds.add({
+      'type': 'tun',
+      'tag': 'tun-in',
+      'auto_route': true,
+      'strict_route': true,
+      'stack': tunStack.value.name,
+      if (Platform.isLinux) 'auto_redirect': true,
+      'address': [
+        '172.18.0.1/30',
+        if (config.ipv6 == true) 'fdfe:dcba:9876::1/126',
+      ],
+    });
+  }
+
+  if (inbounds.isNotEmpty) {
+    doc['inbounds'] = inbounds;
+  } else {
+    doc.remove('inbounds');
+  }
+
+  if (config.logLevel != null) {
+    final log =
+        (doc['log'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    log['level'] = config.logLevel == LogLevel.warning
+        ? 'warn'
+        : config.logLevel!.name;
+    doc['log'] = log;
   }
 
   if (config.apiEnabled) {
-    editor.update(['external-controller'], config.apiAddr);
+    final exp =
+        (doc['experimental'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final clashApi =
+        (exp['clash_api'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    clashApi['external_controller'] = config.apiAddr;
+    if (config.mode != null) {
+      clashApi['default_mode'] =
+          config.mode!.name[0].toUpperCase() + config.mode!.name.substring(1);
+    }
+    exp['clash_api'] = clashApi;
+    doc['experimental'] = exp;
+  } else {
+    final exp = doc['experimental'] as Map<String, dynamic>?;
+    exp?.remove('clash_api');
+    if (exp != null && exp.isEmpty) doc.remove('experimental');
   }
 
-  if (config.systemProxyEnabled) {
-    editor.update(['mixed-system-proxy'], true);
+  if (config.ipv6 != null) {
+    final dns =
+        (doc['dns'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    dns['strategy'] = config.ipv6! ? 'prefer_ipv6' : 'ipv4_only';
+    doc['dns'] = dns;
   }
 
-  return editor.toString();
+  return jsonEncode(doc);
 }
