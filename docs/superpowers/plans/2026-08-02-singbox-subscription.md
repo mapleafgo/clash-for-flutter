@@ -14,7 +14,7 @@
 - 订阅保存文件一律为 `.json`，内容为 sing-box JSON。
 - app 不再判断内容类型，base64/URI/格式识别全部由内核处理。
 - `config.yaml` 只在迁移入口被读取；`CoreConfigStorage.load()` 只读 `config.json`。
-- 迁移不设计失败回退分支，异常只记日志，不阻塞启动。
+- 迁移不设计失败回退分支，异常只记日志，不阻塞启动；任一环节失败保留 `config.yaml` 标记，下次启动重试。
 - Go 测试命令：`go test -tags 'with_clash_api,with_utls,with_quic,with_gvisor' ./translator/... ./core/... ./ipc/...`
 - Flutter 测试命令：`flutter test`、`dart analyze`。
 
@@ -607,12 +607,24 @@ func (s *Service) StartWithContent(content, ruleSetProxy string) error {
 		return nil
 	}
 
-	// 以下 Stop / casState / startWithJSON 逻辑保持原样
-	...
+	// Stop any running/starting instance first.
+	if err := s.Stop(); err != nil {
+		slog.Warn("stop previous instance", "error", err)
+	}
+
+	if !s.casState(StateInitialized, StateStarting) {
+		return fmt.Errorf("start: invalid state %s", s.State())
+	}
+
+	if err := s.startWithJSON(jsonContent, stubTags); err != nil {
+		s.casState(StateStarting, StateInitialized)
+		return err
+	}
+	return nil
 }
 ```
 
-> 只替换函数开头到 `translateConfig` 之间的段落；`mySeq` 之后的 `Stop`、`casState`、`startWithJSON` 代码原样保留。
+> 只替换函数开头到 `translateConfig` 之间的段落，其余代码与原实现一致。
 
 - [ ] **Step 4: 运行确认通过**
 
@@ -744,11 +756,17 @@ git commit -m "feat(ipc): 新增 core.convert 与移动端 Convert 接口"
 - Modify: `singcast/lib/core/lib_core.dart`
 - Modify: `singcast/lib/core/ipc_worker.dart`
 - Modify: `singcast/lib/core/lib_core_channel.dart`
+- Modify: `singcast/lib/core/ios_vpn_bridge.dart`
 - Modify: `singcast/android/app/src/main/kotlin/cn/mapleafgo/singcast/Mobile.kt`
 - Modify: `singcast/android/app/src/main/kotlin/cn/mapleafgo/singcast/MainActivity.kt`
+- Modify: `singcast/ios/Runner/AppDelegate.swift`
 
 **Interfaces:**
-- Produces: `LibCorePlatform.convert(String content) → Future<String>`；MethodChannel 新增 `convert`。
+- Produces: `LibCorePlatform.convert(String content) → Future<String>`；Android/iOS MethodChannel 新增 `convert`（iOS 走 Runner 本地 FFI，不依赖 VPN/RPC）。
+
+> 前置：singcast-cli Task 4 后需重新生成移动端绑定（`task mobile-all` 产出 AAR/XCFramework），
+> 并同步到 `android/app/libs/libsingcast.aar` 与 `ios/Frameworks/libsingcast-darwin.xcframework`，
+> 否则 Kotlin/Swift 侧看不到 `convert`。仓库 CI 从 singcast-cli release 下载绑定，发布顺序为先 singcast-cli 后 singcast。
 
 - [ ] **Step 1: 实现接口（本任务为跨层接线，测试随使用方任务落地）**
 
@@ -768,11 +786,27 @@ Future<String> convert(String content) => _platform.convert(content);
 
 ```dart
 @override
-Future<String> convert(String content) async {
-  final result = await _call('core.convert', {'content': content});
-  if (result is Map<String, dynamic>) return result['json'] as String? ?? '';
-  return '';
+Future<String> convert(String content) {
+  final impl = convertImpl;
+  if (impl != null) return impl(content);
+  return _convertRpc(content);
 }
+
+Future<String> _convertRpc(String content) async {
+  final result = await _call('core.convert', {'content': content});
+  if (result is Map<String, dynamic>) {
+    final json = result['json'] as String?;
+    if (json != null && json.isNotEmpty) return json;
+  }
+  throw StateError('core.convert returned no json result');
+}
+```
+
+`lib/core/ipc_worker.dart` 增加移动端钩子（与 `startCoreWithContentImpl` 同一模式）：
+
+```dart
+/// 移动端本地转换钩子（iOS）：主 App 无 RPC 连接时也能转订阅。
+Future<String> Function(String content)? convertImpl;
 ```
 
 `lib/core/lib_core_channel.dart`：
@@ -781,7 +815,8 @@ Future<String> convert(String content) async {
 @override
 Future<String> convert(String content) async {
   final result = await _channel.invokeMethod<String>('convert', {'content': content});
-  return result ?? '';
+  if (result != null && result.isNotEmpty) return result;
+  throw StateError('convert returned no json result');
 }
 ```
 
@@ -799,6 +834,31 @@ fun convert(content: String): String {
 "convert" -> safeReply(result) { Mobile.convert(args?.str("content") ?: "") }
 ```
 
+`lib/core/ios_vpn_bridge.dart` 的 `wireInto` 注入本地转换（与 `_reloadCore` 同一模式）：
+
+```dart
+worker.convertImpl = _convert;
+
+Future<String> _convert(String content) async {
+  final result = await _channel.invokeMethod<String>('convert', {'content': content});
+  if (result != null && result.isNotEmpty) return result;
+  throw StateError('iOS convert returned no json result');
+}
+```
+
+`ios/Runner/AppDelegate.swift` 增加 `import Singcast` 与本地转换实例，并在 `handle` 中新增分支：
+
+```swift
+private let converter = MobileSingcast()
+
+case "convert":
+    do {
+        result(try converter.convert(args["content"] as? String ?? ""))
+    } catch {
+        result(FlutterError(code: "CONVERT_ERROR", message: "\(error)", details: nil))
+    }
+```
+
 - [ ] **Step 2: 编译确认**
 
 Run: `dart analyze lib/core/`
@@ -807,7 +867,7 @@ Expected: 无新增错误。
 - [ ] **Step 3: 提交**
 
 ```bash
-git add lib/core/lib_core.dart lib/core/ipc_worker.dart lib/core/lib_core_channel.dart android/app/src/main/kotlin/cn/mapleafgo/singcast/Mobile.kt android/app/src/main/kotlin/cn/mapleafgo/singcast/MainActivity.kt
+git add lib/core/lib_core.dart lib/core/ipc_worker.dart lib/core/lib_core_channel.dart lib/core/ios_vpn_bridge.dart android/app/src/main/kotlin/cn/mapleafgo/singcast/Mobile.kt android/app/src/main/kotlin/cn/mapleafgo/singcast/MainActivity.kt ios/Runner/AppDelegate.swift
 git commit -m "feat(core): LibCore 接入 core.convert"
 ```
 
@@ -820,9 +880,14 @@ git commit -m "feat(core): LibCore 接入 core.convert"
 - Modify: `singcast/lib/domain/config.dart`
 - Modify: `singcast/lib/domain/enums.dart`（如需要）
 - Modify: `singcast/lib/services/core_config.dart`（signal 与函数改名）
+- Modify: `singcast/lib/services/core_reload.dart`
+- Modify: `singcast/lib/services/tray_service.dart`
+- Modify: `singcast/lib/presentation/pages/home_page.dart`
 - Modify: `singcast/lib/presentation/pages/settings_page.dart`
 - Modify: `singcast/test/utils/constants_test.dart`
 - Modify: `singcast/test/services/core_config_test.dart`
+- Modify: `singcast/test/services/app_config_test.dart`（仅同步改名，YAML 场景由 Task 8 重写）
+- Modify: `singcast/test/domain/config_test.dart`
 
 **Interfaces:**
 - Produces: `SingboxConfig`（原 `ClashConfig`）、`coreConfig` signal、`updateCoreConfig(...)`。
@@ -846,6 +911,13 @@ static const mergedConfigCache = "cache-merged.json";
 
 `lib/services/core_config.dart`：`clashConfig` → `coreConfig`、`updateClashConfig` → `updateCoreConfig`，其余引用同步。
 
+同步替换以下文件中的 `clashConfig` 引用：
+
+- `lib/services/core_reload.dart`：`show clashConfig, mergeProfileConfig` → `show coreConfig, mergeProfileConfig`，3 处 `clashConfig.value` 使用，doc 注释里 `[ClashConfig]` → `[SingboxConfig]`。
+- `lib/services/tray_service.dart`：`clashConfig.value.systemProxyEnabled` → `coreConfig.value.systemProxyEnabled`。
+- `lib/presentation/pages/home_page.dart`：`clashConfig.value.tunEnabled/systemProxyEnabled` → `coreConfig.value...`。
+- `test/domain/config_test.dart`：group 名与 `ClashConfig` → `SingboxConfig`。
+
 `lib/presentation/pages/settings_page.dart`：改用 `coreConfig.value` 与 `updateCoreConfig(...)`。
 
 `test/utils/constants_test.dart`：
@@ -858,6 +930,8 @@ test('coreConfigFile is config.json', () {
 
 `test/services/core_config_test.dart`：`ClashConfig` → `SingboxConfig`、`clashConfig` → `coreConfig`、`updateClashConfig` → `updateCoreConfig`。
 
+`test/services/app_config_test.dart`：仅把 `ClashConfig`/`clashConfig` 同步改名，保证本任务结束时全量测试可编译；测试内容保持 YAML 场景，Task 8 再整体重写。
+
 - [ ] **Step 2: 测试确认**
 
 Run: `flutter test test/utils/constants_test.dart test/services/core_config_test.dart`
@@ -866,7 +940,7 @@ Expected: PASS。
 - [ ] **Step 3: 提交**
 
 ```bash
-git add lib/utils/constants.dart lib/domain/config.dart lib/services/core_config.dart lib/presentation/pages/settings_page.dart test/utils/constants_test.dart test/services/core_config_test.dart
+git add lib/utils/constants.dart lib/domain/config.dart lib/services/core_config.dart lib/services/core_reload.dart lib/services/tray_service.dart lib/presentation/pages/home_page.dart lib/presentation/pages/settings_page.dart test/utils/constants_test.dart test/services/core_config_test.dart test/services/app_config_test.dart test/domain/config_test.dart
 git commit -m "refactor: 配置模型与常量迁移到 sing-box 命名"
 ```
 
@@ -993,7 +1067,7 @@ class CoreConfigStorage {
       final dns = json['dns'] as Map<String, dynamic>?;
       return SingboxConfig(
         mixedPort: (inbound?['listen_port'] as num?)?.toInt(),
-        allowLan: inbound?['listen'] != '127.0.0.1',
+        allowLan: inbound != null && inbound['listen'] != '127.0.0.1',
         mode: _parseEnum(
           (clashApi?['default_mode'] as String?)?.toLowerCase(),
           Mode.values,
@@ -1249,9 +1323,12 @@ String mergeProfileConfig(String jsonContent) {
   }
 
   if (config.logLevel != null) {
-    doc['log'] = {
-      'level': config.logLevel == LogLevel.warning ? 'warn' : config.logLevel!.name,
-    };
+    final log =
+        (doc['log'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    log['level'] = config.logLevel == LogLevel.warning
+        ? 'warn'
+        : config.logLevel!.name;
+    doc['log'] = log;
   }
 
   if (config.apiEnabled) {
@@ -1453,14 +1530,13 @@ git commit -m "feat(profiles): 文件导入支持 yaml/yml/json 并统一转 sin
 
 **Interfaces:**
 - Consumes: `CoreConfigStorage`、`AppSettingsStorage`、`downloadSubscription`、`validateConfigFile`、`LibCore.instance.convert`。
-- Produces: `migrateLegacy({Future<String> Function(String)? convert, Future<void> Function(String)? validate}) → Future<void>`。
+- Produces: `migrateLegacy({convert, validate, download}) → Future<void>`，三个依赖均可注入以便测试。
 
 - [ ] **Step 1: 写失败测试**
 
 `singcast/test/services/migration_test.dart`：
 
 ```dart
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -1517,6 +1593,69 @@ void main() {
     await migrateLegacy(convert: (_) async => '{}');
     expect(File(p.join(tmp.path, 'config.json')).existsSync(), isFalse);
   });
+
+  test('url profile falls back to local file conversion when refresh fails', () async {
+    File(p.join(tmp.path, 'config.yaml')).writeAsStringSync('mixed-port: 7890\n');
+    final oldProfile = '456.yaml';
+    File(p.join(tmp.path, 'profiles', oldProfile))
+        .writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
+    AppSettingsStorage.save({
+      'profiles': [
+        {
+          'file': oldProfile,
+          'name': 'legacy-url',
+          'type': 'url',
+          'time': '2026-08-02T00:00:00.000',
+          'url': 'https://example.com/sub',
+          'interval': 24,
+        }
+      ],
+    });
+
+    await migrateLegacy(
+      convert: (_) async => '{"outbounds":[]}',
+      validate: (_) async {},
+      download: ({required url, required profilesDir, name, interval}) async {
+        throw const HttpException('offline');
+      },
+    );
+
+    expect(File(p.join(tmp.path, 'config.yaml')).existsSync(), isFalse);
+    final stored = AppSettingsStorage.load()['profiles'] as List;
+    final saved = stored.single as Map<String, dynamic>;
+    expect(saved['type'], 'url');
+    expect(saved['url'], 'https://example.com/sub');
+    expect((saved['file'] as String).endsWith('.json'), isTrue);
+    expect(
+      File(p.join(tmp.path, 'profiles', oldProfile)).existsSync(),
+      isFalse,
+    );
+  });
+
+  test('keeps config.yaml marker when a profile fails to migrate', () async {
+    File(p.join(tmp.path, 'config.yaml')).writeAsStringSync('mixed-port: 7890\n');
+    final oldProfile = '789.yaml';
+    File(p.join(tmp.path, 'profiles', oldProfile))
+        .writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
+    AppSettingsStorage.save({
+      'profiles': [
+        {
+          'file': oldProfile,
+          'name': 'legacy',
+          'type': 'file',
+          'time': '2026-08-02T00:00:00.000',
+        }
+      ],
+    });
+
+    await migrateLegacy(
+      convert: (_) async => throw Exception('bad content'),
+      validate: (_) async {},
+    );
+
+    expect(File(p.join(tmp.path, 'config.yaml')).existsSync(), isTrue);
+    expect(File(p.join(tmp.path, 'config.json')).existsSync(), isTrue);
+  });
 }
 ```
 
@@ -1546,27 +1685,51 @@ import 'package:yaml/yaml.dart';
 
 /// 旧版（Clash YAML 时代）统一迁移入口。
 ///
-/// 以 `config.yaml` 是否存在作为迁移标记：存在才执行，全部完成后删除标记。
+/// 以 `config.yaml` 是否存在作为迁移标记：存在才执行；全部迁移成功后删除标记，
+/// 任一设置/订阅迁移失败时保留标记，下次启动重试。异常不阻塞启动。
 Future<void> migrateLegacy({
   Future<String> Function(String content)? convert,
   Future<void> Function(String filePath)? validate,
+  Future<Profile> Function({
+    required String url,
+    required String profilesDir,
+    String? name,
+    int? interval,
+  })? download,
 }) async {
   final legacyConfig = File(p.join(Constants.homeDir.path, 'config.yaml'));
   if (!legacyConfig.existsSync()) return;
 
   final converter = convert ?? (content) => LibCore.instance.convert(content);
   final validator = validate ?? validateConfigFile;
+  final downloader = download ?? downloadSubscription;
+
+  var failed = false;
 
   // 1. 设置存储：旧 yaml → config.json
-  final legacy = _loadLegacyConfig();
-  if (legacy != null) CoreConfigStorage.save(legacy);
+  try {
+    final legacy = _loadLegacyConfig();
+    if (legacy != null) {
+      CoreConfigStorage.save(legacy);
+    } else {
+      failed = true;
+    }
+  } catch (e) {
+    LogFileWriter.instance?.log(
+      'migrate core config failed: $e',
+      level: LogLevel.warning,
+      name: 'migrate',
+    );
+    failed = true;
+  }
 
-  // 2. 订阅：URL 型重新拉取，文件型就地转换
+  // 2. 订阅：URL 型重新拉取（失败回退本地文件转换），文件型就地转换
   final stored = AppSettingsStorage.load();
+  final storedConfig = AppStoredConfig.fromJson(stored);
   final dir = Directory(p.join(Constants.homeDir.path, Constants.profilesDir));
   final migrated = <Profile>[];
   var changed = false;
-  for (final profile in stored.profiles) {
+  for (final profile in storedConfig.profiles) {
     if (!profile.file.endsWith('.yaml') && !profile.file.endsWith('.yml')) {
       migrated.add(profile);
       continue;
@@ -1579,27 +1742,34 @@ Future<void> migrateLegacy({
     try {
       final Profile next;
       if (profile.type == ProfileType.url && profile.url != null) {
-        next = await downloadSubscription(
-          url: profile.url!,
-          profilesDir: dir.path,
-          name: profile.name,
-          interval: profile.interval,
-        );
-        await validator(p.join(dir.path, next.file));
+        try {
+          next = await downloader(
+            url: profile.url!,
+            profilesDir: dir.path,
+            name: profile.name,
+            interval: profile.interval,
+          );
+          await validator(p.join(dir.path, next.file));
+        } catch (e) {
+          LogFileWriter.instance?.log(
+            'legacy URL profile refresh failed, converting local file: '
+            '${profile.file}: $e',
+            level: LogLevel.warning,
+            name: 'migrate',
+          );
+          next = await _convertLocalFile(
+            dir: dir,
+            profile: profile,
+            converter: converter,
+            validator: validator,
+          );
+        }
       } else {
-        final content = await File(path).readAsString();
-        final jsonContent = await converter(content);
-        final file = '${DateTime.now().millisecondsSinceEpoch}.json';
-        await File(p.join(dir.path, file)).writeAsString(jsonContent);
-        await validator(p.join(dir.path, file));
-        next = Profile(
-          file: file,
-          name: profile.name,
-          type: profile.type,
-          time: DateTime.now(),
-          url: profile.url,
-          interval: profile.interval,
-          userinfo: profile.userinfo,
+        next = await _convertLocalFile(
+          dir: dir,
+          profile: profile,
+          converter: converter,
+          validator: validator,
         );
       }
       await File(path).delete();
@@ -1611,16 +1781,48 @@ Future<void> migrateLegacy({
         level: LogLevel.warning,
         name: 'migrate',
       );
+      failed = true;
       migrated.add(profile);
     }
   }
   if (changed) {
-    final base = AppStoredConfig.fromJson(stored);
-    AppSettingsStorage.save(base.copyWith(profiles: migrated).toJson());
+    AppSettingsStorage.save(storedConfig.copyWith(profiles: migrated).toJson());
   }
 
-  // 3. 完成标记
-  await legacyConfig.delete();
+  // 3. 完成标记：全部成功才删除，失败保留以便下次启动重试
+  if (!failed) {
+    try {
+      await legacyConfig.delete();
+    } catch (e) {
+      LogFileWriter.instance?.log(
+        'delete legacy config.yaml marker failed: $e',
+        level: LogLevel.warning,
+        name: 'migrate',
+      );
+    }
+  }
+}
+
+Future<Profile> _convertLocalFile({
+  required Directory dir,
+  required Profile profile,
+  required Future<String> Function(String content) converter,
+  required Future<void> Function(String filePath) validator,
+}) async {
+  final content = await File(p.join(dir.path, profile.file)).readAsString();
+  final jsonContent = await converter(content);
+  final file = '${DateTime.now().millisecondsSinceEpoch}.json';
+  await File(p.join(dir.path, file)).writeAsString(jsonContent);
+  await validator(p.join(dir.path, file));
+  return Profile(
+    file: file,
+    name: profile.name,
+    type: profile.type,
+    time: DateTime.now(),
+    url: profile.url,
+    interval: profile.interval,
+    userinfo: profile.userinfo,
+  );
 }
 
 SingboxConfig? _loadLegacyConfig() {
@@ -1656,7 +1858,7 @@ SingboxConfig? _loadLegacyConfig() {
 }
 ```
 
-`lib/main.dart` 的 `_initApp` 中，`initCore` 成功之后、`initCoreConfig()` 之前调用：
+`lib/main.dart` 的 `_initApp` 中，`initCore` 的 try/catch 结束之后、`initCoreConfig()` 之前调用：
 
 ```dart
 await migrateLegacy();
@@ -1665,6 +1867,8 @@ await migrateLegacy();
 补 import：`import 'package:singcast/services/migration.dart';`。
 
 > 时序满足：`LibCore.init` 已就绪（convert 可用），`config.yaml → config.json` 先于 `CoreConfigStorage.load()`。
+> 迁移失败不抛到启动流程：内部已按 profile 记日志，设置迁移成功后即使订阅失败也保留标记，下次启动重试。
+> iOS 的 convert 走 Runner 本地 FFI（Task 5），不依赖 VPN；校验仍走 RPC，VPN 未开启时校验失败会保留标记。
 
 - [ ] **Step 4: 运行确认通过**
 
@@ -1747,7 +1951,18 @@ flutter test
 
 Expected: PASS。
 
-- [ ] **Step 3: 提交收尾（如有遗漏）**
+- [ ] **Step 3: 移动端绑定重生成（Task 5 前置，含 convert）**
+
+```bash
+cd /home/mapleafgo/Projects/OpenProject/singcast-cli
+task mobile-all
+```
+
+将产物同步到 singcast 仓库（Android AAR 本仓库 gitignore，由 CI 从 release 下载；
+iOS XCFramework 提交入库）。若本地无 gomobile/Xcode/NDK 环境，跳过并确保
+singcast-cli 先发版、singcast CI 的 `CORE_VERSION` 指向新 release。
+
+- [ ] **Step 4: 提交收尾（如有遗漏）**
 
 ```bash
 git -C /home/mapleafgo/Projects/OpenProject/singcast-cli status --short

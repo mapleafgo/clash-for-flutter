@@ -38,6 +38,7 @@
 ### 移动端 FFI
 
 新增 `Singcast.Convert(content string) (string, error)`，实现与 IPC 相同。
+iOS 主 App 通过 Runner 本地 FFI（MethodChannel `convert`）提供同一能力，转换不依赖 VPN/RPC 连接。
 
 ### Flutter 调用链
 
@@ -111,7 +112,7 @@
 
 1. 设置存储：`config.yaml` → `config.json`。此步骤必须最先执行，位于 `CoreConfigStorage.load()` 之前，迁移完成前不读取任何设置。
 2. 订阅：在内核就绪、profiles 加载后，遍历 profiles 中 `.yaml`/`.yml` 文件：
-   - URL 型：重新拉取订阅，走新的下载 → 转换 → 保存 `.json` 链路。
+   - URL 型：重新拉取订阅，走新的下载 → 转换 → 保存 `.json` 链路；拉取失败时回退读取本地文件转换（与文件型一致）。
    - 文件型：读取本地文件，调用 `core.convert` 转 JSON 保存，更新 profile 文件名。
 3. 全部完成后删除 `config.yaml`（作为完成标记，下次启动不再触发）。
 
