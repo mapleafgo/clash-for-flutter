@@ -38,7 +38,7 @@ class CoreConfigStorage {
         externalControllerAddr:
             clashApi?['external_controller'] as String?,
         portEnabled: json['port_enabled'] as bool?,
-        mixedSystemProxy: json['system_proxy'] as bool?,
+        mixedSystemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
       );
     } catch (e) {
       LogFileWriter.instance?.log(
@@ -57,14 +57,19 @@ class CoreConfigStorage {
     if (config.logLevel != null) {
       json['log'] = {'level': _singboxLogLevel(config.logLevel!)};
     }
-    if (config.mixedPort != null) {
+    // mixed inbound：有端口或开了系统代理时写入（系统代理依赖端口）
+    if (config.mixedPort != null || config.mixedSystemProxy == true) {
+      final inbound = <String, dynamic>{
+        'type': 'mixed',
+        'tag': 'mixed-in',
+        'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
+        'listen_port': config.mixedPort ?? Constants.defaultMixedPort,
+      };
+      if (config.mixedSystemProxy == true) {
+        inbound['set_system_proxy'] = true;
+      }
       json['inbounds'] = [
-        {
-          'type': 'mixed',
-          'tag': 'mixed-in',
-          'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
-          'listen_port': config.mixedPort,
-        }
+        inbound,
       ];
     }
     final clashApi = <String, dynamic>{};
@@ -84,7 +89,6 @@ class CoreConfigStorage {
     // 应用级开关（非 sing-box 字段，顶层存储）
     json['port_enabled'] = config.portEnabled ?? false;
     json['api_enabled'] = config.externalController ?? false;
-    json['system_proxy'] = config.mixedSystemProxy ?? false;
 
     File(_path)
         .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
@@ -101,7 +105,6 @@ class CoreConfigStorage {
       file.writeAsStringSync(jsonEncode({
         'port_enabled': false,
         'api_enabled': false,
-        'system_proxy': false,
       }));
     } on FileSystemException catch (_) {}
   }
