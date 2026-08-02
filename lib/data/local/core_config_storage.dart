@@ -72,14 +72,13 @@ class CoreConfigStorage {
         inbound,
       ];
     }
-    final clashApi = <String, dynamic>{};
-    if (config.mode != null) {
-      clashApi['default_mode'] = _modeName(config.mode!);
-    }
-    if (config.externalControllerAddr != null) {
-      clashApi['external_controller'] = config.externalControllerAddr;
-    }
-    if (clashApi.isNotEmpty) {
+    // clash_api：仅在 API 开启时写入，与 mergeProfileConfig 下发逻辑一致
+    if (config.apiEnabled) {
+      final clashApi = <String, dynamic>{};
+      if (config.mode != null) {
+        clashApi['default_mode'] = _modeName(config.mode!);
+      }
+      clashApi['external_controller'] = config.apiAddr;
       json['experimental'] = {'clash_api': clashApi};
     }
     if (config.ipv6 != null) {

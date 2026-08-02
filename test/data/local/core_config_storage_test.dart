@@ -77,6 +77,33 @@ void main() {
     expect(raw['api_enabled'], isFalse);
   });
 
+  test('clash_api only written when API enabled', () {
+    // API 关闭但 mode 有值时，不应产出 clash_api 段
+    CoreConfigStorage.save(SingboxConfig(
+      mode: Mode.global,
+      externalController: false,
+    ));
+    final raw = jsonDecode(
+      File('${tmp.path}/config.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    expect(raw.containsKey('experimental'), isFalse);
+    expect(raw['api_enabled'], isFalse);
+
+    // API 开启时才写 clash_api（含 external_controller）
+    CoreConfigStorage.save(SingboxConfig(
+      mode: Mode.global,
+      externalController: true,
+      externalControllerAddr: '127.0.0.1:9090',
+    ));
+    final raw2 = jsonDecode(
+      File('${tmp.path}/config.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final clashApi = raw2['experimental']['clash_api'] as Map<String, dynamic>;
+    expect(clashApi['default_mode'], 'Global');
+    expect(clashApi['external_controller'], '127.0.0.1:9090');
+    expect(raw2['api_enabled'], isTrue);
+  });
+
   test('load returns defaults when file missing', () {
     final loaded = CoreConfigStorage.load();
     expect(loaded.mixedPort, isNull);
