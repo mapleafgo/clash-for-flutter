@@ -45,6 +45,7 @@ abstract class LibCorePlatform {
   Future<void> flushDNSCache();
   Future<void> triggerGC();
   Future<String> checkConfig(String content);
+  Future<String> convert(String content);
   Future<String> getVersion();
   Future<void> connectVpn(
     String configContent, {
@@ -613,6 +614,7 @@ class LibCore {
   Future<void> setMemoryLimit(int bytes) => _platform.setMemoryLimit(bytes);
   Future<void> flushSystemDNS() => _platform.flushSystemDNS();
   Future<String> checkConfig(String content) => _platform.checkConfig(content);
+  Future<String> convert(String content) => _platform.convert(content);
   Future<String> getVersion() => _platform.getVersion();
   Future<String> queryMode() => _platform.queryMode();
   Future<String> queryState() => _platform.queryState();

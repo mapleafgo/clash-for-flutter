@@ -173,6 +173,13 @@ class LibCoreChannel implements LibCorePlatform {
   }
 
   @override
+  Future<String> convert(String content) async {
+    final result = await _channel.invokeMethod<String>('convert', {'content': content});
+    if (result != null && result.isNotEmpty) return result;
+    throw StateError('convert returned no json result');
+  }
+
+  @override
   Future<String> getVersion() async {
     final result = await _channel.invokeMethod<dynamic>('getVersion');
     return LibCore.parseVersionJson(result);

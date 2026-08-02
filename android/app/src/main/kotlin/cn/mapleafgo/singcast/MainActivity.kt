@@ -212,6 +212,7 @@ class MainActivity : FlutterFragmentActivity() {
 
             // Utilities
             "checkConfig" -> safeReply(result) { Mobile.checkConfig(args?.str("content") ?: "") }
+            "convert" -> safeReply(result) { Mobile.convert(args?.str("content") ?: "") }
             "getVersion" -> safeReply(result) { Mobile.getVersion() }
             "isVpnRunning" -> safeReply(result) { SingcastVpnService.isServiceRunning }
             else -> result.notImplemented()

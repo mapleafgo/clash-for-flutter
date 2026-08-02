@@ -39,6 +39,9 @@ class IpcWorker implements LibCorePlatform {
   /// MethodChannel 让 Extension 本地 SetTunFd + StartWithContent。null → RPC。
   Future<void> Function(String content, {String? ruleSetProxy})? startCoreWithContentImpl;
 
+  /// 移动端本地转换钩子（iOS）：主 App 无 RPC 连接时也能转订阅。
+  Future<String> Function(String content)? convertImpl;
+
   IpcWorker({required this.ipcPath});
 
   Future<void> connect() async {
@@ -228,6 +231,22 @@ class IpcWorker implements LibCorePlatform {
     } on JsonRpcException catch (e) {
       return e.error.message;
     }
+  }
+
+  @override
+  Future<String> convert(String content) {
+    final impl = convertImpl;
+    if (impl != null) return impl(content);
+    return _convertRpc(content);
+  }
+
+  Future<String> _convertRpc(String content) async {
+    final result = await _call('core.convert', {'content': content});
+    if (result is Map<String, dynamic>) {
+      final json = result['json'] as String?;
+      if (json != null && json.isNotEmpty) return json;
+    }
+    throw StateError('core.convert returned no json result');
   }
 
   @override

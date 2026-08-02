@@ -181,6 +181,10 @@ object Mobile {
         }
     }
 
+    fun convert(content: String): String {
+        return singcast.convert(content)
+    }
+
     fun getVersion(): String = singcast.version()
 
     fun updateDefaultInterface(name: String, index: Long, metered: Boolean) {

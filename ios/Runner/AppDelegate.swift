@@ -1,6 +1,7 @@
 import UIKit
 import Flutter
 import NetworkExtension
+import Singcast
 
 // iOS VPN-only 架构:内核跑在 Network Extension 进程,主 App 是纯 RPC 客户端。
 // 主 App 不再持有 FfiSingcast 实例,只负责:
@@ -16,6 +17,8 @@ class AppDelegate: FlutterAppDelegate {
     /// 是否观察到过 connecting/connected：用于区分"启动失败"与"本来就没连"。
     private var vpnActivating = false
     private var methodChannel: FlutterMethodChannel!
+    /// 本地订阅转换实例：不依赖 VPN/RPC 连接。
+    private let converter = MobileSingcast()
 
     override func application(
         _ application: UIApplication,
@@ -100,6 +103,14 @@ class AppDelegate: FlutterAppDelegate {
             let content = args["configContent"] as? String ?? ""
             let proxy = args["ruleSetProxy"] as? String ?? ""
             reloadTunnel(configContent: content, ruleSetProxy: proxy, result: result)
+
+        // --- Local subscription convert (Runner FFI, no VPN required) ---
+        case "convert":
+            do {
+                result(try converter.convert(args["content"] as? String ?? ""))
+            } catch {
+                result(FlutterError(code: "CONVERT_ERROR", message: "\(error)", details: nil))
+            }
 
         default:
             result(FlutterMethodNotImplemented)

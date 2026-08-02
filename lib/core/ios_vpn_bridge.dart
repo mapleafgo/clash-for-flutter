@@ -39,6 +39,7 @@ class IosVpnBridge {
     // 切配置/reload 走 Extension 本地(SetTunFd + StartWithContent),
     // 避免裸 RPC 重启内核导致 tunFd 失效。
     worker.startCoreWithContentImpl = _reloadCore;
+    worker.convertImpl = _convert;
 
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'onVpnDisconnected') {
@@ -46,6 +47,13 @@ class IosVpnBridge {
       }
       return null;
     });
+  }
+
+  /// 本地转换订阅（iOS）：主 App 通过 Runner 本地 FFI 调用，不依赖 VPN/RPC。
+  Future<String> _convert(String content) async {
+    final result = await _channel.invokeMethod<String>('convert', {'content': content});
+    if (result != null && result.isNotEmpty) return result;
+    throw StateError('iOS convert returned no json result');
   }
 
   Future<void> _connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
