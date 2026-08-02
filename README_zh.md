@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>基于 <a href="https://github.com/SagerNet/sing-box">sing-box</a> 高性能内核的多平台代理客户端，支持 Clash 配置</strong></p>
+  <p><strong>基于 <a href="https://github.com/SagerNet/sing-box">sing-box</a> 高性能内核的多平台代理客户端，支持 Clash 与 sing-box 订阅（导入后统一转换为 sing-box 配置运行）</strong></p>
 </div>
 
 <p align="center">
@@ -14,7 +14,7 @@
   </a>
 </p>
 
-Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核的开源多平台代理客户端。开箱即用支持 Clash 订阅链接和配置文件，导入即用。
+Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核的开源多平台代理客户端。支持 Clash 与 sing-box 订阅（导入后统一转换为 sing-box 配置运行），导入即用。
 
 支持 **Windows**、**Linux**、**macOS** 和 **Android**。
 

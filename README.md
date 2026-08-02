@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>Multi-platform proxy client powered by <a href="https://github.com/SagerNet/sing-box">sing-box</a>, with Clash config support</strong></p>
+  <p><strong>Multi-platform proxy client powered by <a href="https://github.com/SagerNet/sing-box">sing-box</a>, with Clash &amp; sing-box subscription support (unified to sing-box config on import)</strong></p>
 </div>
 
 <p align="center">
@@ -14,7 +14,7 @@
   </a>
 </p>
 
-Singcast is an open-source multi-platform proxy client built with Flutter and powered by a customized [sing-box](https://github.com/SagerNet/sing-box) core. It supports Clash subscription links and configuration files out of the box — just import and go.
+Singcast is an open-source multi-platform proxy client built with Flutter and powered by a customized [sing-box](https://github.com/SagerNet/sing-box) core. It supports Clash and sing-box subscriptions (unified to sing-box config on import) — just import and go.
 
 Available on **Windows**, **Linux**, **macOS**, and **Android**. **iOS** is not supported.
 
