@@ -26,9 +26,11 @@
 
 ### `core.convert`（IPC JSON-RPC）
 
-新增 `MethodConvert = "core.convert"`，参数为 `content`，返回转换后的 sing-box JSON 字符串。
+新增 `MethodConvert = "core.convert"`，参数为 `content`，返回转换后的 sing-box JSON 字符串。内容解码与识别全部在内核层完成：
 
-- 内部调用现有 `translator.TranslateWithOptions`：YAML 翻译为 JSON，JSON 直接透传。
+- base64 检测与解码（URI 列表、base64 包裹的 YAML/JSON）。
+- 格式识别：Clash YAML、节点 URI 列表、sing-box JSON。
+- URI 列表组装为 Clash YAML 中间态后走翻译；YAML 翻译为 JSON；JSON 直接透传。
 - 不启动内核、不写入运行状态。
 - 转换时不携带 rule_set 代理前缀，保存的 profile 保持干净；前缀仍由 `startCoreWithContent(ruleSetProxy)` 在下发时处理。
 - 转换失败返回 JSON-RPC error。
@@ -45,11 +47,11 @@
 
 ### 下载与转换
 
-1. `downloadSubscription` 下载原文。
-2. 先按内容形态解码：base64 内容（节点 URI 列表或 base64 包裹的配置）先解码；解码出的节点 URI 列表按现有逻辑组装为 Clash YAML 中间态。
-3. 无论原始内容、解码结果是 Clash YAML、节点 URI 中间态还是 sing-box JSON，一律调用 `LibCore.convert()` 转成 sing-box JSON。JSON 也走转换，为后续处理保留统一入口。
-4. 保存为 `.json` 文件（文件名生成改为 `$ms.json`）。
-5. 校验改为对转换后的 JSON 调用 `checkConfig`；转换失败或校验失败均抛错并清理文件。
+1. `downloadSubscription` 只负责下载，把原始内容作为字符串直接传给 `LibCore.convert()`。
+2. base64 解码、Clash/sing-box 判断、URI 列表解析全部由内核处理，app 不再判断内容类型。
+3. 将内核返回的 sing-box JSON 保存为 `.json` 文件（文件名生成改为 `$ms.json`）。
+4. 校验对转换后的 JSON 调用 `checkConfig`；转换失败或校验失败均抛错并清理文件。
+5. 移除 app 侧 `isBase64Content`/`decodeBase64Subscription`/`parseProxyUri` 等解析逻辑及对应测试，职责移交内核。
 
 ### 配置合并（`mergeProfileConfig`）
 
@@ -123,10 +125,12 @@
 ## 测试
 
 - singcast-cli：`core.convert` 返回转换 JSON、JSON 透传、YAML 翻译结果测试。
+- singcast-cli：base64 解码、URI 列表组装测试（从 Flutter 侧迁入）。
 - singcast：
   - 下载转换后保存 `.json`。
   - `mergeProfileConfig` JSON 合并（端口、allow-lan、log、clash_api、tun、ipv6）。
   - `CoreConfigStorage` 旧 `config.yaml` 迁移。
   - `migrateLegacy` 统一入口：URL 刷新、文件转换、完成标记删除。
   - 文件导入扩展名。
+  - 移除 app 侧 base64/URI 解析相关测试。
 - 运行 `flutter test` 与 `go test -tags 'with_clash_api,with_utls,with_quic,with_gvisor' ./...`。
