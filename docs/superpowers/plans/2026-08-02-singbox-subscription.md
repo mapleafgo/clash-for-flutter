@@ -1529,8 +1529,8 @@ git commit -m "feat(profiles): 文件导入支持 yaml/yml/json 并统一转 sin
 - Modify: `singcast/lib/main.dart`
 
 **Interfaces:**
-- Consumes: `CoreConfigStorage`、`AppSettingsStorage`、`downloadSubscription`、`validateConfigFile`、`LibCore.instance.convert`。
-- Produces: `migrateLegacy({convert, validate, download}) → Future<void>`，三个依赖均可注入以便测试。
+- Consumes: `CoreConfigStorage`、`AppSettingsStorage`、`validateConfigFile`、`LibCore.instance.convert`。
+- Produces: `migrateLegacy({convert, validate}) → Future<void>`，两个依赖均可注入以便测试。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -1594,7 +1594,7 @@ void main() {
     expect(File(p.join(tmp.path, 'config.json')).existsSync(), isFalse);
   });
 
-  test('url profile falls back to local file conversion when refresh fails', () async {
+  test('url profile converts local file without refreshing', () async {
     File(p.join(tmp.path, 'config.yaml')).writeAsStringSync('mixed-port: 7890\n');
     final oldProfile = '456.yaml';
     File(p.join(tmp.path, 'profiles', oldProfile))
@@ -1615,14 +1615,12 @@ void main() {
     await migrateLegacy(
       convert: (_) async => '{"outbounds":[]}',
       validate: (_) async {},
-      download: ({required url, required profilesDir, name, interval}) async {
-        throw const HttpException('offline');
-      },
     );
 
     expect(File(p.join(tmp.path, 'config.yaml')).existsSync(), isFalse);
     final stored = AppSettingsStorage.load()['profiles'] as List;
     final saved = stored.single as Map<String, dynamic>;
+    // 不重新拉取：仍走本地文件转换，url 与类型原样保留
     expect(saved['type'], 'url');
     expect(saved['url'], 'https://example.com/sub');
     expect((saved['file'] as String).endsWith('.json'), isTrue);
@@ -1690,19 +1688,12 @@ import 'package:yaml/yaml.dart';
 Future<void> migrateLegacy({
   Future<String> Function(String content)? convert,
   Future<void> Function(String filePath)? validate,
-  Future<Profile> Function({
-    required String url,
-    required String profilesDir,
-    String? name,
-    int? interval,
-  })? download,
 }) async {
   final legacyConfig = File(p.join(Constants.homeDir.path, 'config.yaml'));
   if (!legacyConfig.existsSync()) return;
 
   final converter = convert ?? (content) => LibCore.instance.convert(content);
   final validator = validate ?? validateConfigFile;
-  final downloader = download ?? downloadSubscription;
 
   var failed = false;
 
@@ -1723,7 +1714,7 @@ Future<void> migrateLegacy({
     failed = true;
   }
 
-  // 2. 订阅：URL 型重新拉取（失败回退本地文件转换），文件型就地转换
+  // 2. 订阅：URL 型与文件型统一走本地文件转换，迁移期不重新拉取
   final stored = AppSettingsStorage.load();
   final storedConfig = AppStoredConfig.fromJson(stored);
   final dir = Directory(p.join(Constants.homeDir.path, Constants.profilesDir));
@@ -1740,38 +1731,12 @@ Future<void> migrateLegacy({
       continue;
     }
     try {
-      final Profile next;
-      if (profile.type == ProfileType.url && profile.url != null) {
-        try {
-          next = await downloader(
-            url: profile.url!,
-            profilesDir: dir.path,
-            name: profile.name,
-            interval: profile.interval,
-          );
-          await validator(p.join(dir.path, next.file));
-        } catch (e) {
-          LogFileWriter.instance?.log(
-            'legacy URL profile refresh failed, converting local file: '
-            '${profile.file}: $e',
-            level: LogLevel.warning,
-            name: 'migrate',
-          );
-          next = await _convertLocalFile(
-            dir: dir,
-            profile: profile,
-            converter: converter,
-            validator: validator,
-          );
-        }
-      } else {
-        next = await _convertLocalFile(
-          dir: dir,
-          profile: profile,
-          converter: converter,
-          validator: validator,
-        );
-      }
+      final next = await _convertLocalFile(
+        dir: dir,
+        profile: profile,
+        converter: converter,
+        validator: validator,
+      );
       await File(path).delete();
       migrated.add(next);
       changed = true;

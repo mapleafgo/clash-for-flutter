@@ -112,8 +112,8 @@ iOS 主 App 通过 Runner 本地 FFI（MethodChannel `convert`）提供同一能
 
 1. 设置存储：`config.yaml` → `config.json`。此步骤必须最先执行，位于 `CoreConfigStorage.load()` 之前，迁移完成前不读取任何设置。
 2. 订阅：在内核就绪、profiles 加载后，遍历 profiles 中 `.yaml`/`.yml` 文件：
-   - URL 型：重新拉取订阅，走新的下载 → 转换 → 保存 `.json` 链路；拉取失败时回退读取本地文件转换（与文件型一致）。
-   - 文件型：读取本地文件，调用 `core.convert` 转 JSON 保存，更新 profile 文件名。
+   - URL 型与文件型统一处理：读取本地文件，调用 `core.convert` 转 JSON 保存，更新 profile 文件名。
+   - 迁移期不重新拉取订阅（应用尚未就绪，避免依赖网络与订阅服务器）。
 3. 全部完成后删除 `config.yaml`（作为完成标记，下次启动不再触发）。
 
 不设计失败回退分支：能走通的订阅转换必然成功。异常只记日志并保留 `config.yaml` 标记，不阻塞启动。
@@ -131,7 +131,7 @@ iOS 主 App 通过 Runner 本地 FFI（MethodChannel `convert`）提供同一能
   - 下载转换后保存 `.json`。
   - `mergeProfileConfig` JSON 合并（端口、allow-lan、log、clash_api、tun、ipv6）。
   - `CoreConfigStorage` 旧 `config.yaml` 迁移。
-  - `migrateLegacy` 统一入口：URL 刷新、文件转换、完成标记删除。
+  - `migrateLegacy` 统一入口：URL 与文件型统一本地转换、完成标记删除。
   - 文件导入扩展名。
   - 移除 app 侧 base64/URI 解析相关测试。
 - 运行 `flutter test` 与 `go test -tags 'with_clash_api,with_utls,with_quic,with_gvisor' ./...`。
