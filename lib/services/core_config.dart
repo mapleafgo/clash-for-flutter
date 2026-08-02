@@ -310,7 +310,7 @@ String mergeProfileConfig(String jsonContent) {
   final doc = jsonDecode(jsonContent) as Map<String, dynamic>;
   final config = coreConfig.value;
 
-  const managedTypes = {'mixed', 'http', 'socks', 'tun'};
+  const managedTypes = {'mixed', 'http', 'socks', 'tun', 'redirect', 'tproxy'};
   final inbounds = (doc['inbounds'] as List?)
           ?.whereType<Map<String, dynamic>>()
           .where((e) => !managedTypes.contains(e['type']))
