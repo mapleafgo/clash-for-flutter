@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/domain/profile.dart';
 import 'package:singcast/i18n/strings.g.dart';
@@ -147,16 +148,11 @@ class _ProfilesPageState extends State<ProfilesPage> {
     );
   }
 
-  String _uniqueFileName(String original) {
-    final base = p.withoutExtension(original);
-    final ext = p.extension(original);
-    return '${base}_${DateTime.now().millisecondsSinceEpoch}$ext';
-  }
 
   Future<void> _addFromFile(BuildContext context) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['yaml', 'yml'],
+      allowedExtensions: ['yaml', 'yml', 'json'],
     );
     if (result == null || result.files.isEmpty) return;
     final sourcePath = result.files.single.path;
@@ -168,39 +164,28 @@ class _ProfilesPageState extends State<ProfilesPage> {
       return;
     }
 
-    var destPath = p.join(profilesFullPath, fileName);
-    if (File(destPath).existsSync()) {
-      destPath = p.join(profilesFullPath, _uniqueFileName(fileName));
-    }
     try {
-      await File(sourcePath).copy(destPath);
+      final content = await File(sourcePath).readAsString();
+      final jsonContent = await LibCore.instance.convert(content);
+      final savedName =
+          '${p.withoutExtension(fileName)}_${DateTime.now().millisecondsSinceEpoch}.json';
+      final destPath = p.join(profilesFullPath, savedName);
+      await File(destPath).writeAsString(jsonContent);
+      await validateConfigFile(destPath);
+
+      final profile = Profile(
+        file: savedName,
+        name: fileName,
+        type: ProfileType.file,
+        time: DateTime.now(),
+      );
+      final wasEmpty = profiles.value.isEmpty;
+      profiles.value = [...profiles.value, profile];
+      if (wasEmpty) selectedFile.value = savedName;
     } catch (e) {
       if (context.mounted) showErrorDialog(context, t.profiles.fileCopyFailed(error: '$e'));
       return;
     }
-
-    try {
-      await validateConfigFile(destPath);
-    } catch (e) {
-      // 清理校验失败的副本，删除失败可忽略（下次同名导入会另起文件名）
-      try {
-        await File(destPath).delete();
-      } catch (_) {}
-      if (context.mounted) showErrorDialog(context, '$e');
-      return;
-    }
-
-    final savedName = p.basename(destPath);
-    final profile = Profile(
-      file: savedName,
-      name: fileName,
-      type: ProfileType.file,
-      time: DateTime.now(),
-    );
-    final wasEmpty = profiles.value.isEmpty;
-    profiles.value = [...profiles.value, profile];
-    // 信号赋值不依赖 context，页面切走也要保证首个配置被选中
-    if (wasEmpty) selectedFile.value = savedName;
   }
 
   Future<void> _addFromUrl(BuildContext context) async {
