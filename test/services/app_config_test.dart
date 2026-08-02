@@ -35,7 +35,7 @@ dns:
 void main() {
   group('mergeProfileConfig tun removal', () {
     test('removes tun section when tun.enable is false', () {
-      clashConfig.value = ClashConfig(
+      coreConfig.value = SingboxConfig(
         mixedPort: 7890,
         mode: Mode.rule,
         logLevel: LogLevel.info,
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('preserves tun section when tun.enable is true', () {
-      clashConfig.value = ClashConfig(
+      coreConfig.value = SingboxConfig(
         mixedPort: 7890,
         mode: Mode.rule,
         logLevel: LogLevel.info,
@@ -66,7 +66,7 @@ void main() {
     });
 
     test('adds tun section when source has none and tun.enable is true', () {
-      clashConfig.value = ClashConfig(
+      coreConfig.value = SingboxConfig(
         mixedPort: 7890,
         mode: Mode.rule,
         logLevel: LogLevel.info,
@@ -80,7 +80,7 @@ void main() {
     });
 
     test('removes tun section when config has no tun override', () {
-      clashConfig.value = ClashConfig(
+      coreConfig.value = SingboxConfig(
         mixedPort: 7890,
         mode: Mode.rule,
         logLevel: LogLevel.info,

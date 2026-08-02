@@ -330,7 +330,7 @@ class _ToggleFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return l10nBuilder((context) {
       final isTun = tunIf.value ?? false;
-      final on = isTun ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
+      final on = isTun ? coreConfig.value.tunEnabled : coreConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
       final stats = LibCore.instance.statsSignal.value;
       final cs = Theme.of(context).colorScheme;

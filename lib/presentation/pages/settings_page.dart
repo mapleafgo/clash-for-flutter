@@ -44,7 +44,7 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: SysAppBar(title: t.settings.title),
       body: l10nBuilder((context) {
-        final config = clashConfig.value;
+        final config = coreConfig.value;
         return ListView(
           children: [
             _Section(t.settings.sectionCore),
@@ -54,7 +54,7 @@ class SettingsPage extends StatelessWidget {
               value: config.userPortEnabled || config.systemProxyEnabled,
               onChanged: config.systemProxyEnabled
                   ? null
-                  : (v) => updateClashConfig(portEnabled: v),
+                  : (v) => updateCoreConfig(portEnabled: v),
             ),
             _AnimatedExpand(
               expanded: config.userPortEnabled || config.systemProxyEnabled,
@@ -63,7 +63,7 @@ class SettingsPage extends StatelessWidget {
                   title: Text(t.settings.allowLan),
                   subtitle: Text(t.settings.allowLanDesc),
                   value: config.allowLan ?? false,
-                  onChanged: (v) => updateClashConfig(allowLan: v),
+                  onChanged: (v) => updateCoreConfig(allowLan: v),
                 ),
               ],
             ),
@@ -71,13 +71,13 @@ class SettingsPage extends StatelessWidget {
               label: t.settings.port,
               value: config.mixedPort,
               description: t.settings.portDesc,
-              onChanged: (v) => updateClashConfig(mixedPort: v),
+              onChanged: (v) => updateCoreConfig(mixedPort: v),
             ),
             SwitchListTile(
               title: Text(t.settings.ipv6),
               subtitle: Text(t.settings.ipv6Desc),
               value: config.ipv6 ?? false,
-             onChanged: (v) => updateClashConfig(ipv6: v),
+             onChanged: (v) => updateCoreConfig(ipv6: v),
            ),
             if (Constants.isDesktop)
               l10nBuilder((context) {
@@ -94,7 +94,7 @@ class SettingsPage extends StatelessWidget {
               title: Text(t.settings.clashApi),
               subtitle: Text(t.settings.clashApiDesc),
               value: config.apiEnabled,
-              onChanged: (v) => updateClashConfig(externalController: v),
+              onChanged: (v) => updateCoreConfig(externalController: v),
             ),
             _AnimatedExpand(
               expanded: config.apiEnabled,
@@ -113,7 +113,7 @@ class SettingsPage extends StatelessWidget {
                       initialValue: config.apiAddr,
                     );
                     if (result != null && result.isNotEmpty) {
-                      updateClashConfig(externalControllerAddr: result);
+                      updateCoreConfig(externalControllerAddr: result);
                     }
                   },
                 ),
@@ -125,7 +125,7 @@ class SettingsPage extends StatelessWidget {
               value: config.logLevel ?? LogLevel.info,
               items: LogLevel.values,
               labelBuilder: _logLevelLabel,
-              onChanged: (l) => updateClashConfig(logLevel: l),
+              onChanged: (l) => updateCoreConfig(logLevel: l),
             ),
             _Section(t.settings.sectionGeneral),
             if (Constants.isDesktop)

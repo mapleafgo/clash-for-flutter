@@ -9,14 +9,14 @@ import 'package:settings_yaml/settings_yaml.dart';
 
 class CoreConfigStorage {
   static String get _path =>
-      p.join(Constants.homeDir.path, Constants.clashConfig);
+      p.join(Constants.homeDir.path, Constants.coreConfigFile);
 
   static bool exists() => File(_path).existsSync();
 
-  static ClashConfig load() {
+  static SingboxConfig load() {
     try {
       final yaml = SettingsYaml.load(pathToSettings: _path);
-      return ClashConfig(
+      return SingboxConfig(
         mixedPort: yaml['mixed-port'] as int?,
         allowLan: yaml['allow-lan'] as bool?,
         // mode 必须持久化：内核消费配置的 mode 字段作为 default_mode（启动初始模式），
@@ -36,11 +36,11 @@ class CoreConfigStorage {
         level: LogLevel.warning,
         name: 'settings',
       );
-      return ClashConfig();
+      return SingboxConfig();
     }
   }
 
-  static void save(ClashConfig config) {
+  static void save(SingboxConfig config) {
     SettingsYaml yaml;
     try {
       yaml = SettingsYaml.load(pathToSettings: _path);

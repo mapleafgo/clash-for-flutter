@@ -41,7 +41,7 @@ Future<void> initTray() async {
 }
 
 bool get _proxyEnabled =>
-    tunIf.value == true ? clashConfig.value.tunEnabled : clashConfig.value.systemProxyEnabled;
+    tunIf.value == true ? coreConfig.value.tunEnabled : coreConfig.value.systemProxyEnabled;
 
 
 Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {

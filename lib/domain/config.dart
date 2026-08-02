@@ -2,7 +2,7 @@ import 'package:singcast/utils/constants.dart';
 
 import 'enums.dart';
 
-class ClashConfig {
+class SingboxConfig {
   final int? mixedPort;
   final bool? allowLan;
   final Mode? mode;
@@ -14,7 +14,7 @@ class ClashConfig {
   final bool? portEnabled;
   final bool? mixedSystemProxy;
 
-  ClashConfig({
+  SingboxConfig({
     this.mixedPort,
     this.allowLan,
     this.mode,
@@ -27,12 +27,12 @@ class ClashConfig {
     this.mixedSystemProxy,
   });
 
-  factory ClashConfig.defaults() => ClashConfig(
+  factory SingboxConfig.defaults() => SingboxConfig(
       mixedPort: Constants.defaultMixedPort,
       externalControllerAddr: Constants.defaultApiAddr,
       portEnabled: false);
 
-  ClashConfig copyWith({
+  SingboxConfig copyWith({
     int? mixedPort,
     bool? allowLan,
     Mode? mode,
@@ -44,7 +44,7 @@ class ClashConfig {
     bool? portEnabled,
     bool? mixedSystemProxy,
   }) =>
-      ClashConfig(
+      SingboxConfig(
         mixedPort: mixedPort ?? this.mixedPort,
         allowLan: allowLan ?? this.allowLan,
         mode: mode ?? this.mode,

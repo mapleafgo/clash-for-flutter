@@ -7,8 +7,8 @@ void main() {
       expect(Constants.profilesDir, 'profiles');
     });
 
-    test('clashConfig is config.yaml', () {
-      expect(Constants.clashConfig, 'config.yaml');
+    test('coreConfigFile is config.json', () {
+      expect(Constants.coreConfigFile, 'config.json');
     });
 
     test('appSettings is settings.json', () {

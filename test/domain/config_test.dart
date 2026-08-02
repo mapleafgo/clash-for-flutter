@@ -2,9 +2,9 @@ import 'package:singcast/domain/config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('ClashConfig', () {
+  group('SingboxConfig', () {
     test('defaults factory has mixedPort 7890', () {
-      final config = ClashConfig.defaults();
+      final config = SingboxConfig.defaults();
       expect(config.mixedPort, 7890);
       expect(config.allowLan, isNull);
       expect(config.mode, isNull);
@@ -14,19 +14,19 @@ void main() {
     });
 
     test('tunEnabled returns false when tun is null', () {
-      expect(ClashConfig().tunEnabled, false);
+      expect(SingboxConfig().tunEnabled, false);
     });
 
     test('tunEnabled returns false when tun.enable is null', () {
-      expect(ClashConfig(tun: TunConfig()).tunEnabled, false);
+      expect(SingboxConfig(tun: TunConfig()).tunEnabled, false);
     });
 
     test('tunEnabled returns true when tun.enable is true', () {
-      expect(ClashConfig(tun: TunConfig(enable: true)).tunEnabled, true);
+      expect(SingboxConfig(tun: TunConfig(enable: true)).tunEnabled, true);
     });
 
     test('tunEnabled returns false when tun.enable is false', () {
-      expect(ClashConfig(tun: TunConfig(enable: false)).tunEnabled, false);
+      expect(SingboxConfig(tun: TunConfig(enable: false)).tunEnabled, false);
     });
   });
 }

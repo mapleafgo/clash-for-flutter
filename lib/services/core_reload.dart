@@ -6,7 +6,7 @@ import 'package:singcast/core/lib_core.dart';
 import 'package:singcast/domain/enums.dart' show LogLevel;
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_config.dart'
-    show clashConfig, mergeProfileConfig;
+    show coreConfig, mergeProfileConfig;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 
@@ -60,7 +60,7 @@ void startWatchingSelectedFile() {
   });
 }
 
-/// Merge the profile YAML with the app's [ClashConfig] overrides,
+/// Merge the profile YAML with the app's [SingboxConfig] overrides,
 /// then hot-reload the core with the merged content.
 ///
 /// 内核支持热重载，切换订阅/配置变更无需重启内核。
@@ -132,7 +132,7 @@ Future<bool> _doActivateProfile(String yamlPath) async {
       await LibCore.instance.startCoreWithContent(
         merged,
         ruleSetProxy: ruleSetProxy.value,
-        enabledVpn: clashConfig.value.tunEnabled,
+        enabledVpn: coreConfig.value.tunEnabled,
       );
     } catch (e) {
       profileError.value = e.toString();
@@ -168,7 +168,7 @@ Future<void> _rollbackToPreviousConfig(String failed) async {
     await LibCore.instance.startCoreWithContent(
       previous,
       ruleSetProxy: ruleSetProxy.value,
-      enabledVpn: clashConfig.value.tunEnabled,
+      enabledVpn: coreConfig.value.tunEnabled,
     );
     LogFileWriter.instance?.log(
       '_activateProfile: rolled back to previous config',
@@ -188,7 +188,7 @@ Future<bool> asyncProfile() async {
   final file = selectedFile.value;
   if (file == null) return true;
   // 快速开关防竞态：如果 TUN 已被重新启用，跳过这次无 TUN 的热重载
-  if (!Constants.isDesktop && clashConfig.value.tunEnabled) return true;
+  if (!Constants.isDesktop && coreConfig.value.tunEnabled) return true;
   final path = p.isAbsolute(file)
       ? file
       : p.join(Constants.homeDir.path, Constants.profilesDir, file);

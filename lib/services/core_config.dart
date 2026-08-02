@@ -18,7 +18,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
-final clashConfig = signal(ClashConfig.defaults());
+final coreConfig = signal(SingboxConfig.defaults());
 
 Timer? _reloadTimer;
 bool _internalUpdate = false;
@@ -33,11 +33,11 @@ Future<void> initCoreConfig() async {
     _updateConfig((_) => CoreConfigStorage.load());
   }
   LogFileWriter.instance?.setMinLevel(
-    clashConfig.value.logLevel ?? LogLevel.info,
+    coreConfig.value.logLevel ?? LogLevel.info,
   );
 
   effect(() {
-    clashConfig.value; // 订阅变化
+    coreConfig.value; // 订阅变化
     tunStack.value; // TUN 协议栈切换也走同一热重载链路
     if (_internalUpdate) {
       _internalUpdate = false;
@@ -52,7 +52,7 @@ Future<void> initCoreConfig() async {
 /// 写盘失败只记日志不上抛：调用方多是 UI 回调与 effect，
 /// 让磁盘异常冲垮设置变更得不偿失。
 void _saveToDisk() {
-  final config = clashConfig.value.copyWith(
+  final config = coreConfig.value.copyWith(
     tun: TunConfig(enable: false),
     mixedSystemProxy: false,
   );
@@ -68,9 +68,9 @@ void _saveToDisk() {
 }
 
 /// 内部修改配置：更新 signal + 立即持久化，effect 跳过重载
-void _updateConfig(ClashConfig Function(ClashConfig) updater) {
+void _updateConfig(SingboxConfig Function(SingboxConfig) updater) {
   _internalUpdate = true;
-  clashConfig.value = updater(clashConfig.value);
+  coreConfig.value = updater(coreConfig.value);
   _internalUpdate = false;
   _saveToDisk();
 }
@@ -106,21 +106,21 @@ void _scheduleReload() {
   if (selectedFile.peek() == null) return;
   final state = LibCore.instance.stateSignal.peek();
   LogFileWriter.instance?.log(
-    '_scheduleReload: scheduled (file=${selectedFile.peek()}, tun=${clashConfig.value.tunEnabled}, state=$state)',
+    '_scheduleReload: scheduled (file=${selectedFile.peek()}, tun=${coreConfig.value.tunEnabled}, state=$state)',
     name: 'tun',
   );
   _reloadTimer?.cancel();
   _reloadTimer = Timer(const Duration(seconds: 1), () async {
     _saveToDisk();
     LogFileWriter.instance?.log(
-      '_scheduleReload: firing asyncProfile (tun=${clashConfig.value.tunEnabled})',
+      '_scheduleReload: firing asyncProfile (tun=${coreConfig.value.tunEnabled})',
       name: 'tun',
     );
     asyncProfile();
   });
 }
 
-void updateClashConfig({
+void updateCoreConfig({
   int? mixedPort,
   bool? allowLan,
   Mode? mode,
@@ -131,7 +131,7 @@ void updateClashConfig({
   bool? portEnabled,
   bool? mixedSystemProxy,
 }) {
-  clashConfig.value = clashConfig.value.copyWith(
+  coreConfig.value = coreConfig.value.copyWith(
     mixedPort: mixedPort,
     allowLan: allowLan,
     mode: mode,
@@ -195,7 +195,7 @@ Future<void> enableTun() async {
       await LibCore.instance.connectVpn(
         merged,
         ruleSetProxy: ruleSetProxy.value,
-        ipv6: clashConfig.value.ipv6,
+        ipv6: coreConfig.value.ipv6,
       );
       lastMergedConfig.value = merged;
     } catch (e) {
@@ -274,14 +274,14 @@ void _applyTunConfig(bool enable) {
 
 /// 引擎重建恢复时同步 TUN 启用状态（不触发重载）
 void ensureTunEnabled(bool enabled) {
-  if (clashConfig.value.tunEnabled != enabled) {
+  if (coreConfig.value.tunEnabled != enabled) {
     _updateConfig((c) => c.copyWith(tun: TunConfig(enable: enabled)));
   }
 }
 
 /// 恢复代理模式开关到指定状态，不触发重载。
 void ensureProxyMode(bool tunMode) {
-  final cur = clashConfig.value;
+  final cur = coreConfig.value;
   final curTun = cur.tun?.enable ?? false;
   final curProxy = cur.mixedSystemProxy ?? false;
   if (curTun == tunMode && curProxy == !tunMode) return;
@@ -306,9 +306,9 @@ class TunElevationException implements Exception {
   String toString() => 'TunElevationException: $message';
 }
 
-/// Overlay [ClashConfig] values onto the profile YAML string.
+/// Overlay [SingboxConfig] values onto the profile YAML string.
 String mergeProfileConfig(String yamlContent) {
-  final config = clashConfig.value;
+  final config = coreConfig.value;
   final editor = YamlEditor(yamlContent);
 
   // 剔除订阅中可能误导应用的配置项，由应用自行管理
@@ -334,7 +334,7 @@ String mergeProfileConfig(String yamlContent) {
     'external-ui-url',
     'secret',
     'tls',
-    // 应用覆盖 — 由 ClashConfig 控制
+    // 应用覆盖 — 由 SingboxConfig 控制
     'allow-lan',
     'mode',
     'log-level',
