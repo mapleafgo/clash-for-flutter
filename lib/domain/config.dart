@@ -12,7 +12,7 @@ class SingboxConfig {
   final bool? externalController;
   final String? externalControllerAddr;
   final bool? portEnabled;
-  final bool? mixedSystemProxy;
+  final bool? systemProxy;
 
   SingboxConfig({
     this.mixedPort,
@@ -24,7 +24,7 @@ class SingboxConfig {
     this.externalController,
     this.externalControllerAddr,
     this.portEnabled,
-    this.mixedSystemProxy,
+    this.systemProxy,
   });
 
   factory SingboxConfig.defaults() => SingboxConfig(
@@ -42,7 +42,7 @@ class SingboxConfig {
     bool? externalController,
     String? externalControllerAddr,
     bool? portEnabled,
-    bool? mixedSystemProxy,
+    bool? systemProxy,
   }) =>
       SingboxConfig(
         mixedPort: mixedPort ?? this.mixedPort,
@@ -55,14 +55,14 @@ class SingboxConfig {
         externalControllerAddr:
             externalControllerAddr ?? this.externalControllerAddr,
         portEnabled: portEnabled ?? this.portEnabled,
-        mixedSystemProxy: mixedSystemProxy ?? this.mixedSystemProxy,
+        systemProxy: systemProxy ?? this.systemProxy,
       );
 
   bool get tunEnabled => tun?.enable ?? false;
   bool get apiEnabled => externalController ?? false;
   String get apiAddr => externalControllerAddr ?? Constants.defaultApiAddr;
   bool get userPortEnabled => portEnabled ?? false;
-  bool get systemProxyEnabled => mixedSystemProxy ?? false;
+  bool get systemProxyEnabled => systemProxy ?? false;
 }
 
 class TunConfig {

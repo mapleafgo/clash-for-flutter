@@ -38,7 +38,7 @@ class CoreConfigStorage {
         externalControllerAddr:
             clashApi?['external_controller'] as String?,
         portEnabled: json['port_enabled'] as bool?,
-        mixedSystemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
+        systemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
       );
     } catch (e) {
       LogFileWriter.instance?.log(
@@ -58,14 +58,14 @@ class CoreConfigStorage {
       json['log'] = {'level': _singboxLogLevel(config.logLevel!)};
     }
     // mixed inbound：有端口或开了系统代理时写入（系统代理依赖端口）
-    if (config.mixedPort != null || config.mixedSystemProxy == true) {
+    if (config.mixedPort != null || config.systemProxy == true) {
       final inbound = <String, dynamic>{
         'type': 'mixed',
         'tag': 'mixed-in',
         'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
         'listen_port': config.mixedPort ?? Constants.defaultMixedPort,
       };
-      if (config.mixedSystemProxy == true) {
+      if (config.systemProxy == true) {
         inbound['set_system_proxy'] = true;
       }
       json['inbounds'] = [

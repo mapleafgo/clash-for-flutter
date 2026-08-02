@@ -53,7 +53,7 @@ Future<void> initCoreConfig() async {
 void _saveToDisk() {
   final config = coreConfig.value.copyWith(
     tun: TunConfig(enable: false),
-    mixedSystemProxy: false,
+    systemProxy: false,
   );
   try {
     CoreConfigStorage.save(config);
@@ -128,7 +128,7 @@ void updateCoreConfig({
   bool? externalController,
   String? externalControllerAddr,
   bool? portEnabled,
-  bool? mixedSystemProxy,
+  bool? systemProxy,
 }) {
   coreConfig.value = coreConfig.value.copyWith(
     mixedPort: mixedPort,
@@ -139,7 +139,7 @@ void updateCoreConfig({
     externalController: externalController,
     externalControllerAddr: externalControllerAddr,
     portEnabled: portEnabled,
-    mixedSystemProxy: mixedSystemProxy,
+    systemProxy: systemProxy,
   );
   if (logLevel != null) {
     LogFileWriter.instance?.setMinLevel(logLevel);
@@ -160,14 +160,14 @@ Future<void> toggleTun(bool enable) async {
 Future<void> enableSystemProxy() async {
   if (!Constants.isDesktop) return;
   _updateConfig(
-    (c) => c.copyWith(mixedSystemProxy: true, tun: TunConfig(enable: false)),
+    (c) => c.copyWith(systemProxy: true, tun: TunConfig(enable: false)),
   );
   await asyncProfile();
 }
 
 Future<void> disableSystemProxy() async {
   if (!Constants.isDesktop) return;
-  _updateConfig((c) => c.copyWith(mixedSystemProxy: false));
+  _updateConfig((c) => c.copyWith(systemProxy: false));
   await asyncProfile();
 }
 
@@ -266,7 +266,7 @@ void _applyTunConfig(bool enable) {
   _updateConfig(
     (c) => c.copyWith(
       tun: TunConfig(enable: enable),
-      mixedSystemProxy: enable ? false : c.mixedSystemProxy,
+      systemProxy: enable ? false : c.systemProxy,
     ),
   );
 }
@@ -282,12 +282,12 @@ void ensureTunEnabled(bool enabled) {
 void ensureProxyMode(bool tunMode) {
   final cur = coreConfig.value;
   final curTun = cur.tun?.enable ?? false;
-  final curProxy = cur.mixedSystemProxy ?? false;
+  final curProxy = cur.systemProxy ?? false;
   if (curTun == tunMode && curProxy == !tunMode) return;
   _updateConfig(
     (c) => c.copyWith(
       tun: TunConfig(enable: tunMode),
-      mixedSystemProxy: !tunMode,
+      systemProxy: !tunMode,
     ),
   );
 }

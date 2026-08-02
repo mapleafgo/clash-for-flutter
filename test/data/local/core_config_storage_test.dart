@@ -49,7 +49,7 @@ void main() {
   test('set_system_proxy stored natively in mixed inbound', () {
     CoreConfigStorage.save(SingboxConfig(
       mixedPort: 7890,
-      mixedSystemProxy: true,
+      systemProxy: true,
     ));
     final raw = jsonDecode(
       File('${tmp.path}/config.json').readAsStringSync(),
@@ -61,7 +61,7 @@ void main() {
     expect(raw.containsKey('system_proxy'), isFalse);
 
     final loaded = CoreConfigStorage.load();
-    expect(loaded.mixedSystemProxy, isTrue);
+    expect(loaded.systemProxy, isTrue);
   });
 
   test('save with all-null sing-box fields produces no empty sections', () {

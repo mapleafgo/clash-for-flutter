@@ -141,7 +141,7 @@ SingboxConfig? _loadLegacyConfig() {
       externalController: val<bool>('external-controller'),
       externalControllerAddr: val<String>('external-controller-addr'),
       portEnabled: val<bool>('port-enabled'),
-      mixedSystemProxy: val<bool>('mixed-system-proxy'),
+      systemProxy: val<bool>('mixed-system-proxy'),
     );
   } catch (e) {
     LogFileWriter.instance?.log(
