@@ -14,6 +14,7 @@ import 'package:singcast/services/app_lifecycle.dart' show initTerminationHook;
 import 'package:singcast/services/core_reload.dart';
 import 'package:singcast/services/core_config.dart';
 import 'package:singcast/services/deep_link.dart';
+import 'package:singcast/services/migration.dart';
 import 'package:singcast/services/startup_service.dart'
     show autostartArg, enableAutostartArg, setAutoStart;
 import 'package:singcast/services/startup_checks.dart';
@@ -118,6 +119,9 @@ Future<void> _initApp() async {
   _log(
     '[startup] initCore: ${sw.elapsedMilliseconds}ms state=${LibCore.instance.stateSignal.peek()}',
   );
+
+  await migrateLegacy();
+  _log('[startup] migrateLegacy: ${sw.elapsedMilliseconds}ms');
 
   await initCoreConfig();
   _log('[startup] initCoreConfig: ${sw.elapsedMilliseconds}ms');
