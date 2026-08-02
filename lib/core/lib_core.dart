@@ -45,6 +45,8 @@ abstract class LibCorePlatform {
   Future<void> flushDNSCache();
   Future<void> triggerGC();
   Future<String> checkConfig(String content);
+  /// 将原始订阅内容（Clash YAML / URI 列表 / base64）转换为 sing-box JSON。
+  /// 转换失败抛异常，返回值为可直接保存的 JSON 字符串。
   Future<String> convert(String content);
   Future<String> getVersion();
   Future<void> connectVpn(

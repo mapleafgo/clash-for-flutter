@@ -145,7 +145,7 @@ void updateCoreConfig({
     LogFileWriter.instance?.setMinLevel(logLevel);
   }
   // 直接落盘，不依赖 _scheduleReload 里的持久化：无选中配置时
-  // _scheduleReload 会提前返回，这些设置将永远写不进 config.yaml。
+  // _scheduleReload 会提前返回，这些设置将永远写不进 config.json。
   _saveToDisk();
 }
 
