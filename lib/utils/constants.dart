@@ -4,7 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class Constants {
   static final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-  static late final Directory homeDir;
+  static late Directory homeDir;
 
   static const sourceUrl = "https://github.com/mapleafgo/singcast";
   static const coreRepoUrl = "https://github.com/mapleafgo/singcast-cli";

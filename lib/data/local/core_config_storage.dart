@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -5,7 +6,6 @@ import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
-import 'package:settings_yaml/settings_yaml.dart';
 
 class CoreConfigStorage {
   static String get _path =>
@@ -15,22 +15,32 @@ class CoreConfigStorage {
 
   static SingboxConfig load() {
     try {
-      final yaml = SettingsYaml.load(pathToSettings: _path);
+      final file = File(_path);
+      if (!file.existsSync()) return SingboxConfig();
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final inbound = _mixedInbound(json);
+      final clashApi =
+          (json['experimental'] as Map<String, dynamic>?)?['clash_api']
+              as Map<String, dynamic>?;
+      final dns = json['dns'] as Map<String, dynamic>?;
       return SingboxConfig(
-        mixedPort: yaml['mixed-port'] as int?,
-        allowLan: yaml['allow-lan'] as bool?,
-        // mode 必须持久化：内核消费配置的 mode 字段作为 default_mode（启动初始模式），
-        // 但内核运行时 SetMode 不写回配置文件，所以持久化由 Flutter 侧负责。
-        mode: _parseEnum(yaml['mode'], Mode.values),
-        logLevel: _parseEnum(yaml['log-level'], LogLevel.values),
-        ipv6: yaml['ipv6'] as bool?,
-        externalController: yaml['external-controller'] as bool?,
-        externalControllerAddr: yaml['external-controller-addr'] as String?,
-        portEnabled: yaml['port-enabled'] as bool?,
-        mixedSystemProxy: yaml['mixed-system-proxy'] as bool?,
+        mixedPort: (inbound?['listen_port'] as num?)?.toInt(),
+        allowLan: inbound != null && inbound['listen'] != '127.0.0.1',
+        mode: _parseEnum(
+          (clashApi?['default_mode'] as String?)?.toLowerCase(),
+          Mode.values,
+        ),
+        logLevel: _parseEnum(_logLevelName(json), LogLevel.values),
+        ipv6: dns?['strategy'] == null
+            ? null
+            : dns!['strategy'] == 'prefer_ipv6',
+        externalController: json['api_enabled'] as bool?,
+        externalControllerAddr:
+            clashApi?['external_controller'] as String?,
+        portEnabled: json['port_enabled'] as bool?,
+        mixedSystemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
       );
     } catch (e) {
-      // 配置损坏时回退默认值，留痕便于解释"端口/模式怎么变回默认了"
       LogFileWriter.instance?.log(
         'Failed to load core config, using defaults: $e',
         level: LogLevel.warning,
@@ -41,49 +51,84 @@ class CoreConfigStorage {
   }
 
   static void save(SingboxConfig config) {
-    SettingsYaml yaml;
-    try {
-      yaml = SettingsYaml.load(pathToSettings: _path);
-    } catch (e) {
-      // 配置文件损坏时 load 会抛异常，若不拦截会穿透到启动流程导致卡在闪屏。
-      // 清空重建：内存中的 config 就是完整状态，丢掉坏文件不损失有效数据。
-      LogFileWriter.instance?.log(
-        'core config unreadable, rebuilding: $e',
-        level: LogLevel.warning,
-        name: 'settings',
-      );
-      // 只重试一次，不递归：load 若持续失败（目录不可写等）会无限递归爆栈
-      File(_path).writeAsStringSync('');
-      yaml = SettingsYaml.load(pathToSettings: _path);
-    }
-    if (config.mixedPort != null) yaml['mixed-port'] = config.mixedPort;
-    if (config.allowLan != null) yaml['allow-lan'] = config.allowLan;
-    if (config.mode != null) yaml['mode'] = config.mode!.name;
-    if (config.logLevel != null) yaml['log-level'] = config.logLevel!.name;
-    if (config.ipv6 != null) yaml['ipv6'] = config.ipv6;
-    if (config.externalController != null) yaml['external-controller'] = config.externalController;
-    if (config.externalControllerAddr != null) yaml['external-controller-addr'] = config.externalControllerAddr;
-    if (config.portEnabled != null) yaml['port-enabled'] = config.portEnabled;
-    if (config.mixedSystemProxy != null) yaml['mixed-system-proxy'] = config.mixedSystemProxy;
-    yaml.save();
-  }
-
-  /// 将字符串解析为枚举值，无法匹配时返回 null。
-  static T? _parseEnum<T extends Enum>(dynamic value, List<T> values) {
-    if (value is! String) return null;
-    return values.where((e) => e.name == value).firstOrNull;
+    final json = <String, dynamic>{
+      if (config.logLevel != null)
+        'log': {'level': _singboxLogLevel(config.logLevel!)},
+      'inbounds': [
+        {
+          'type': 'mixed',
+          'tag': 'mixed-in',
+          'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
+          'listen_port':
+              config.mixedPort ?? Constants.defaultMixedPort,
+          if (config.mixedSystemProxy == true) 'set_system_proxy': true,
+        }
+      ],
+      'experimental': {
+        'clash_api': {
+          if (config.mode != null) 'default_mode': _modeName(config.mode!),
+          if (config.externalControllerAddr != null)
+            'external_controller': config.externalControllerAddr,
+        },
+      },
+      if (config.ipv6 != null)
+        'dns': {'strategy': config.ipv6! ? 'prefer_ipv6' : 'ipv4_only'},
+      'port_enabled': config.portEnabled ?? false,
+      'api_enabled': config.externalController ?? false,
+    };
+    File(_path)
+        .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
   }
 
   static void createDefault() {
     final file = File(_path);
-    // 仅在配置文件不存在时写入默认值。
-    // writeAsStringSync 默认 FileMode.write 是覆盖写法，若不加守卫会清空
-    // 用户已保存的内核配置，导致每次启动配置"丢失"。
     if (file.existsSync()) return;
-    try {
-      file.writeAsStringSync('mixed-port: ${Constants.defaultMixedPort}\n');
-    } on FileSystemException catch (_) {
-      // 目录不可写或并发创建时忽略
+    // 旧版标记存在时交给迁移入口处理，避免抢先创建 config.json
+    if (File(p.join(Constants.homeDir.path, 'config.yaml')).existsSync()) {
+      return;
     }
+    try {
+      file.writeAsStringSync(jsonEncode({
+        'inbounds': [
+          {
+            'type': 'mixed',
+            'tag': 'mixed-in',
+            'listen': '127.0.0.1',
+            'listen_port': Constants.defaultMixedPort,
+          }
+        ],
+        'port_enabled': false,
+        'api_enabled': false,
+      }));
+    } on FileSystemException catch (_) {}
+  }
+
+  static Map<String, dynamic>? _mixedInbound(Map<String, dynamic> json) {
+    final list = json['inbounds'] as List?;
+    if (list == null) return null;
+    for (final item in list) {
+      if (item is Map<String, dynamic> && item['type'] == 'mixed') {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  static String? _logLevelName(Map<String, dynamic> json) {
+    final log = json['log'] as Map<String, dynamic>?;
+    final level = log?['level'] as String?;
+    if (level == 'warn') return 'warning';
+    return level;
+  }
+
+  static String _singboxLogLevel(LogLevel level) =>
+      level == LogLevel.warning ? 'warn' : level.name;
+
+  static String _modeName(Mode mode) =>
+      mode.name[0].toUpperCase() + mode.name.substring(1);
+
+  static T? _parseEnum<T extends Enum>(dynamic value, List<T> values) {
+    if (value is! String) return null;
+    return values.where((e) => e.name == value).firstOrNull;
   }
 }
