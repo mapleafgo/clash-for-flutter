@@ -38,7 +38,7 @@ class CoreConfigStorage {
         externalControllerAddr:
             clashApi?['external_controller'] as String?,
         portEnabled: json['port_enabled'] as bool?,
-        mixedSystemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
+        mixedSystemProxy: json['system_proxy'] as bool?,
       );
     } catch (e) {
       LogFileWriter.instance?.log(
@@ -51,31 +51,41 @@ class CoreConfigStorage {
   }
 
   static void save(SingboxConfig config) {
-    final json = <String, dynamic>{
-      if (config.logLevel != null)
-        'log': {'level': _singboxLogLevel(config.logLevel!)},
-      'inbounds': [
+    final json = <String, dynamic>{};
+
+    // sing-box 字段：仅在有值时写入
+    if (config.logLevel != null) {
+      json['log'] = {'level': _singboxLogLevel(config.logLevel!)};
+    }
+    if (config.mixedPort != null) {
+      json['inbounds'] = [
         {
           'type': 'mixed',
           'tag': 'mixed-in',
           'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
-          'listen_port':
-              config.mixedPort ?? Constants.defaultMixedPort,
-          if (config.mixedSystemProxy == true) 'set_system_proxy': true,
+          'listen_port': config.mixedPort,
         }
-      ],
-      'experimental': {
-        'clash_api': {
-          if (config.mode != null) 'default_mode': _modeName(config.mode!),
-          if (config.externalControllerAddr != null)
-            'external_controller': config.externalControllerAddr,
-        },
-      },
-      if (config.ipv6 != null)
-        'dns': {'strategy': config.ipv6! ? 'prefer_ipv6' : 'ipv4_only'},
-      'port_enabled': config.portEnabled ?? false,
-      'api_enabled': config.externalController ?? false,
-    };
+      ];
+    }
+    final clashApi = <String, dynamic>{};
+    if (config.mode != null) {
+      clashApi['default_mode'] = _modeName(config.mode!);
+    }
+    if (config.externalControllerAddr != null) {
+      clashApi['external_controller'] = config.externalControllerAddr;
+    }
+    if (clashApi.isNotEmpty) {
+      json['experimental'] = {'clash_api': clashApi};
+    }
+    if (config.ipv6 != null) {
+      json['dns'] = {'strategy': config.ipv6! ? 'prefer_ipv6' : 'ipv4_only'};
+    }
+
+    // 应用级开关（非 sing-box 字段，顶层存储）
+    json['port_enabled'] = config.portEnabled ?? false;
+    json['api_enabled'] = config.externalController ?? false;
+    json['system_proxy'] = config.mixedSystemProxy ?? false;
+
     File(_path)
         .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
   }
@@ -89,16 +99,9 @@ class CoreConfigStorage {
     }
     try {
       file.writeAsStringSync(jsonEncode({
-        'inbounds': [
-          {
-            'type': 'mixed',
-            'tag': 'mixed-in',
-            'listen': '127.0.0.1',
-            'listen_port': Constants.defaultMixedPort,
-          }
-        ],
         'port_enabled': false,
         'api_enabled': false,
+        'system_proxy': false,
       }));
     } on FileSystemException catch (_) {}
   }

@@ -46,6 +46,38 @@ void main() {
     expect(loaded.portEnabled, true);
   });
 
+  test('system_proxy stored as top-level field, not in inbound', () {
+    CoreConfigStorage.save(SingboxConfig(
+      mixedPort: 7890,
+      mixedSystemProxy: true,
+    ));
+    final raw = jsonDecode(
+      File('${tmp.path}/config.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    // set_system_proxy 不能出现在存储的 inbound 中
+    final inbound = (raw['inbounds'] as List).first as Map<String, dynamic>;
+    expect(inbound.containsKey('set_system_proxy'), isFalse);
+    // system_proxy 是顶层应用开关
+    expect(raw['system_proxy'], isTrue);
+
+    final loaded = CoreConfigStorage.load();
+    expect(loaded.mixedSystemProxy, isTrue);
+  });
+
+  test('save with all-null sing-box fields produces no empty sections', () {
+    CoreConfigStorage.save(SingboxConfig());
+    final raw = jsonDecode(
+      File('${tmp.path}/config.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    expect(raw.containsKey('inbounds'), isFalse);
+    expect(raw.containsKey('experimental'), isFalse);
+    expect(raw.containsKey('log'), isFalse);
+    expect(raw.containsKey('dns'), isFalse);
+    expect(raw['port_enabled'], isFalse);
+    expect(raw['api_enabled'], isFalse);
+    expect(raw['system_proxy'], isFalse);
+  });
+
   test('load returns defaults when file missing', () {
     final loaded = CoreConfigStorage.load();
     expect(loaded.mixedPort, isNull);
