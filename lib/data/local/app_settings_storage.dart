@@ -120,7 +120,7 @@ class AppStoredConfig {
     if (!autoCheckUpdate) 'auto-check-update': autoCheckUpdate,
     if (locale != null) 'locale': locale,
     if (autoStart) 'auto-start': autoStart,
-    if (tunStack != TunStack.gvisor) 'tun-stack': tunStack.name,
+    if (tunStack != TunStack.mixed) 'tun-stack': tunStack.name,
   };
 
   factory AppStoredConfig.empty() =>
@@ -155,9 +155,9 @@ class AppStoredConfig {
   );
 }
 
-/// 解析持久化的 tun-stack 字符串，未知值回退到默认 [TunStack.gvisor]。
+/// 解析持久化的 tun-stack 字符串，未知值回退到默认 [TunStack.mixed]。
 TunStack _parseTunStack(String? value) {
-  if (value == null) return TunStack.gvisor;
+  if (value == null) return TunStack.mixed;
   return TunStack.values
-      .firstWhere((e) => e.name == value, orElse: () => TunStack.gvisor);
+      .firstWhere((e) => e.name == value, orElse: () => TunStack.mixed);
 }

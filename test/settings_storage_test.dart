@@ -34,9 +34,9 @@ void main() {
   });
 
   group('AppStoredConfig tunStack', () {
-    test('fromJson 默认值为 gvisor', () {
+    test('fromJson 默认值为 mixed', () {
       final config = AppStoredConfig.fromJson({});
-      expect(config.tunStack, TunStack.gvisor);
+      expect(config.tunStack, TunStack.mixed);
     });
 
     test('fromJson 正确读取 mixed', () {
@@ -49,18 +49,18 @@ void main() {
       expect(config.tunStack, TunStack.system);
     });
 
-    test('fromJson 未知值回退到 gvisor', () {
+    test('fromJson 未知值回退到 mixed', () {
       final config = AppStoredConfig.fromJson({'tun-stack': 'unknown'});
-      expect(config.tunStack, TunStack.gvisor);
+      expect(config.tunStack, TunStack.mixed);
     });
 
     test('toJson 在非默认值时写入 tun-stack', () {
-      final config = AppStoredConfig.empty().copyWith(tunStack: TunStack.mixed);
+      final config = AppStoredConfig.empty().copyWith(tunStack: TunStack.gvisor);
       final json = config.toJson();
-      expect(json['tun-stack'], 'mixed');
+      expect(json['tun-stack'], 'gvisor');
     });
 
-    test('toJson 在默认 gvisor 时省略 tun-stack', () {
+    test('toJson 在默认 mixed 时省略 tun-stack', () {
       final config = AppStoredConfig.empty();
       final json = config.toJson();
       expect(json.containsKey('tun-stack'), false);

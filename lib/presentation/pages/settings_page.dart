@@ -165,6 +165,7 @@ class SettingsPage extends StatelessWidget {
               label: t.settings.ruleSetProxy,
               description: t.settings.ruleSetProxyDesc,
               value: ruleSetProxy.value,
+              allowEmpty: true,
               onChanged: (v) => ruleSetProxy.value = v,
             ),
             l10nBuilder((context) {
@@ -291,11 +292,14 @@ class _UrlTile extends StatelessWidget {
   final String? description;
   final String value;
   final ValueChanged<String> onChanged;
+  /// 是否允许清空为空白，空值语义由调用方定义（如 ruleSetProxy 空 = 直连）。
+  final bool allowEmpty;
   const _UrlTile({
     required this.label,
     this.description,
     required this.value,
     required this.onChanged,
+    this.allowEmpty = false,
   });
 
   @override
@@ -310,7 +314,7 @@ class _UrlTile extends StatelessWidget {
           description: description,
           initialValue: value,
         );
-        if (result != null && result.isNotEmpty) onChanged(result);
+        if (result != null && (result.isNotEmpty || allowEmpty)) onChanged(result);
       },
     );
   }
