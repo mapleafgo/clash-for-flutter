@@ -152,7 +152,7 @@ class _ProfilesPageState extends State<ProfilesPage> {
   Future<void> _addFromFile(BuildContext context) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['yaml', 'yml', 'json'],
+      allowedExtensions: ['yaml', 'yml', 'json', 'txt'],
     );
     if (result == null || result.files.isEmpty) return;
     final sourcePath = result.files.single.path;
