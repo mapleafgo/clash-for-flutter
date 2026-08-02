@@ -1,3 +1,4 @@
+# workflow 触发器：release published 或手动 workflow_dispatch
 name: Build & Release
 
 on:
