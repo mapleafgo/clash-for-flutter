@@ -46,8 +46,8 @@
 ### 下载与转换
 
 1. `downloadSubscription` 下载原文。
-2. base64 的节点 URI 列表按现有逻辑先解码为 Clash YAML 中间态；其余内容保持原文。
-3. 统一调用 `LibCore.convert()` 得到 sing-box JSON。
+2. 先按内容形态解码：base64 内容（节点 URI 列表或 base64 包裹的配置）先解码；解码出的节点 URI 列表按现有逻辑组装为 Clash YAML 中间态。
+3. 无论原始内容、解码结果是 Clash YAML、节点 URI 中间态还是 sing-box JSON，一律调用 `LibCore.convert()` 转成 sing-box JSON。JSON 也走转换，为后续处理保留统一入口。
 4. 保存为 `.json` 文件（文件名生成改为 `$ms.json`）。
 5. 校验改为对转换后的 JSON 调用 `checkConfig`；转换失败或校验失败均抛错并清理文件。
 
@@ -69,6 +69,7 @@
 ### 文件与字段
 
 - `config.yaml` → `config.json`（`Constants.clashConfig` 改为 sing-box 命名）。
+- `CoreConfigStorage` 只读写 `config.json`，不包含旧 `config.yaml` 的读取逻辑。
 - 存储为 sing-box 字段结构的 JSON，例如：
 
 ```json
@@ -96,20 +97,18 @@
 - TUN 仍不持久化，行为与现状一致。
 - `mergedConfigCache` 改为 `cache-merged.json`。
 
-### 迁移
-
-`CoreConfigStorage` 支持读取旧 `config.yaml`：读出后转换为新 JSON 保存并删除旧文件。`createDefault` 改为创建 `config.json`。
+`createDefault` 改为创建 `config.json`。
 
 ## 统一迁移入口
 
-新增 `migrateLegacy()`，在启动流程中位于 `initAppConfig()` 之后、`startWatchingSelectedFile()` 之前执行，此时内核已就绪、profiles 已加载。
+新增统一入口 `migrateLegacy()`，在启动最早阶段（任何设置读取之前）开始执行：
 
 检测方式：仅当 `config.yaml` 存在时执行迁移，否则直接跳过。
 
 迁移内容：
 
-1. 设置存储：`config.yaml` → `config.json`。
-2. 订阅：遍历 profiles 中 `.yaml`/`.yml` 文件：
+1. 设置存储：`config.yaml` → `config.json`。此步骤必须最先执行，位于 `CoreConfigStorage.load()` 之前，迁移完成前不读取任何设置。
+2. 订阅：在内核就绪、profiles 加载后，遍历 profiles 中 `.yaml`/`.yml` 文件：
    - URL 型：重新拉取订阅，走新的下载 → 转换 → 保存 `.json` 链路。
    - 文件型：读取本地文件，调用 `core.convert` 转 JSON 保存，更新 profile 文件名。
 3. 全部完成后删除 `config.yaml`（作为完成标记，下次启动不再触发）。
