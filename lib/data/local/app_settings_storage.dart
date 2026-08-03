@@ -37,9 +37,7 @@ class AppSettingsStorage {
     // 先写临时文件再 rename 原子替换，避免写入中途崩溃产生半截 JSON。
     final tmp = File('${_file.path}.tmp');
     tmp.createSync(recursive: true);
-    tmp.writeAsStringSync(
-      const JsonEncoder.withIndent('  ').convert(settings),
-    );
+    tmp.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(settings));
     tmp.renameSync(_file.path);
   }
 
@@ -74,6 +72,7 @@ class AppStoredConfig {
   final String? locale;
   final bool autoStart;
   final TunStack tunStack;
+  final String ruleSetProxy;
 
   AppStoredConfig({
     this.selectedFile,
@@ -87,7 +86,9 @@ class AppStoredConfig {
     this.locale,
     this.autoStart = false,
     this.tunStack = TunStack.mixed,
-  }) : subUA = subUA ?? Defaults.subUA;
+    String? ruleSetProxy,
+  }) : subUA = subUA ?? Defaults.subUA,
+       ruleSetProxy = ruleSetProxy ?? Defaults.ruleSetProxy;
 
   factory AppStoredConfig.fromJson(Map<String, dynamic> json) =>
       AppStoredConfig(
@@ -107,6 +108,7 @@ class AppStoredConfig {
         locale: json['locale'] as String?,
         autoStart: json['auto-start'] as bool? ?? false,
         tunStack: _parseTunStack(json['tun-stack'] as String?),
+        ruleSetProxy: json['rule-set-proxy'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -121,6 +123,7 @@ class AppStoredConfig {
     if (locale != null) 'locale': locale,
     if (autoStart) 'auto-start': autoStart,
     if (tunStack != TunStack.mixed) 'tun-stack': tunStack.name,
+    if (ruleSetProxy != Defaults.ruleSetProxy) 'rule-set-proxy': ruleSetProxy,
   };
 
   factory AppStoredConfig.empty() =>
@@ -138,6 +141,7 @@ class AppStoredConfig {
     String? locale,
     bool? autoStart,
     TunStack? tunStack,
+    String? ruleSetProxy,
   }) => AppStoredConfig(
     selectedFile: selectedFile ?? this.selectedFile,
     profiles: profiles ?? this.profiles,
@@ -152,12 +156,15 @@ class AppStoredConfig {
     locale: locale ?? this.locale,
     autoStart: autoStart ?? this.autoStart,
     tunStack: tunStack ?? this.tunStack,
+    ruleSetProxy: ruleSetProxy ?? this.ruleSetProxy,
   );
 }
 
 /// 解析持久化的 tun-stack 字符串，未知值回退到默认 [TunStack.mixed]。
 TunStack _parseTunStack(String? value) {
   if (value == null) return TunStack.mixed;
-  return TunStack.values
-      .firstWhere((e) => e.name == value, orElse: () => TunStack.mixed);
+  return TunStack.values.firstWhere(
+    (e) => e.name == value,
+    orElse: () => TunStack.mixed,
+  );
 }

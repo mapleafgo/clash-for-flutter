@@ -22,20 +22,22 @@ final tunIf = signal<bool?>(null);
 final subUA = signal(Defaults.subUA);
 final ruleSetProxy = signal(Defaults.ruleSetProxy);
 final autoCheckUpdate = signal(true);
+
 /// 开机自启动设置（仅桌面端有效）。
 final autoStart = signal(false);
+
 /// TUN 协议栈选择（仅桌面端 TUN 模式生效）。
 final tunStack = signal(TunStack.mixed);
+
 /// 应用语言设置。null = 跟随系统。
 final appLocale = signal<String?>(null);
+
 /// 语言版本号，每次 locale 变化递增，用于触发全局 UI 重建。
 final localeVersion = signal(0);
 
 /// 自动追踪 [localeVersion] 的 SignalBuilder，用于显示 i18n 文本 (t.xxx) 的场景。
-Widget l10nBuilder(WidgetBuilder builder) => SignalBuilder(
-      dependencies: [localeVersion],
-      builder: builder,
-    );
+Widget l10nBuilder(WidgetBuilder builder) =>
+    SignalBuilder(dependencies: [localeVersion], builder: builder);
 final initError = signal<String?>(null);
 final vpnConnected = signal(false);
 
@@ -51,6 +53,7 @@ void initAppConfig() {
   delayTestUrl.value = stored.delayTestUrl;
   tunIf.value = stored.tunIf ?? !Constants.isDesktop;
   subUA.value = stored.subUA;
+  ruleSetProxy.value = stored.ruleSetProxy;
   autoCheckUpdate.value = stored.autoCheckUpdate;
   autoStart.value = stored.autoStart;
   tunStack.value = stored.tunStack;
@@ -69,8 +72,9 @@ void initAppConfig() {
     localeVersion.value++;
     // 通知 Android 重建通知栏文本（iOS 无前台服务通知栏，不调用）
     if (Platform.isAndroid) {
-      const MethodChannel(Constants.methodChannelName)
-          .invokeMethod('updateNotification', {'locale': appLocale.value});
+      const MethodChannel(
+        Constants.methodChannelName,
+      ).invokeMethod('updateNotification', {'locale': appLocale.value});
     }
   });
 }
@@ -118,6 +122,7 @@ void _startAutoSave() {
     delayTestUrl.value;
     tunIf.value;
     subUA.value;
+    ruleSetProxy.value;
     themeMode.value;
     autoCheckUpdate.value;
     autoStart.value;
@@ -133,32 +138,43 @@ void _save() {
   // ignored-version 不在内存 signal 里，保存前先从磁盘取回：
   // 否则这次整份覆盖写会把用户点的"忽略此版本"抹掉，导致每次启动都弹更新框。
   final stored = AppStoredConfig.fromJson(AppSettingsStorage.load());
-  AppSettingsStorage.save(AppStoredConfig(
-    ignoredVersion: stored.ignoredVersion,
-    selectedFile: selectedFile.value,
-    profiles: profiles.value,
-    delayTestUrl: delayTestUrl.value,
-    tunIf: tunIf.value,
-    subUA: subUA.value,
-    themeMode: themeMode.value?.name,
-    autoCheckUpdate: autoCheckUpdate.value,
-    autoStart: autoStart.value,
-    locale: appLocale.value,
-    tunStack: tunStack.value,
-  ).toJson());
+  AppSettingsStorage.save(
+    AppStoredConfig(
+      ignoredVersion: stored.ignoredVersion,
+      selectedFile: selectedFile.value,
+      profiles: profiles.value,
+      delayTestUrl: delayTestUrl.value,
+      tunIf: tunIf.value,
+      subUA: subUA.value,
+      ruleSetProxy: ruleSetProxy.value,
+      themeMode: themeMode.value?.name,
+      autoCheckUpdate: autoCheckUpdate.value,
+      autoStart: autoStart.value,
+      locale: appLocale.value,
+      tunStack: tunStack.value,
+    ).toJson(),
+  );
 }
 
 void _startSubUpdateTimer() {
   _subUpdateTimer?.cancel();
-  _subUpdateTimer = Timer.periodic(const Duration(hours: 1), (_) => checkSubUpdates());
+  _subUpdateTimer = Timer.periodic(
+    const Duration(hours: 1),
+    (_) => checkSubUpdates(),
+  );
 }
 
 Future<void> checkSubUpdates() async {
   final now = DateTime.now();
-  final expired = profiles.value.where(
-    (e) => e.type == ProfileType.url && e.url != null && e.interval > 0
-        && now.isAfter(e.time.add(Duration(hours: e.interval))),
-  ).toList();
+  final expired = profiles.value
+      .where(
+        (e) =>
+            e.type == ProfileType.url &&
+            e.url != null &&
+            e.interval > 0 &&
+            now.isAfter(e.time.add(Duration(hours: e.interval))),
+      )
+      .toList();
   for (final profile in expired) {
     try {
       await refreshProfile(profile);
@@ -201,7 +217,6 @@ Future<Profile> refreshProfile(Profile old) async {
   }
   return updated;
 }
-
 
 String get profilesFullPath =>
     p.join(Constants.homeDir.path, Constants.profilesDir);

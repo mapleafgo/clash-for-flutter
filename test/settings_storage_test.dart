@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:singcast/data/local/app_settings_storage.dart';
 import 'package:singcast/domain/enums.dart';
+import 'package:singcast/utils/constants.dart';
 
 void main() {
   group('AppStoredConfig autoStart', () {
@@ -55,7 +56,9 @@ void main() {
     });
 
     test('toJson 在非默认值时写入 tun-stack', () {
-      final config = AppStoredConfig.empty().copyWith(tunStack: TunStack.gvisor);
+      final config = AppStoredConfig.empty().copyWith(
+        tunStack: TunStack.gvisor,
+      );
       final json = config.toJson();
       expect(json['tun-stack'], 'gvisor');
     });
@@ -67,9 +70,45 @@ void main() {
     });
 
     test('copyWith 保留原值', () {
-      final config = AppStoredConfig.empty().copyWith(tunStack: TunStack.system);
+      final config = AppStoredConfig.empty().copyWith(
+        tunStack: TunStack.system,
+      );
       final copied = config.copyWith();
       expect(copied.tunStack, TunStack.system);
+    });
+  });
+
+  group('AppStoredConfig ruleSetProxy', () {
+    test('fromJson 默认值取 Defaults.ruleSetProxy', () {
+      final config = AppStoredConfig.fromJson({});
+      expect(config.ruleSetProxy, Defaults.ruleSetProxy);
+    });
+
+    test('fromJson 正确读取 rule-set-proxy', () {
+      final config = AppStoredConfig.fromJson({
+        'rule-set-proxy': 'https://example.com',
+      });
+      expect(config.ruleSetProxy, 'https://example.com');
+    });
+
+    test('toJson 在非默认值时写入 rule-set-proxy', () {
+      final config = AppStoredConfig.empty().copyWith(
+        ruleSetProxy: 'https://example.com',
+      );
+      expect(config.toJson()['rule-set-proxy'], 'https://example.com');
+    });
+
+    test('toJson 在默认值时省略 rule-set-proxy', () {
+      final config = AppStoredConfig.empty();
+      expect(config.toJson().containsKey('rule-set-proxy'), false);
+    });
+
+    test('copyWith 保留原值', () {
+      final config = AppStoredConfig.empty().copyWith(
+        ruleSetProxy: 'https://example.com',
+      );
+      final copied = config.copyWith();
+      expect(copied.ruleSetProxy, 'https://example.com');
     });
   });
 }
