@@ -41,6 +41,9 @@ class SingcastVpnService : VpnService() {
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
+        /// 磁贴主动断开的 action：断开到完全直连（不复用 ACTION_DISCONNECT_NOTIFY
+        /// 那条回退非 VPN 代理的逻辑）。
+        const val ACTION_DISCONNECT_TILE = "cn.mapleafgo.singcast.DISCONNECT_TILE"
         private const val TAG = "SingcastVpn"
 
         @Volatile
@@ -114,6 +117,11 @@ class SingcastVpnService : VpnService() {
                     }
                     stopSelf()
                 }, "vpn-disconnect").start()
+            }
+            ACTION_DISCONNECT_TILE -> {
+                AppLog.i(TAG, "onStartCommand: DISCONNECT (tile)")
+                disconnect("tile_disconnect")
+                stopSelf()
             }
         }
         return START_NOT_STICKY
