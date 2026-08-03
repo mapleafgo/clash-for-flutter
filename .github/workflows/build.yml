@@ -20,7 +20,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.44.1"
-  CORE_VERSION: "v1.1.22"
+  CORE_VERSION: "v1.2.0-a"
   # pubspec.lock 由该镜像生成；CI 必须使用同源，避免 Pub 重解析并升级依赖。
   PUB_HOSTED_URL: "https://pub.flutter-io.cn"
   VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}

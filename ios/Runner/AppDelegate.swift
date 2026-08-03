@@ -106,10 +106,12 @@ class AppDelegate: FlutterAppDelegate {
 
         // --- Local subscription convert (Runner FFI, no VPN required) ---
         case "convert":
-            do {
-                result(try converter.convert(args["content"] as? String ?? ""))
-            } catch {
-                result(FlutterError(code: "CONVERT_ERROR", message: "\(error)", details: nil))
+            var err: NSError?
+            let converted = converter.convert(args["content"] as? String ?? "", error: &err)
+            if let err = err {
+                result(FlutterError(code: "CONVERT_ERROR", message: err.localizedDescription, details: nil))
+            } else {
+                result(converted)
             }
 
         default:

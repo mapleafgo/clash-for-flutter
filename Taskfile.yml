@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  VERSION: 1.1.17
+  VERSION: 1.2.0-a
   PKGNAME: singcast
   BUNDLE: build/linux/x64/release/bundle
   DIST: dist
