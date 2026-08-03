@@ -46,6 +46,7 @@ android {
 
   sourceSets {
     main.java.srcDirs += 'src/main/kotlin'
+    test.java.srcDirs += 'src/test/kotlin'
   }
 
   defaultConfig {
@@ -80,4 +81,6 @@ flutter {
 
 dependencies {
   implementation files('libs/libsingcast.aar')
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'org.json:json:20240303'
 }
