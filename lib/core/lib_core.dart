@@ -16,7 +16,8 @@ import 'ipc_worker.dart';
 import 'ios_vpn_bridge.dart';
 import 'lib_core_channel.dart';
 import 'service_manager.dart';
-export 'service_manager.dart' show LinuxServiceManager, UnixServiceManager;
+export 'service_manager.dart'
+    show LinuxServiceManager, UnixServiceManager, LinuxCoreRunMode, linuxRunChannelFor;
 
 abstract class LibCorePlatform {
   Future<void> init();
@@ -429,6 +430,157 @@ class LibCore {
       await syncKernelState();
       await onProcessReady?.call();
     });
+  }
+
+  /// Linux 运行通道切换：停止当前内核、启动目标通道内核、重连 IPC。
+  ///
+  /// 切换期间 stateSignal 保持 starting；失败时回滚到原通道并恢复原状态后
+  /// 重新抛出。成功后 onProcessReady 会被调用，由调用方继续下发新配置。
+  Future<void> switchLinuxChannel(LinuxCoreRunMode target) async {
+    final sm = _serviceManager;
+    if (!Constants.isDesktop ||
+        !Platform.isLinux ||
+        sm is! LinuxServiceManager) {
+      return;
+    }
+    await _exclusive('switch-channel', () async {
+      final currentMode = sm.runMode;
+      if (currentMode == target) {
+        if (target == LinuxCoreRunMode.direct) {
+          sm.requestDirectRun();
+        }
+        return;
+      }
+      final previousMode = currentMode;
+      final previousState = stateSignal.peek();
+      final sw = Stopwatch()..start();
+      LogFileWriter.instance?.log(
+        'switch Linux channel start: target=${target.name} '
+        'current=${previousMode.name} state=$previousState',
+        name: 'ipc',
+      );
+      stateSignal.value = kStateStarting;
+      _clearRuntimeState();
+      try {
+        await _restartLinuxChannel(sm, target);
+        await syncKernelState();
+        LogFileWriter.instance?.log(
+          'switch Linux channel done: target=${target.name} '
+          'elapsed_ms=${sw.elapsedMilliseconds}',
+          name: 'ipc',
+        );
+        try {
+          await onProcessReady?.call();
+        } catch (e) {
+          LogFileWriter.instance?.log(
+            'onProcessReady after channel switch failed: $e',
+            level: LogLevel.warning,
+            name: 'ipc',
+          );
+        }
+      } catch (e) {
+        LogFileWriter.instance?.log(
+          'switch Linux channel to ${target.name} failed: $e, '
+          'rolling back to ${previousMode.name}, '
+          'elapsed_ms=${sw.elapsedMilliseconds}',
+          level: LogLevel.error,
+          name: 'ipc',
+        );
+        await _rollbackLinuxChannel(sm, previousMode, previousState);
+        rethrow;
+      }
+    });
+  }
+
+  /// 停止当前通道内核、启动目标通道内核并重连 IPC（不触发配置下发）。
+  Future<void> _restartLinuxChannel(
+    LinuxServiceManager sm,
+    LinuxCoreRunMode target,
+  ) async {
+    try {
+      await stopCore().timeout(const Duration(seconds: 5));
+    } catch (_) {}
+    await _ipcWorker?.disconnect();
+    await sm.stop();
+    LogFileWriter.instance?.log(
+      'switch Linux channel: old core stopped (mode=${sm.runMode.name})',
+      name: 'ipc',
+    );
+
+    if (target == LinuxCoreRunMode.direct) {
+      sm.requestDirectRun();
+    } else if (!await sm.isReady()) {
+      if (!await sm.setup()) {
+        throw StateError('Failed to install system service');
+      }
+    } else if (sm.isDegradedRun) {
+      if (!await sm.reinstallForCurrentUser()) {
+        throw StateError('Failed to refresh system service ACL');
+      }
+    } else {
+      sm.markSystemRun();
+    }
+
+    await _rebindIpcWorker(sm.ipcPath);
+    if (!await sm.start()) {
+      throw StateError('Failed to start ${target.name} core');
+    }
+    if (!await _connectWithRetry(attempts: 20)) {
+      throw StateError('Failed to connect IPC after channel switch');
+    }
+    LogFileWriter.instance?.log(
+      'switch Linux channel: ${target.name} core started and IPC reconnected',
+      name: 'ipc',
+    );
+  }
+
+  /// 切换失败后恢复原通道并重连 IPC；原状态为 running 时同步回 running。
+  Future<void> _rollbackLinuxChannel(
+    LinuxServiceManager sm,
+    LinuxCoreRunMode previous,
+    String previousState,
+  ) async {
+    final sw = Stopwatch()..start();
+    try {
+      await _ipcWorker?.disconnect();
+      await sm.stop();
+      if (previous == LinuxCoreRunMode.system) {
+        sm.markSystemRun();
+      } else {
+        sm.requestDirectRun();
+      }
+      await _rebindIpcWorker(sm.ipcPath);
+      if (!await sm.start()) {
+        throw StateError('Failed to rollback to ${previous.name} core');
+      }
+      if (!await _connectWithRetry(attempts: 20)) {
+        throw StateError('Failed to connect IPC after rollback');
+      }
+      await syncKernelState(fallback: previousState);
+      try {
+        await onProcessReady?.call();
+      } catch (e) {
+        LogFileWriter.instance?.log(
+          'onProcessReady after rollback failed: $e',
+          level: LogLevel.warning,
+          name: 'ipc',
+        );
+      }
+      LogFileWriter.instance?.log(
+        'switch Linux channel rolled back to ${previous.name}, '
+        'elapsed_ms=${sw.elapsedMilliseconds}',
+        level: LogLevel.warning,
+        name: 'ipc',
+      );
+    } catch (e) {
+      stateSignal.value = kStateDestroyed;
+      LogFileWriter.instance?.log(
+        'rollback Linux channel failed: $e, '
+        'elapsed_ms=${sw.elapsedMilliseconds}',
+        level: LogLevel.error,
+        name: 'ipc',
+      );
+    }
   }
 
   /// One-time privilege setup for TUN mode.

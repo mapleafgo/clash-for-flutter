@@ -6,6 +6,10 @@ import 'service_manager.dart';
 /// Linux core 实际运行通道。
 enum LinuxCoreRunMode { system, direct }
 
+/// TUN 模式走系统服务通道，系统代理走 GUI 用户进程通道。
+LinuxCoreRunMode linuxRunChannelFor({required bool tunMode}) =>
+    tunMode ? LinuxCoreRunMode.system : LinuxCoreRunMode.direct;
+
 /// Linux: systemd 服务 + polkit。
 class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
   final String homeDir;
@@ -19,10 +23,16 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
   /// 当前实际运行模式。fallback 直跑后为 direct，避免 stop 误走 systemctl。
   LinuxCoreRunMode _runMode = LinuxCoreRunMode.direct;
 
+  /// 系统代理显式要求直跑；isReady 探测时不要切回 system，也不算降级。
+  bool _directRequested = false;
+
   /// 是否已发生过降级直跑；isReady 探测时不要自动切回 system。
   bool _degradedSticky = false;
 
   int? _directPid;
+
+  /// 当前实际运行通道。
+  LinuxCoreRunMode get runMode => _runMode;
 
   @override
   String get ipcPath {
@@ -36,19 +46,37 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
   bool get isUnitInstalled => _unitInstalled;
 
   /// unit 已装但当前直跑（ACL/连接失败后的降级态）。
+  /// 系统代理显式要求的直跑不算降级。
   bool get isDegradedRun =>
-      _unitInstalled && _runMode == LinuxCoreRunMode.direct;
+      _unitInstalled &&
+      _runMode == LinuxCoreRunMode.direct &&
+      !_directRequested;
 
   /// 标记当前为系统服务运行，清除降级 sticky。
   void markSystemRun() {
     _runMode = LinuxCoreRunMode.system;
+    _directRequested = false;
     _degradedSticky = false;
   }
 
-  /// 标记当前为降级直跑。若 unit 已装，设置 sticky 防止 isReady 自动切回 system。
-  void markDirectRun() {
+  /// 系统代理通道：显式要求直跑，isReady 不再切回 system。
+  void requestDirectRun() {
     _runMode = LinuxCoreRunMode.direct;
-    if (_unitInstalled) _degradedSticky = true;
+    _directRequested = true;
+    _degradedSticky = false;
+  }
+
+  /// 标记当前为直跑。系统代理直跑为 intentional；否则若 unit 已装，
+  /// 设置 sticky 防止 isReady 自动切回 system。
+  void markDirectRun({bool intentional = false}) {
+    _runMode = LinuxCoreRunMode.direct;
+    if (intentional) {
+      _directRequested = true;
+      _degradedSticky = false;
+    } else {
+      _directRequested = false;
+      if (_unitInstalled) _degradedSticky = true;
+    }
   }
 
   @override
@@ -63,6 +91,10 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
       if (!ready) {
         _runMode = LinuxCoreRunMode.direct;
         _degradedSticky = false;
+        _directRequested = false;
+      } else if (_directRequested) {
+        // 系统代理：unit 在也保持用户进程通道
+        _runMode = LinuxCoreRunMode.direct;
       } else if (!_degradedSticky) {
         // 冷启动：unit 在且未降级过，优先系统服务
         _runMode = LinuxCoreRunMode.system;
@@ -122,6 +154,7 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
     _unitInstalled = false;
     _runMode = LinuxCoreRunMode.direct;
     _degradedSticky = false;
+    _directRequested = false;
   }
 
   @override
@@ -158,7 +191,7 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
         homeDir,
       ], mode: ProcessStartMode.detached);
       _directPid = _directProcess?.pid;
-      markDirectRun();
+      markDirectRun(intentional: _directRequested);
       return true;
     } catch (e) {
       logMsg('startDirect failed: $e', level: LogLevel.error);

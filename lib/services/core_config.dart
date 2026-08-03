@@ -165,6 +165,11 @@ Future<void> toggleTun(bool enable) async {
 
 Future<void> enableSystemProxy() async {
   if (!Constants.isDesktop) return;
+  if (Platform.isLinux) {
+    await LibCore.instance.switchLinuxChannel(
+      linuxRunChannelFor(tunMode: false),
+    );
+  }
   _updateConfig(
     (c) => c.copyWith(systemProxy: true, tun: TunConfig(enable: false)),
   );
@@ -229,7 +234,12 @@ Future<void> disableTun() async {
 
 Future<void> _enableTunDesktop() async {
   final svc = LibCore.instance.serviceManager;
-  if (svc != null && !await svc.isReady()) {
+  if (Platform.isLinux) {
+    // 系统代理直跑时先切到 systemd 服务通道，再下发 TUN 配置
+    await LibCore.instance.switchLinuxChannel(
+      linuxRunChannelFor(tunMode: true),
+    );
+  } else if (svc != null && !await svc.isReady()) {
     final ok = await LibCore.instance.elevateService();
     if (!ok) {
       throw TunElevationException(t.core.elevationFailed);
@@ -240,15 +250,6 @@ Future<void> _enableTunDesktop() async {
       throw TunElevationException(e.message);
     }
     // restart → onProcessReady 已用 ensureProxyMode + asyncProfile 完成重载
-    return;
-  }
-  // unit 已装但当前降级直跑（ACL 缺当前 uid）：补一次 ACL 刷新
-  if (svc is LinuxServiceManager && svc.isDegradedRun) {
-    final ok = await svc.reinstallForCurrentUser();
-    if (!ok) {
-      throw TunElevationException(t.core.elevationFailed);
-    }
-    await LibCore.instance.restart();
     return;
   }
   _applyTunConfig(true);

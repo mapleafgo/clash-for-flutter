@@ -25,4 +25,26 @@ void main() {
     sm.markSystemRun();
     expect(sm.ipcPath, kLinuxSystemIpcPath);
   });
+
+  test('linuxRunChannelFor maps TUN to system and system proxy to direct', () {
+    expect(linuxRunChannelFor(tunMode: true), LinuxCoreRunMode.system);
+    expect(linuxRunChannelFor(tunMode: false), LinuxCoreRunMode.direct);
+  });
+
+  test('requestDirectRun switches system channel back to direct', () {
+    final sm = LinuxServiceManager('/tmp/home');
+    sm.markSystemRun();
+    expect(sm.runMode, LinuxCoreRunMode.system);
+    expect(sm.ipcPath, kLinuxSystemIpcPath);
+
+    sm.requestDirectRun();
+
+    expect(sm.runMode, LinuxCoreRunMode.direct);
+    expect(sm.ipcPath, ServiceManager.defaultIpcPath('/tmp/home'));
+    expect(sm.isDegradedRun, isFalse);
+
+    sm.markSystemRun();
+    expect(sm.runMode, LinuxCoreRunMode.system);
+    expect(sm.ipcPath, kLinuxSystemIpcPath);
+  });
 }
