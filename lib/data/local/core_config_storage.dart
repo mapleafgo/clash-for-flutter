@@ -55,28 +55,17 @@ class CoreConfigStorage {
 
     // sing-box 字段：仅在有值时写入
     if (config.logLevel != null) {
-      json['log'] = {'level': _singboxLogLevel(config.logLevel!)};
+      json['log'] = {'level': config.logLevel!.singboxName};
     }
     // mixed inbound：有端口或开了系统代理时写入（系统代理依赖端口）
     if (config.mixedPort != null || config.systemProxy == true) {
-      final inbound = <String, dynamic>{
-        'type': 'mixed',
-        'tag': 'mixed-in',
-        'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
-        'listen_port': config.mixedPort ?? Constants.defaultMixedPort,
-      };
-      if (config.systemProxy == true) {
-        inbound['set_system_proxy'] = true;
-      }
-      json['inbounds'] = [
-        inbound,
-      ];
+      json['inbounds'] = [config.toMixedInbound()];
     }
     // clash_api：仅在 API 开启时写入，与 mergeProfileConfig 下发逻辑一致
     if (config.apiEnabled) {
       final clashApi = <String, dynamic>{};
       if (config.mode != null) {
-        clashApi['default_mode'] = _modeName(config.mode!);
+        clashApi['default_mode'] = config.mode!.singboxName;
       }
       clashApi['external_controller'] = config.apiAddr;
       json['experimental'] = {'clash_api': clashApi};
@@ -125,13 +114,6 @@ class CoreConfigStorage {
     if (level == 'warn') return 'warning';
     return level;
   }
-
-  static String _singboxLogLevel(LogLevel level) =>
-      level == LogLevel.warning ? 'warn' : level.name;
-
-  static String _modeName(Mode mode) =>
-      mode.name[0].toUpperCase() + mode.name.substring(1);
-
   static T? _parseEnum<T extends Enum>(dynamic value, List<T> values) {
     if (value is! String) return null;
     return values.where((e) => e.name == value).firstOrNull;

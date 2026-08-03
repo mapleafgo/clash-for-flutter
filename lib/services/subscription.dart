@@ -13,7 +13,9 @@ import 'package:path/path.dart' as p;
 
 int _lastFileMs = 0;
 
-String _uniqueFileName() {
+/// 生成唯一 profile 文件名（基于毫秒时间戳，含同毫秒碰撞保护）。
+/// 供下载订阅与迁移转换共用。
+String uniqueProfileFileName() {
   var ms = DateTime.now().millisecondsSinceEpoch;
   if (ms == _lastFileMs) ms++;
   _lastFileMs = ms;
@@ -27,7 +29,7 @@ Future<Profile> downloadSubscription({
   String? name,
   int? interval,
 }) async {
-  final file = _uniqueFileName();
+  final file = uniqueProfileFileName();
   final savePath = p.join(profilesDir, file);
 
   // 确保 profiles 目录存在

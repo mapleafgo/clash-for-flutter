@@ -60,20 +60,20 @@ void startWatchingSelectedFile() {
   });
 }
 
-/// Merge the profile YAML with the app's [SingboxConfig] overrides,
+/// Merge the profile JSON with the app's [SingboxConfig] overrides,
 /// then hot-reload the core with the merged content.
 ///
 /// 内核支持热重载，切换订阅/配置变更无需重启内核。
 /// 提权重启等需要重启内核的场景由 enableTun 负责。
-Future<bool> _activateProfile(String yamlPath) {
+Future<bool> _activateProfile(String profilePath) {
   // 串行化：改端口武装的 1s 防抖定时器与手动开关代理可能并发下发两份配置，
   // 完成顺序不定会让内核最终跑旧配置。
   final previous = _activating;
   final next = previous == null
-      ? _doActivateProfile(yamlPath)
+      ? _doActivateProfile(profilePath)
       : previous
-            .then((_) => _doActivateProfile(yamlPath))
-            .catchError((_) => _doActivateProfile(yamlPath));
+            .then((_) => _doActivateProfile(profilePath))
+            .catchError((_) => _doActivateProfile(profilePath));
   _activating = next;
   next.whenComplete(() {
     if (identical(_activating, next)) _activating = null;
@@ -81,10 +81,10 @@ Future<bool> _activateProfile(String yamlPath) {
   return next;
 }
 
-Future<bool> _doActivateProfile(String yamlPath) async {
+Future<bool> _doActivateProfile(String profilePath) async {
   try {
-    final yamlContent = await File(yamlPath).readAsString();
-    final merged = mergeProfileConfig(yamlContent);
+    final profileContent = await File(profilePath).readAsString();
+    final merged = mergeProfileConfig(profileContent);
 
     final state = LibCore.instance.stateSignal.peek();
 
@@ -93,7 +93,7 @@ Future<bool> _doActivateProfile(String yamlPath) async {
     // 但不能只是丢弃——否则 UI 已显示"已开启代理"而内核从未收到该配置，
     // 流量实际在裸奔。挂起，等状态转 running 时由 flushPendingReload 补发。
     if (state == LibCore.kStateStarting) {
-      _pendingReloadPath = yamlPath;
+      _pendingReloadPath = profilePath;
       LogFileWriter.instance?.log(
         '_activateProfile: core is starting, deferring reload',
         level: LogLevel.debug,

@@ -77,8 +77,7 @@ void _updateConfig(SingboxConfig Function(SingboxConfig) updater) {
 Future<void> _syncModeToCore(Mode? mode) async {
   if (mode == null) return;
   try {
-    final modeStr = mode.name[0].toUpperCase() + mode.name.substring(1);
-    await LibCore.instance.setMode(modeStr);
+    await LibCore.instance.setMode(mode.singboxName);
     _updateConfig((c) => c.copyWith(mode: mode));
     LibCore.instance.modeSignal.value = mode.name;
   } catch (e) {
@@ -130,6 +129,13 @@ void updateCoreConfig({
   bool? portEnabled,
   bool? systemProxy,
 }) {
+  LogFileWriter.instance?.log(
+    'updateCoreConfig: port=$mixedPort allowLan=$allowLan mode=$mode '
+    'logLevel=$logLevel ipv6=$ipv6 api=$externalController '
+    'apiAddr=$externalControllerAddr portEnabled=$portEnabled '
+    'systemProxy=$systemProxy',
+    name: 'core_config',
+  );
   coreConfig.value = coreConfig.value.copyWith(
     mixedPort: mixedPort,
     allowLan: allowLan,
@@ -189,8 +195,8 @@ Future<void> enableTun() async {
     try {
       _reloadTimer?.cancel();
       _applyTunConfig(true);
-      final yamlContent = await File(path).readAsString();
-      final merged = mergeProfileConfig(yamlContent);
+      final profileContent = await File(path).readAsString();
+      final merged = mergeProfileConfig(profileContent);
       await LibCore.instance.connectVpn(
         merged,
         ruleSetProxy: ruleSetProxy.value,
@@ -319,13 +325,7 @@ String mergeProfileConfig(String jsonContent) {
 
   final portOn = config.userPortEnabled || config.systemProxyEnabled;
   if (portOn) {
-    inbounds.add({
-      'type': 'mixed',
-      'tag': 'mixed-in',
-      'listen': config.allowLan == true ? '0.0.0.0' : '127.0.0.1',
-      'listen_port': config.mixedPort ?? Constants.defaultMixedPort,
-      if (config.systemProxyEnabled) 'set_system_proxy': true,
-    });
+    inbounds.add(config.toMixedInbound());
   }
 
   if (config.tun?.enable == true) {
@@ -352,9 +352,7 @@ String mergeProfileConfig(String jsonContent) {
   if (config.logLevel != null) {
     final log =
         (doc['log'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-    log['level'] = config.logLevel == LogLevel.warning
-        ? 'warn'
-        : config.logLevel!.name;
+    log['level'] = config.logLevel!.singboxName;
     doc['log'] = log;
   }
 
@@ -365,8 +363,7 @@ String mergeProfileConfig(String jsonContent) {
         (exp['clash_api'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     clashApi['external_controller'] = config.apiAddr;
     if (config.mode != null) {
-      clashApi['default_mode'] =
-          config.mode!.name[0].toUpperCase() + config.mode!.name.substring(1);
+      clashApi['default_mode'] = config.mode!.singboxName;
     }
     exp['clash_api'] = clashApi;
     doc['experimental'] = exp;

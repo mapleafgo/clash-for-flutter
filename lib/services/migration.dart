@@ -27,13 +27,26 @@ Future<void> migrateLegacy({
   final validator = validate ?? validateConfigFile;
 
   var failed = false;
+  final sw = Stopwatch()..start();
+  var yamlTotal = 0;
+  var yamlConverted = 0;
+  var yamlFailed = 0;
 
   // 1. 设置存储：旧 yaml → config.json
   try {
     final legacy = _loadLegacyConfig();
     if (legacy != null) {
       CoreConfigStorage.save(legacy);
+      LogFileWriter.instance?.log(
+        'migrate core config: config.yaml → config.json',
+        name: 'migrate',
+      );
     } else {
+      LogFileWriter.instance?.log(
+        'migrate core config: config.yaml parse returned null',
+        level: LogLevel.warning,
+        name: 'migrate',
+      );
       failed = true;
     }
   } catch (e) {
@@ -56,6 +69,7 @@ Future<void> migrateLegacy({
       migrated.add(profile);
       continue;
     }
+    yamlTotal++;
     final path = p.join(dir.path, profile.file);
     if (!File(path).existsSync()) {
       migrated.add(profile);
@@ -71,6 +85,7 @@ Future<void> migrateLegacy({
       await File(path).delete();
       migrated.add(next);
       changed = true;
+      yamlConverted++;
     } catch (e) {
       LogFileWriter.instance?.log(
         'legacy profile migration failed: ${profile.file}: $e',
@@ -78,12 +93,20 @@ Future<void> migrateLegacy({
         name: 'migrate',
       );
       failed = true;
+      yamlFailed++;
       migrated.add(profile);
     }
   }
   if (changed) {
     AppSettingsStorage.save(storedConfig.copyWith(profiles: migrated).toJson());
   }
+
+  LogFileWriter.instance?.log(
+    'migrate profiles: $yamlTotal yaml, $yamlConverted converted, '
+    '$yamlFailed failed in ${sw.elapsedMilliseconds}ms, '
+    'marker ${failed ? "kept" : "deleted"}',
+    name: 'migrate',
+  );
 
   // 3. 完成标记：全部成功才删除，失败保留以便下次启动重试
   if (!failed) {
@@ -107,7 +130,7 @@ Future<Profile> _convertLocalFile({
 }) async {
   final content = await File(p.join(dir.path, profile.file)).readAsString();
   final jsonContent = await converter(content);
-  final file = '${DateTime.now().millisecondsSinceEpoch}.json';
+  final file = uniqueProfileFileName();
   await File(p.join(dir.path, file)).writeAsString(jsonContent);
   await validator(p.join(dir.path, file));
   return Profile(

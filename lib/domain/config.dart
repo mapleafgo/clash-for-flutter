@@ -63,6 +63,16 @@ class SingboxConfig {
   String get apiAddr => externalControllerAddr ?? Constants.defaultApiAddr;
   bool get userPortEnabled => portEnabled ?? false;
   bool get systemProxyEnabled => systemProxy ?? false;
+
+  /// 构建 sing-box mixed inbound（listen/listen_port/set_system_proxy）。
+  /// 供 storage 写盘与 mergeProfileConfig 下发共用。
+  Map<String, dynamic> toMixedInbound() => {
+        'type': 'mixed',
+        'tag': 'mixed-in',
+        'listen': allowLan == true ? '0.0.0.0' : '127.0.0.1',
+        'listen_port': mixedPort ?? Constants.defaultMixedPort,
+        if (systemProxy == true) 'set_system_proxy': true,
+      };
 }
 
 class TunConfig {
