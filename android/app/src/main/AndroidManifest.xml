@@ -58,6 +58,23 @@
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="vpn" />
     </service>
+    <service
+        android:name=".SingcastTileService"
+        android:label="@string/tile_label"
+        android:icon="@drawable/tile_icon"
+        android:exported="true"
+        android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+
+    <activity
+        android:name=".VpnPermissionActivity"
+        android:exported="false"
+        android:excludeFromRecents="true"
+        android:launchMode="singleInstance"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     <!-- Don't delete the meta-data below.
          This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
     <meta-data

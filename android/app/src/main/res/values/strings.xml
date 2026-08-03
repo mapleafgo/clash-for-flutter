@@ -5,4 +5,5 @@
     <string name="vpn_disconnect">Disconnect</string>
     <string name="vpn_speed">Speed</string>
     <string name="vpn_traffic">Traffic</string>
+    <string name="tile_label">Singcast VPN</string>
 </resources>

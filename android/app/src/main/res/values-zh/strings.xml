@@ -5,4 +5,5 @@
     <string name="vpn_disconnect">断开</string>
     <string name="vpn_speed">网速</string>
     <string name="vpn_traffic">流量</string>
+    <string name="tile_label">Singcast VPN</string>
 </resources>
