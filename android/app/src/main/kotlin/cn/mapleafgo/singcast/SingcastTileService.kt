@@ -6,6 +6,9 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
 class SingcastTileService : TileService() {
+    companion object {
+        private const val TAG = "SingcastTile"
+    }
 
     override fun onStartListening() {
         super.onStartListening()
@@ -19,6 +22,7 @@ class SingcastTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        AppLog.i(TAG, "onClick: running=${SingcastVpnService.isServiceRunning}")
         if (SingcastVpnService.isServiceRunning) {
             toggleOff()
         } else {
@@ -37,14 +41,17 @@ class SingcastTileService : TileService() {
     private fun toggleOn() {
         val prepare = VpnService.prepare(this)
         if (prepare != null) {
+            AppLog.i(TAG, "toggleOn: not authorized, opening permission activity")
             // 未授权：拉起透明授权 Activity，其一并在授权成功后建连并 finish。
             startActivityAndCollapse(Intent(this, VpnPermissionActivity::class.java))
         } else {
+            AppLog.i(TAG, "toggleOn: authorized, connecting")
             TileVpnConnector.startVpn(this)
         }
     }
 
     private fun toggleOff() {
+        AppLog.i(TAG, "toggleOff: disconnecting to direct")
         // 完全直连：走服务自身 disconnect（内部 stopCore + stopForeground）。
         val intent = Intent(this, SingcastVpnService::class.java).apply {
             action = SingcastVpnService.ACTION_DISCONNECT_TILE
