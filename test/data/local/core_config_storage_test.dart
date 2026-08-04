@@ -115,6 +115,15 @@ void main() {
     expect(File('${tmp.path}/config.json').existsSync(), isTrue);
   });
 
+  test('createDefault writes sing-box default values', () {
+    CoreConfigStorage.createDefault();
+    final loaded = CoreConfigStorage.load();
+    expect(loaded.mixedPort, Constants.defaultMixedPort);
+    expect(loaded.portEnabled, isFalse);
+    expect(loaded.apiEnabled, isFalse);
+    expect(loaded.logLevel, LogLevel.info);
+  });
+
   test('createDefault skips when config.yaml exists', () {
     File('${tmp.path}/config.yaml').writeAsStringSync('mixed-port: 1\n');
     CoreConfigStorage.createDefault();

@@ -90,10 +90,7 @@ class CoreConfigStorage {
       return;
     }
     try {
-      file.writeAsStringSync(jsonEncode({
-        'port_enabled': false,
-        'api_enabled': false,
-      }));
+      save(SingboxConfig.defaults());
     } on FileSystemException catch (_) {}
   }
 

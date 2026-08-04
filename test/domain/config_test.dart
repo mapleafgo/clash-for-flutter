@@ -8,7 +8,6 @@ void main() {
       expect(config.mixedPort, 7890);
       expect(config.allowLan, isNull);
       expect(config.mode, isNull);
-      expect(config.logLevel, isNull);
       expect(config.ipv6, isNull);
       expect(config.tun, isNull);
     });

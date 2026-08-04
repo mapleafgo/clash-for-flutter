@@ -29,6 +29,7 @@ class SingboxConfig {
 
   factory SingboxConfig.defaults() => SingboxConfig(
       mixedPort: Constants.defaultMixedPort,
+      logLevel: LogLevel.info,
       externalControllerAddr: Constants.defaultApiAddr,
       portEnabled: false);
 
