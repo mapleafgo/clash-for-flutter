@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.VpnService
-import android.os.Build
 import android.os.IBinder
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -62,8 +61,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        AppLog.init(filesDir)
-        NetworkMonitor.init(this)
+        Mobile.ensureNativeReady(this)
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val taskQueue = messenger.makeBackgroundTaskQueue()
@@ -73,8 +71,7 @@ class MainActivity : FlutterFragmentActivity() {
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
-        Mobile.registerProviders()
-        Mobile.registerCallbacks { eventType, payload ->
+        Mobile.registerCallbacks(this) { eventType, payload ->
             // Stats 事件：Native 端直接更新通知栏，不绕 Flutter
             if (eventType == Mobile.EVT_STATS) {
                 val svc = vpnService
@@ -96,6 +93,11 @@ class MainActivity : FlutterFragmentActivity() {
         SingcastVpnService.onVpnDisconnected = {
             runOnUiThread {
                 flutterChannel.invokeMethod("onVpnDisconnected", null)
+            }
+        }
+        SingcastVpnService.onVpnConnected = {
+            runOnUiThread {
+                flutterChannel.invokeMethod("onVpnConnected", null)
             }
         }
     }
@@ -242,13 +244,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun startVpn(configContent: String, ruleSetProxy: String, ipv6: Boolean, result: MethodChannel.Result) {
-        val intent = Intent(this, SingcastVpnService::class.java).apply {
-            action = SingcastVpnService.ACTION_CONNECT
-            putExtra(SingcastVpnService.EXTRA_CONFIG, configContent)
-            putExtra(SingcastVpnService.EXTRA_PROXY, ruleSetProxy)
-            putExtra(SingcastVpnService.EXTRA_IPV6, ipv6)
-        }
-        startService(intent)
+        val intent = SingcastVpnService.buildConnectIntent(this, configContent, ruleSetProxy, ipv6)
+        SingcastVpnService.startVpnService(this, intent)
         if (!vpnBound) {
             bindService(intent, vpnConnection, BIND_AUTO_CREATE)
         }
@@ -265,10 +262,16 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         SingcastVpnService.onVpnDisconnected = null
+        SingcastVpnService.onVpnConnected = null
         // 事件监听的 lambda 捕获了本 Activity，不注销会泄漏并把事件投递到
         // 已 detach 的 Flutter 引擎
-        Mobile.unregisterCallbacks()
-        AppLog.close()
+        Mobile.unregisterCallbacks(this)
+        SingcastVpnService.activeService?.restoreFallbackCallbacks()
+        // VPN 服务可独立于 Activity 存活，磁贴后续启停仍要写日志；
+        // 只有确认服务已停才关闭句柄。
+        if (!SingcastVpnService.isServiceRunning) {
+            AppLog.close()
+        }
         if (vpnBound) try { unbindService(vpnConnection) } catch (_: Exception) {}
         super.onDestroy()
     }
@@ -283,12 +286,10 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

@@ -4,17 +4,17 @@
 
 **Goal:** 在 Android 快速设置提供磁贴，点按直接开/关 VPN（关 = 完全直连），仅图标着色区分连接态，长按进入应用。
 
-**Architecture:** 磁贴是原生 `TileService`，直接驱动现有 `SingcastVpnService`（`VpnService`）。建连要素从既有文件读取：`cache-merged.json`（合并配置与 `ipv6`）、`settings.json`（`rule-set-proxy`），不新增 SharedPreferences 字段。
+**Architecture:** 磁贴是原生 `TileService`，直接驱动现有 `SingcastVpnService`（`VpnService`）。建连要素从既有文件读取：`cache-tun.json`（TUN 启动配置与 `ipv6`）、`settings.json`（`rule-set-proxy`），不新增 SharedPreferences 字段。
 
 **Tech Stack:** Kotlin / Android SDK (`TileService`, `VpnService`), Flutter/Dart, JUnit, org.json, Gradle。
 
 ## Global Constraints
 
-- `minSdkVersion 31`（Android 12）。磁贴不自动添加（不做 `requestAddTileService`），各版本均手动加入。
+- `minSdkVersion 34`（Android 14）。磁贴不自动添加（不做 `requestAddTileService`），各版本均手动加入。
 - 磁贴仅图标、无文字；用 `Tile.STATE_ACTIVE` / `Tile.STATE_INACTIVE` 表示 已连接 / 未连接。
 - 断开 = 完全直连：走 `SingcastVpnService.disconnect`（内部 `stopCore` + `stopForeground`），**不**拉起非 VPN 代理实例。
 - 建连要素来源固定：
-  - `configContent` ← `context.filesDir/cache-merged.json`
+  - `configContent` ← `context.filesDir/cache-tun.json`
   - `ipv6` ← 同一文件的 `dns.strategy == "prefer_ipv6"`
   - `ruleSetProxy` ← `context.filesDir/settings.json` 的 `rule-set-proxy`
 - 不做设置页"显示磁贴"开关；不动语言持久化。
@@ -32,7 +32,7 @@
 - `test/settings_storage_test.dart`：`ruleSetProxy` 持久化单测。
 - `android/app/src/main/kotlin/cn/mapleafgo/singcast/TileConfig.kt`：`TileVpnConfig` 数据类 + `TileConfigReader`（纯 `parse` 逻辑可 JVM 单测）。
 - `android/app/src/test/kotlin/cn/mapleafgo/singcast/TileConfigReaderTest.kt`：原生配置解析单测。
-- `android/app/src/main/kotlin/cn/mapleafgo/singcast/TileVpnConnector.kt`：统一"读配置 → 启 `SingcastVpnService` / 无配置回退进 App"。
+- `android/app/src/main/kotlin/cn/mapleafgo/singcast/TileVpnConnector.kt`：统一"读配置 → 启 `SingcastVpnService`；缺 tun 配置时不操作 VPN"。
 - `android/app/src/main/kotlin/cn/mapleafgo/singcast/VpnPermissionActivity.kt`：`VpnService.prepare` 授权中转（透明、自动 finish）。
 - `android/app/src/main/kotlin/cn/mapleafgo/singcast/SingcastTileService.kt`：`TileService`，点按启停 + 状态刷新。
 - `android/app/src/main/kotlin/cn/mapleafgo/singcast/SingcastVpnService.kt`：新增 `ACTION_DISCONNECT_TILE`。
@@ -289,7 +289,7 @@ object TileConfigReader {
 
     fun read(context: Context): TileVpnConfig {
         val filesDir = context.filesDir
-        val merged = File(filesDir, "cache-merged.json").takeIf { it.exists() }?.readText()
+        val merged = File(filesDir, "cache-tun.json").takeIf { it.exists() }?.readText()
         val settings = File(filesDir, "settings.json").takeIf { it.exists() }?.readText()
         return parse(merged, settings)
     }
@@ -339,7 +339,7 @@ Expected: PASS。
 git add android/app/build.gradle android/app/src/main/kotlin/cn/mapleafgo/singcast/TileConfig.kt android/app/src/test/kotlin/cn/mapleafgo/singcast/TileConfigReaderTest.kt
 git commit -m "feat: 新增磁贴建连配置读取器及 JVM 测试基建
 
-从 cache-merged.json（configContent/ipv6）与 settings.json（rule-set-proxy）
+从 cache-tun.json（configContent/ipv6）与 settings.json（rule-set-proxy）
 组装磁贴建连参数；parse 为纯函数，并以 org.json+JUnit 初始化原生单元测试。"
 ```
 
@@ -365,7 +365,7 @@ package cn.mapleafgo.singcast
 import android.content.Context
 import android.content.Intent
 
-/// 统一"读配置 → 启动 VPN 服务"；无配置时回退打开主 Activity。
+/// 统一"读配置 → 启动 VPN 服务"；缺 tun 配置时不操作 VPN。
 object TileVpnConnector {
     fun startVpn(context: Context) {
         val cfg = TileConfigReader.read(context)
@@ -425,7 +425,7 @@ Expected: BUILD SUCCESSFUL。
 git add android/app/src/main/kotlin/cn/mapleafgo/singcast/TileVpnConnector.kt android/app/src/main/kotlin/cn/mapleafgo/singcast/SingcastVpnService.kt
 git commit -m "feat: 磁贴启停连接器与断开 action
 
-新增 TileVpnConnector：读配置启 SingcastVpnService，无配置回退进 App。
+新增 TileVpnConnector：读配置启 SingcastVpnService，缺 tun 配置时不操作 VPN。
 SingcastVpnService 新增 ACTION_DISCONNECT_TILE，断开即完全直连，
 不复用通知栏按钮回退非 VPN 代理的逻辑。"
 ```
@@ -658,14 +658,14 @@ Expected: BUILD SUCCESSFUL，产出 `build/app/outputs/flutter-apk/app-debug.apk
 2. 未连接时点按 → 首次弹 VPN 授权 → 授权后建连，磁贴转"已连接"着色。
 3. 再点按 → 断开到完全直连，磁贴转"未连接"着色。
 4. 长按磁贴 → 进入 App 首页。
-5. 无配置（删除/缺失 `cache-merged.json`）点按 → 回退打开 App。
+5. 无配置（删除/缺失 `cache-tun.json`）点按 → 仅提示，不操作 VPN。
 6. App 内连接/断开后，磁贴下拉刷新状态与之一致。
 
 ---
 
 ## Self-Review
 
-**Spec 覆盖：** 磁贴点按开关（Task 3/4）、仅图标着色（Task 4 Step 1）、长按进应用（依赖 Manifest 注册 + 系统默认行为，Task 4）、建连要素来源（Task 2/3）、错误处理（无配置回退进 App：Task 3 Step 1；授权拒绝即 finish：Task 4 Step 2；内核失败由 `SingcastVpnService` 兜底：Task 3 Step 2）、平台兼容不做自动添加（Task 4 Step 4）、`ruleSetProxy` 持久化修复（Task 1）、语言不动（未列入任务，符合"非目标"）。
+**Spec 覆盖：** 磁贴点按开关（Task 3/4）、仅图标着色（Task 4 Step 1）、长按进应用（依赖 Manifest 注册 + 系统默认行为，Task 4）、建连要素来源（Task 2/3）、错误处理（无配置点按仅提示不操作 VPN：Task 3 Step 1；授权拒绝即 finish：Task 4 Step 2；内核失败由 `SingcastVpnService` 兜底：Task 3 Step 2）、平台兼容不做自动添加（Task 4 Step 4）、`ruleSetProxy` 持久化修复（Task 1）、语言不动（未列入任务，符合"非目标"）。
 
 **占位符扫描：** 无 TBD/TODO；每个代码/测试步骤均给出完整内容与可执行命令。
 

@@ -51,7 +51,7 @@ android {
 
   defaultConfig {
     applicationId "cn.mapleafgo.singcast"
-    minSdkVersion 31
+    minSdkVersion 34
     targetSdkVersion flutter.targetSdkVersion
     versionCode flutterVersionCode.toInteger()
     versionName flutterVersionName

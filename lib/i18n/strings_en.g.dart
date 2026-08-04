@@ -88,6 +88,7 @@ class _Translations$home$en extends Translations$home$zh {
 	@override String get copy => 'Copy';
 	@override String get vpnNotConnected => 'VPN Not Connected';
 	@override String get connectVpnHint => 'Proxies are only available when VPN is connected';
+	@override String get vpnPermissionDenied => 'VPN permission denied. Please try again and grant VPN permission.';
 }
 
 // Path: mode
@@ -367,6 +368,7 @@ extension on TranslationsEn {
 			'home.copy' => 'Copy',
 			'home.vpnNotConnected' => 'VPN Not Connected',
 			'home.connectVpnHint' => 'Proxies are only available when VPN is connected',
+			'home.vpnPermissionDenied' => 'VPN permission denied. Please try again and grant VPN permission.',
 			'mode.rule' => 'Rule',
 			'mode.global' => 'Global',
 			'mode.direct' => 'Direct',

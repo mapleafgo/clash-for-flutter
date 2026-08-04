@@ -18,7 +18,7 @@ object TileConfigReader {
 
     fun read(context: Context): TileVpnConfig {
         val filesDir = context.filesDir
-        val merged = File(filesDir, "cache-merged.json").takeIf { it.exists() }?.readText()
+        val merged = File(filesDir, "cache-tun.json").takeIf { it.exists() }?.readText()
         val settings = File(filesDir, "settings.json").takeIf { it.exists() }?.readText()
         return parse(merged, settings)
     }
@@ -49,6 +49,23 @@ object TileConfigReader {
             JSONObject(settingsJson).optString("rule-set-proxy", DEFAULT_RULE_SET_PROXY)
         } catch (e: Exception) {
             DEFAULT_RULE_SET_PROXY
+        }
+    }
+
+    /// 磁贴建连配置必须带 tun inbound，否则内核不会打开外部 TUN fd，
+    /// 表现为"VPN 已开但无网络、关闭后 TUN fd 残留"。
+    /// 缺文件/无 tun/解析失败都返回 false，调用方只提示、不启动 VPN。
+    fun hasTunInbound(content: String?): Boolean {
+        if (content.isNullOrEmpty()) return false
+        return try {
+            val inbounds = JSONObject(content).optJSONArray("inbounds") ?: return false
+            for (i in 0 until inbounds.length()) {
+                val inbound = inbounds.optJSONObject(i) ?: continue
+                if (inbound.optString("type") == "tun") return true
+            }
+            false
+        } catch (e: Exception) {
+            false
         }
     }
 }

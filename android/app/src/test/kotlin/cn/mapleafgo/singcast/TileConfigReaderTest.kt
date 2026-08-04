@@ -54,4 +54,25 @@ class TileConfigReaderTest {
         val cfg = TileConfigReader.parse(null, """{"sub-ua":"x"}""")
         assertEquals("https://gh-proxy.org", cfg.ruleSetProxy)
     }
+
+    @Test
+    fun nullOrEmpty_hasNoTunInbound() {
+        assertFalse(TileConfigReader.hasTunInbound(null))
+        assertFalse(TileConfigReader.hasTunInbound(""))
+    }
+
+    @Test
+    fun noTunInbound_returnsFalse() {
+        assertFalse(TileConfigReader.hasTunInbound(mergedWithoutDns))
+    }
+
+    @Test
+    fun tunInbound_returnsTrue() {
+        assertTrue(TileConfigReader.hasTunInbound("""{"inbounds":[{"type":"tun"}]}"""))
+    }
+
+    @Test
+    fun invalidJson_returnsFalse() {
+        assertFalse(TileConfigReader.hasTunInbound("""{not json"""))
+    }
 }

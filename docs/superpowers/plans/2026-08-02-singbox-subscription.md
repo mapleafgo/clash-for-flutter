@@ -898,7 +898,7 @@ git commit -m "feat(core): LibCore 接入 core.convert"
 
 ```dart
 static const coreConfigFile = "config.json";
-static const mergedConfigCache = "cache-merged.json";
+static const tunConfigCache = "cache-tun.json";
 ```
 
 `lib/utils/constants.dart` 的 `uaPresets` 增加：

@@ -34,7 +34,7 @@ singcast 是 Flutter + Go 内核（sing-box）的多端 Clash 客户端。Androi
 | 项 | 取值 |
 |---|---|
 | 磁贴类型 | 快速设置静态磁贴（`TileService`） |
-| 最低版本 | `minSdk 31`（Android 12），磁贴 API 24+ 可用，12 需手动加入 |
+| 最低版本 | `minSdk 34`（Android 14），磁贴 API 24+ 可用，14 及以上默认可用 |
 | 连接动作 | 原生读配置 → `ACTION_CONNECT` 启 `SingcastVpnService` |
 | 断开动作 | 原生调 `disconnect`（内部 `stopCore` + `stopForeground`）→ `stopService` |
 | 状态来源 | `SingcastVpnService.isServiceRunning` |
@@ -43,8 +43,8 @@ singcast 是 Flutter + Go 内核（sing-box）的多端 Clash 客户端。Androi
 
 | 要素 | 读取位置 |
 |---|---|
-| `configContent` | `context.filesDir/cache-merged.json`（Flutter 每次下发前写入的合并配置缓存） |
-| `ipv6` | `cache-merged.json` 的 `dns.strategy == 'prefer_ipv6'` |
+| `configContent` | `context.filesDir/cache-tun.json`（Flutter 每次 TUN 启动时写入的专用缓存，关闭 VPN 不覆盖） |
+| `ipv6` | `cache-tun.json` 的 `dns.strategy == 'prefer_ipv6'` |
 | `ruleSetProxy` | `context.filesDir/settings.json` 的 `ruleSetProxy` 字段 |
 
 ## 组件
@@ -61,7 +61,7 @@ singcast 是 Flutter + Go 内核（sing-box）的多端 Clash 客户端。Androi
   `VpnService.prepare()` 授权弹窗结果；授权成功读到配置后用 `ACTION_CONNECT`
   启动 `SingcastVpnService`，随后 `finish()`，不展示 App 界面。仅首次或授权
   被撤销时短暂出现。
-- **原生配置读取封装**：读取 `cache-merged.json` 与 `settings.json` 组装建连
+- **原生配置读取封装**：读取 `cache-tun.json` 与 `settings.json` 组装建连
   参数，返回 `configContent / ipv6 / ruleSetProxy` 的纯函数，便于 JVM 单测。
 
 ## 数据流
@@ -88,8 +88,8 @@ singcast 是 Flutter + Go 内核（sing-box）的多端 Clash 客户端。Androi
 
 ## 错误处理
 
-- **无可用配置**（`cache-merged.json` 不存在或解析失败）：点按回退到启动
-  `MainActivity`，引导用户在 App 内配置并连接。
+- **无可用配置**（`cache-tun.json` 不存在、无 `tun` inbound 或解析失败）：
+  点按仅 `showToast` 提示"请先在应用内开启 VPN"，不操作 VPN。
 - **VPN 授权被撤销/拒绝**：`VpnService.prepare` 返回非 null 时重新走授权中转；
   用户拒绝则直接收起磁贴面板，不反复打扰。
 - **内核启动失败**：`SingcastVpnService` 建连抛错时其 `disconnect`
@@ -100,7 +100,7 @@ singcast 是 Flutter + Go 内核（sing-box）的多端 Clash 客户端。Androi
 
 ## 平台兼容
 
-- `minSdk 31`（Android 12）已覆盖快速设置磁贴所需最低版本。
+- `minSdk 34`（Android 14）已覆盖快速设置磁贴与 `startActivityAndCollapse(PendingIntent)` 所需最低版本。
 - 静态磁贴（无需手动编辑页加入）是 Android 13+ 特性，但本设计**不做自动添加**，
   因此 12/13+ 统一要求用户在快速设置编辑页手动将磁贴加入。
 
@@ -119,12 +119,12 @@ bug。作为本特性的前置修复，将其按 `subUA` 的同样方式持久�
 
 ## 测试
 
-1. 原生 JVM 单测：`cache-merged.json` 解析出 `configContent`；
+1. 原生 JVM 单测：`cache-tun.json` 解析出 `configContent`；
    `dns.strategy` ↔ `ipv6` 映射；`settings.json` 缺/有 `ruleSetProxy` 的取值。
 2. Flutter 测试：`ruleSetProxy` 的 `initAppConfig` 读回与 `_save` 写回
    （对齐 `subUA` 既有测试写法）。
-3. 真机/模拟器手动验证：点按连接、再点断开直连、首次授权弹窗、无配置回退进
-   App、长按进应用、断开后状态图标刷新。
+3. 真机/模拟器手动验证：点按连接、再点断开直连、首次授权弹窗、无配置点按仅
+   提示、长按进应用、断开后状态图标刷新。
 
 ## 涉及范围
 

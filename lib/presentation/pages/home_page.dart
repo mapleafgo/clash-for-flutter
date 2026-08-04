@@ -26,23 +26,27 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _effectDisposers.add(effect(() {
-      final err = initError.value;
-      if (err != null && !_hasInitError) {
-        setState(() => _hasInitError = true);
-      }
-    }));
-    _effectDisposers.add(effect(() {
-      final err = profileError.value;
-      if (err != null && mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            showErrorDialog(context, err);
-            profileError.value = null;
-          }
-        });
-      }
-    }));
+    _effectDisposers.add(
+      effect(() {
+        final err = initError.value;
+        if (err != null && !_hasInitError) {
+          setState(() => _hasInitError = true);
+        }
+      }),
+    );
+    _effectDisposers.add(
+      effect(() {
+        final err = profileError.value;
+        if (err != null && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              showErrorDialog(context, err);
+              profileError.value = null;
+            }
+          });
+        }
+      }),
+    );
   }
 
   @override
@@ -64,7 +68,9 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: LayoutBuilder(
               builder: (_, constraints) {
-                final cols = constraints.maxWidth > 600 ? 3 : (constraints.maxWidth > 350 ? 2 : 1);
+                final cols = constraints.maxWidth > 600
+                    ? 3
+                    : (constraints.maxWidth > 350 ? 2 : 1);
                 final cards = <Widget>[
                   const _SpeedCard(),
                   const _TrafficTotalCard(),
@@ -88,7 +94,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
 }
 
 // --- Card Shell ---
@@ -102,7 +107,12 @@ class _CardShell extends StatelessWidget {
   final double height;
   final Widget child;
 
-  const _CardShell({required this.icon, required this.title, required this.height, required this.child});
+  const _CardShell({
+    required this.icon,
+    required this.title,
+    required this.height,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +135,10 @@ class _CardShell extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     title,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -148,13 +159,20 @@ class _StatBadge extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatBadge({required this.icon, required this.value, required this.color});
+  const _StatBadge({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -164,7 +182,10 @@ class _StatBadge extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -179,7 +200,11 @@ class _StatRow extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatRow({required this.icon, required this.value, required this.color});
+  const _StatRow({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +220,10 @@ class _StatRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -226,9 +254,17 @@ class _SpeedCard extends StatelessWidget {
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _StatRow(icon: Icons.arrow_upward, value: '${formatBytes(up)}/s', color: Colors.deepOrange),
+                      _StatRow(
+                        icon: Icons.arrow_upward,
+                        value: '${formatBytes(up)}/s',
+                        color: Colors.deepOrange,
+                      ),
                       const SizedBox(height: 6),
-                      _StatRow(icon: Icons.arrow_downward, value: '${formatBytes(down)}/s', color: Colors.blue),
+                      _StatRow(
+                        icon: Icons.arrow_downward,
+                        value: '${formatBytes(down)}/s',
+                        color: Colors.blue,
+                      ),
                     ],
                   )
                 : Row(
@@ -330,7 +366,9 @@ class _ToggleFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return l10nBuilder((context) {
       final isTun = tunIf.value ?? false;
-      final on = isTun ? coreConfig.value.tunEnabled : coreConfig.value.systemProxyEnabled;
+      final on = isTun
+          ? coreConfig.value.tunEnabled
+          : coreConfig.value.systemProxyEnabled;
       final hasProfile = selectedFile.value != null;
       final stats = LibCore.instance.statsSignal.value;
       final cs = Theme.of(context).colorScheme;
@@ -367,7 +405,11 @@ class _ToggleFab extends StatelessWidget {
                 child: Material(
                   color: disabled
                       ? cs.surfaceContainerHighest
-                      : Color.lerp(cs.primaryContainer, Colors.green.shade700, val)!,
+                      : Color.lerp(
+                          cs.primaryContainer,
+                          Colors.green.shade700,
+                          val,
+                        )!,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -379,7 +421,10 @@ class _ToggleFab extends StatelessWidget {
                       curve: Curves.elasticOut,
                       alignment: Alignment.centerLeft,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -394,14 +439,19 @@ class _ToggleFab extends StatelessWidget {
                                 !hasProfile
                                     ? t.home.pleaseAddProfile
                                     : on
-                                        ? formatDuration(stats?.startedAt ?? 0)
-                                        : t.home.enable,
-                                key: ValueKey(!hasProfile
-                                    ? 'none'
-                                    : on
-                                        ? 'on-${stats?.startedAt ?? 0}'
-                                        : 'off'),
-                                style: TextStyle(color: fgColor, fontWeight: FontWeight.w600),
+                                    ? formatDuration(stats?.startedAt ?? 0)
+                                    : t.home.enable,
+                                key: ValueKey(
+                                  !hasProfile
+                                      ? 'none'
+                                      : on
+                                      ? 'on-${stats?.startedAt ?? 0}'
+                                      : 'off',
+                                ),
+                                style: TextStyle(
+                                  color: fgColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -429,7 +479,13 @@ class _ToggleFab extends StatelessWidget {
         await toggleSystemProxy(!on);
       }
     } catch (e) {
-      if (context.mounted) showErrorDialog(context, e.toString());
+      if (!context.mounted) return;
+      final msg = e.toString();
+      if (msg.contains('VPN_DENIED')) {
+        showErrorDialog(context, t.home.vpnPermissionDenied);
+      } else {
+        showErrorDialog(context, msg);
+      }
     }
   }
 }
@@ -456,9 +512,17 @@ class _TrafficTotalCard extends StatelessWidget {
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _StatRow(icon: Icons.arrow_upward, value: formatBytes(upTotal), color: Colors.deepOrange),
+                      _StatRow(
+                        icon: Icons.arrow_upward,
+                        value: formatBytes(upTotal),
+                        color: Colors.deepOrange,
+                      ),
                       const SizedBox(height: 6),
-                      _StatRow(icon: Icons.arrow_downward, value: formatBytes(downTotal), color: Colors.blue),
+                      _StatRow(
+                        icon: Icons.arrow_downward,
+                        value: formatBytes(downTotal),
+                        color: Colors.blue,
+                      ),
                     ],
                   )
                 : Row(
@@ -487,7 +551,6 @@ class _TrafficTotalCard extends StatelessWidget {
   }
 }
 
-
 const _modeIcons = {
   'rule': Icons.rule,
   'global': Icons.public,
@@ -509,20 +572,29 @@ class _ModeCard extends StatelessWidget {
         height: _mediumH,
         child: modes.isEmpty
             ? Center(
-                child: Text(t.home.waitingCore,
-                    style: TextStyle(color: Theme.of(context).disabledColor, fontSize: 13)),
+                child: Text(
+                  t.home.waitingCore,
+                  style: TextStyle(
+                    color: Theme.of(context).disabledColor,
+                    fontSize: 13,
+                  ),
+                ),
               )
             : Column(
                 children: [
                   for (int i = 0; i < modes.length; i++)
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(bottom: i == modes.length - 1 ? 0 : 8),
+                        padding: EdgeInsets.only(
+                          bottom: i == modes.length - 1 ? 0 : 8,
+                        ),
                         child: _ModeOption(
                           icon: _modeIcons[modes[i]] ?? Icons.alt_route,
                           label: modeLabel(modes[i]),
                           selected: modes[i] == current,
-                          onTap: state != LibCore.kStateRunning ? null : () => changeModeStr(modes[i]),
+                          onTap: state != LibCore.kStateRunning
+                              ? null
+                              : () => changeModeStr(modes[i]),
                         ),
                       ),
                     ),
@@ -539,7 +611,12 @@ class _ModeOption extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  const _ModeOption({required this.icon, required this.label, required this.selected, this.onTap});
+  const _ModeOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -548,14 +625,20 @@ class _ModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+        backgroundColor: selected
+            ? cs.primaryContainer.withValues(alpha: 0.5)
+            : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 14),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: selected ? cs.primary : cs.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 24,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+          ),
           const SizedBox(width: 12),
           Text(
             label,
@@ -617,7 +700,12 @@ class _ProxyModeOption extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _ProxyModeOption({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _ProxyModeOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -626,7 +714,9 @@ class _ProxyModeOption extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? cs.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+        backgroundColor: selected
+            ? cs.primaryContainer.withValues(alpha: 0.5)
+            : Colors.transparent,
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -634,7 +724,11 @@ class _ProxyModeOption extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 28, color: selected ? cs.primary : cs.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 28,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+          ),
           const SizedBox(height: 6),
           Text(
             label,
@@ -669,7 +763,12 @@ class _InitErrorCard extends StatelessWidget {
               Icon(Icons.error_outline, color: cs.error),
               const SizedBox(width: 12),
               Expanded(
-                child: SelectableText(err, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer)),
+                child: SelectableText(
+                  err,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: cs.onErrorContainer),
+                ),
               ),
               IconButton(
                 icon: Icon(Icons.copy, size: 18, color: cs.onErrorContainer),

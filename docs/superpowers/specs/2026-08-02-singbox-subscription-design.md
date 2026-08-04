@@ -98,7 +98,7 @@ iOS 主 App 通过 Runner 本地 FFI（MethodChannel `convert`）提供同一能
 
 - 领域模型 `ClashConfig` 改名 `SingboxConfig`，`clashConfig` signal 与 `updateClashConfig` 同步改名。
 - TUN 仍不持久化，行为与现状一致。
-- `mergedConfigCache` 改为 `cache-merged.json`。
+- `tunConfigCache` 使用 `cache-tun.json`（仅记录 TUN 启动配置，关闭 VPN 不覆盖）。
 
 `createDefault` 改为创建 `config.json`。
 

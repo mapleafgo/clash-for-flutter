@@ -1,5 +1,7 @@
 package cn.mapleafgo.singcast
 
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.ParcelFileDescriptor
 import cn.mapleafgo.mobile.EventListener
 import cn.mapleafgo.mobile.InterfaceProvider
@@ -23,6 +25,7 @@ object Mobile {
     private val interfaceProvider = InterfaceProvider { NetworkMonitor.getInterfacesJSON() }
 
     private val wifiStateProvider = WiFiStateProvider { NetworkMonitor.getWiFiStateJSON() }
+    @Volatile private var callbackOwner: Any? = null
 
     /// 绑定/解绑 VpnService。
     ///
@@ -52,6 +55,18 @@ object Mobile {
         AppLog.i(TAG, "registerProviders: interface + WiFi state providers registered")
     }
 
+    /// 通用原生初始化：App 与磁贴冷启动共用，幂等。
+    fun ensureNativeReady(context: Context) {
+        val start = System.currentTimeMillis()
+        AppLog.init(context.filesDir)
+        NetworkMonitor.init(context)
+        registerProviders()
+        AppLog.i(
+            TAG,
+            "ensureNativeReady: done (elapsed_ms=${System.currentTimeMillis() - start})",
+        )
+    }
+
     // --- Lifecycle ---
 
     fun initCore(optionsJSON: String) {
@@ -65,6 +80,13 @@ object Mobile {
             singcast.init(optionsJSON)
             AppLog.i(TAG, "initCore: done")
         }
+    }
+
+    /// VPN 服务专用初始化：磁贴路径没有 Flutter kDebugMode，
+    /// 用 ApplicationInfo.FLAG_DEBUGGABLE 判断，避免 release 也进 debug 初始化。
+    fun initCoreForVpnService(context: Context) {
+        val debug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        initCore("""{"home_dir":"${context.filesDir.absolutePath}","debug":$debug}""")
     }
 
     fun startWithContent(content: String, ruleSetProxy: String, onPrepare: (() -> Int)? = null) {
@@ -193,9 +215,15 @@ object Mobile {
 
     // --- Callbacks ---
 
-    fun registerCallbacks(onEvent: (Int, String) -> Unit) {
+    fun registerCallbacks(owner: Any, onEvent: (Int, String) -> Unit) {
+        val current = callbackOwner
+        if (current != null && current !== owner) {
+            AppLog.d(TAG, "registerCallbacks: skipped, already owned by $current")
+            return
+        }
+        callbackOwner = owner
         singcast.setOnEvent(EventListener { eventType, json -> onEvent(eventType, json) })
-        AppLog.i(TAG, "registerCallbacks: registered unified event listener")
+        AppLog.i(TAG, "registerCallbacks: registered unified event listener owner=$owner")
     }
 
     /// 注销事件监听。
@@ -203,7 +231,13 @@ object Mobile {
     /// 必须在 Activity 销毁时调用：注册进来的 lambda 捕获了 Activity
     /// （runOnUiThread / flutterChannel），不注销会让 native 单例长期持有
     /// 已销毁的 Activity（泄漏），且内核事件会继续投递到已 detach 的引擎。
-    fun unregisterCallbacks() {
+    fun unregisterCallbacks(owner: Any) {
+        val current = callbackOwner
+        if (current !== owner) {
+            AppLog.d(TAG, "unregisterCallbacks: skipped, owner mismatch current=$current requested=$owner")
+            return
+        }
+        callbackOwner = null
         singcast.setOnEvent(null)
         AppLog.i(TAG, "unregisterCallbacks: cleared event listener")
     }

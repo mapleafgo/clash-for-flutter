@@ -6,4 +6,5 @@
     <string name="vpn_speed">网速</string>
     <string name="vpn_traffic">流量</string>
     <string name="tile_label">Singcast VPN</string>
+    <string name="tile_no_config">VPN 配置不可用，请先在应用内开启 VPN</string>
 </resources>

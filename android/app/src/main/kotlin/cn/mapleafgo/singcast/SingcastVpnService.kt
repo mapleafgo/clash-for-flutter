@@ -4,13 +4,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
+import android.service.quicksettings.TileService
 import androidx.core.app.NotificationCompat
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -38,6 +39,9 @@ class SingcastVpnService : VpnService() {
         /// 都必须触发，否则 Dart 侧 vpnConnected 会永远停在 true。
         var onVpnDisconnected: (() -> Unit)? = null
 
+        /// VPN 连接成功回调，用于磁贴启动后通知 Flutter 同步 UI 状态。
+        var onVpnConnected: (() -> Unit)? = null
+
         private const val NOTIFY_ID = 2
         private const val CHANNEL_ID = "vpn_status"
         private const val ACTION_DISCONNECT_NOTIFY = "cn.mapleafgo.singcast.DISCONNECT_NOTIFY"
@@ -49,6 +53,29 @@ class SingcastVpnService : VpnService() {
         @Volatile
         var isServiceRunning = false
             private set
+        @Volatile
+        var activeService: SingcastVpnService? = null
+            private set
+
+        /// 构造 ACTION_CONNECT 启动 Intent；App 与磁贴共用同一份 intent 契约。
+        fun buildConnectIntent(
+            context: Context,
+            configContent: String,
+            proxy: String,
+            ipv6: Boolean,
+        ): Intent = Intent(context, SingcastVpnService::class.java).apply {
+            action = ACTION_CONNECT
+            putExtra(EXTRA_CONFIG, configContent)
+            putExtra(EXTRA_PROXY, proxy)
+            putExtra(EXTRA_IPV6, ipv6)
+        }
+
+        /// 统一 VPN 服务启动入口：磁贴可能从后台调 startService 被系统拦截，
+        /// 必须用 startForegroundService；SingcastVpnService 连接后本身就是
+        /// foreground service（有通知），App 路径复用同一入口无副作用。
+        fun startVpnService(context: Context, intent: Intent) {
+            context.startForegroundService(intent)
+        }
     }
 
     private val binder = LocalBinder()
@@ -78,11 +105,23 @@ class SingcastVpnService : VpnService() {
         fun getService() = this@SingcastVpnService
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        activeService = this
+        // 磁贴可能在没有启动 MainActivity 的情况下冷启动服务（进程新建），
+        // 而初始化原本只在 MainActivity.configureFlutterEngine 里调用。
+        // 缺少 providers 时内核拿不到网络接口，建连后无网络、断开时 TUN 残留。
+        Mobile.ensureNativeReady(this)
+        registerFallbackCallbacks()
+    }
+
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
+        if (activeService === this) activeService = null
         AppLog.i(TAG, "onDestroy: service being destroyed")
         disconnect("service_destroyed")
+        Mobile.unregisterCallbacks(this)
         super.onDestroy()
     }
 
@@ -99,6 +138,9 @@ class SingcastVpnService : VpnService() {
                 val proxy = intent.getStringExtra(EXTRA_PROXY) ?: ""
                 val ipv6 = intent.getBooleanExtra(EXTRA_IPV6, true)
                 AppLog.i(TAG, "onStartCommand: CONNECT config=${config.length} chars, proxy='$proxy', ipv6=$ipv6")
+                // startForegroundService 必须在 5 秒内 startForeground，
+                // 先同步满足窗口，再让 connect 线程做耗时初始化。
+                showNotification()
                 connect(config, proxy, ipv6)
             }
             ACTION_DISCONNECT_NOTIFY -> {
@@ -119,6 +161,9 @@ class SingcastVpnService : VpnService() {
                 }, "vpn-disconnect").start()
             }
             ACTION_DISCONNECT_TILE -> {
+                // startForegroundService 可能在服务已销毁后创建新实例，
+                // 必须先 startForeground 满足 5 秒窗口要求，否则系统会 crash。
+                if (!running.get()) showNotification()
                 AppLog.i(TAG, "onStartCommand: DISCONNECT (tile)")
                 disconnect("tile_disconnect")
                 stopSelf()
@@ -132,6 +177,7 @@ class SingcastVpnService : VpnService() {
             AppLog.w(TAG, "connect: already running, ignoring duplicate start")
             return
         }
+        val connectStart = System.currentTimeMillis()
         disconnected.set(false)
         resetStats()
         AppLog.i(TAG, "connect: starting VPN connection thread (config=${configContent.length} chars)")
@@ -144,7 +190,10 @@ class SingcastVpnService : VpnService() {
                     return@Thread
                 }
 
-                showNotification()
+                // 磁贴可能在 App 未启动（内核未 init）或内核 stop 后重新连接。
+                // startWithContent 要求内核处于 initialized 以上状态，
+                // created 状态会报 "invalid state created"。
+                Mobile.initCoreForVpnService(this@SingcastVpnService)
 
                 Mobile.startWithContent(configContent, ruleSetProxy, onPrepare = {
                     // 在 coreLock 临界区内复查：disconnect() 可能已经抢先跑完
@@ -168,7 +217,15 @@ class SingcastVpnService : VpnService() {
                 // 启动默认接口监控；网络变化时 Go 层自动 UpdateInterfaces + ResetNetwork
                 NetworkMonitor.startMonitoring(this@SingcastVpnService)
 
-                AppLog.i(TAG, "connect: core started successfully")
+                AppLog.i(
+                    TAG,
+                    "connect: core started successfully " +
+                        "(elapsed_ms=${System.currentTimeMillis() - connectStart})",
+                )
+                requestTileUpdate()
+                try { onVpnConnected?.invoke() } catch (e: Throwable) {
+                    AppLog.e(TAG, "connect: notify flutter connected failed", e)
+                }
             } catch (e: Throwable) {
                 AppLog.e(TAG, "connect: FAILED", e)
                 disconnect("core_start_failed")
@@ -189,9 +246,7 @@ class SingcastVpnService : VpnService() {
             builder.addAddress("fdfe:dcba:9876::1", 126)
             builder.addRoute("::", 0)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            builder.setMetered(false)
-        }
+        builder.setMetered(false)
 
         val result = builder.establish()
         if (result == null) {
@@ -236,10 +291,43 @@ class SingcastVpnService : VpnService() {
                 AppLog.e(TAG, "disconnect: notify flutter failed", e)
             }
         }
+        requestTileUpdate()
         AppLog.i(TAG, "disconnect: VPN fully disconnected (reason=$reason)")
     }
 
+    /// 通知系统刷新磁贴状态（连接成功/断开后磁贴着色即时更新）。
+    private fun requestTileUpdate() {
+        try {
+            TileService.requestListeningState(
+                this,
+                ComponentName(this, SingcastTileService::class.java),
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "requestTileUpdate: failed to refresh tile", e)
+        }
+    }
+
     fun isRunning(): Boolean = running.get()
+
+    /// 磁贴/服务自持回调：仅更新通知栏速度，不转发 Flutter。
+    /// MainActivity 存在时会跳过，Activity 销毁后由 MainActivity 重新调回本方法。
+    fun restoreFallbackCallbacks() {
+        registerFallbackCallbacks()
+    }
+
+    private fun registerFallbackCallbacks() {
+        Mobile.registerCallbacks(this) { eventType, payload ->
+            if (eventType == Mobile.EVT_STATS && isRunning()) {
+                try {
+                    val json = org.json.JSONObject(payload)
+                    updateStatsFromRaw(
+                        upTotal = json.optLong("up", 0),
+                        downTotal = json.optLong("down", 0),
+                    )
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     fun refreshConfig(content: String, ruleSetProxy: String, enabledVpn: Boolean = false) {
         if (!running.get() || disconnected.get()) {
@@ -319,11 +407,11 @@ class SingcastVpnService : VpnService() {
         .build()
 
     private fun showNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFY_ID, buildNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFY_ID, buildNotification())
-        }
+        startForeground(
+            NOTIFY_ID,
+            buildNotification(),
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+        )
     }
 
     private fun updateNotification() {

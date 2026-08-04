@@ -3,13 +3,15 @@ import 'dart:io';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class Constants {
-  static final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  static final isDesktop =
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
   static late Directory homeDir;
 
   static const sourceUrl = "https://github.com/mapleafgo/singcast";
   static const coreRepoUrl = "https://github.com/mapleafgo/singcast-cli";
   static const homeUrl = "https://mapleafgo.github.io/singcast";
-  static const releaseUrl = "https://api.github.com/repos/mapleafgo/singcast/releases/latest";
+  static const releaseUrl =
+      "https://api.github.com/repos/mapleafgo/singcast/releases/latest";
 
   /// 与原生层(Android/iOS)通信的 MethodChannel 名，需与原生端注册名一致。
   static const methodChannelName = "cn.mapleafgo/singcast";
@@ -17,7 +19,9 @@ class Constants {
   static const profilesDir = "profiles";
   static const coreConfigFile = "config.json";
   static const appSettings = "settings.json";
-  static const mergedConfigCache = "cache-merged.json";
+
+  /// 磁贴专用缓存：只保存最近一次 TUN 启动配置，关闭 VPN 时不覆盖。
+  static const tunConfigCache = "cache-tun.json";
   static const localhost = "127.0.0.1";
   static const defaultMixedPort = 7890;
   static const defaultApiAddr = "$localhost:9090";

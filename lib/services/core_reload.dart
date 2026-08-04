@@ -10,7 +10,6 @@ import 'package:singcast/services/core_config.dart'
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 
-
 /// 最近一次发送到内核的合并后配置。
 final lastMergedConfig = signal<String?>(null);
 
@@ -34,11 +33,24 @@ void flushPendingReload() {
   _activateProfile(path);
 }
 
-/// 缓存上次发送的合并配置：同时写入 signal 和磁盘文件。
-void _cacheMergedConfig(String merged) {
+/// 记录最近一次发送到内核的合并配置（内存，供回滚与状态恢复）。
+void recordMergedConfig(String merged) {
   lastMergedConfig.value = merged;
-  File(p.join(Constants.homeDir.path, Constants.mergedConfigCache))
-      .writeAsStringSync(merged);
+}
+
+/// 磁贴专用 TUN 缓存：只把 TUN 启动配置落盘 cache-tun.json。
+/// 非 TUN 重载（系统代理/直连）不写，否则关闭 VPN 后磁贴会读到
+/// 没有 tun inbound 的配置，建连后无网络且 TUN fd 无人关闭。
+void writeTunConfigCache(String merged) {
+  File(
+    p.join(Constants.homeDir.path, Constants.tunConfigCache),
+  ).writeAsStringSync(merged);
+}
+
+/// 记录合并配置并按需更新磁贴 TUN 缓存。
+void cacheTunConfig(String merged) {
+  recordMergedConfig(merged);
+  writeTunConfigCache(merged);
 }
 
 void startWatchingSelectedFile() {
@@ -106,7 +118,8 @@ Future<bool> _doActivateProfile(String profilePath) async {
     // 但内核进程仍在运行。此时同步缓存但不热重载，
     // 避免流量计数器归零
     if (lastMergedConfig.peek() == null && state == LibCore.kStateRunning) {
-      _cacheMergedConfig(merged);
+      recordMergedConfig(merged);
+      if (coreConfig.value.tunEnabled) writeTunConfigCache(merged);
       return true;
     }
 
@@ -145,7 +158,8 @@ Future<bool> _doActivateProfile(String profilePath) async {
       return false;
     }
 
-    _cacheMergedConfig(merged);
+    recordMergedConfig(merged);
+    if (coreConfig.value.tunEnabled) writeTunConfigCache(merged);
     profileError.value = null;
     return true;
   } catch (e) {

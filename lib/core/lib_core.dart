@@ -17,7 +17,11 @@ import 'ios_vpn_bridge.dart';
 import 'lib_core_channel.dart';
 import 'service_manager.dart';
 export 'service_manager.dart'
-    show LinuxServiceManager, UnixServiceManager, LinuxCoreRunMode, linuxRunChannelFor;
+    show
+        LinuxServiceManager,
+        UnixServiceManager,
+        LinuxCoreRunMode,
+        linuxRunChannelFor;
 
 abstract class LibCorePlatform {
   Future<void> init();
@@ -46,6 +50,7 @@ abstract class LibCorePlatform {
   Future<void> flushDNSCache();
   Future<void> triggerGC();
   Future<String> checkConfig(String content);
+
   /// 将原始订阅内容（Clash YAML / URI 列表 / base64）转换为 sing-box JSON。
   /// 转换失败抛异常，返回值为可直接保存的 JSON 字符串。
   Future<String> convert(String content);
@@ -72,6 +77,7 @@ class LibCore {
 
   // 非 final：elevate/restart/fallback 会通过 _rebindIpcWorker 切换 IPC 实现
   late LibCorePlatform _platform;
+
   /// _platform 是 late：init 失败时从未赋值，此时任何访问都会抛
   /// LateInitializationError。心跳跑在 Timer 里，异常无人接管。
   bool _platformReady = false;
@@ -196,6 +202,7 @@ class LibCore {
       final channel = LibCoreChannel();
       channel.onCallback = _handleWorkerCallback;
       channel.onVpnDisconnected = _onVpnDisconnected;
+      channel.onVpnConnected = _onVpnConnectedEvent;
       _platform = channel;
       _platformReady = true;
       await _platform.init();
@@ -947,7 +954,16 @@ class LibCore {
   void _onVpnDisconnected() {
     vpnDisconnected.add(null);
   }
+
+  void _onVpnConnectedEvent() {
+    vpnConnectedEvent.add(null);
+  }
 }
 
 /// VPN 通知栏断开事件，由 app.dart 监听并更新 UI 状态。
 final vpnDisconnected = StreamController<void>.broadcast();
+
+/// VPN 连接成功事件（磁贴触发），由 app.dart 监听并更新 UI 状态。
+/// 与 app_config.dart 的 vpnConnected signal 同名但分属不同 import，
+/// app.dart 中通过 vpnConnectedEvent 引用此流。
+final vpnConnectedEvent = StreamController<void>.broadcast();

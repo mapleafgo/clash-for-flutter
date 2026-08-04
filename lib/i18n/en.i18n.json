@@ -19,7 +19,8 @@
     "enable": "Enable",
     "copy": "Copy",
     "vpnNotConnected": "VPN Not Connected",
-    "connectVpnHint": "Proxies are only available when VPN is connected"
+    "connectVpnHint": "Proxies are only available when VPN is connected",
+    "vpnPermissionDenied": "VPN permission denied. Please try again and grant VPN permission."
   },
   "mode": {
     "rule": "Rule",

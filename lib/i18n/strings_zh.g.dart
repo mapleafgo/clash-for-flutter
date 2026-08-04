@@ -125,6 +125,9 @@ class Translations$home$zh {
 
 	/// zh: '代理功能仅在 VPN 连接后可用'
 	String get connectVpnHint => '代理功能仅在 VPN 连接后可用';
+
+	/// zh: 'VPN 权限被拒绝，请重试并授予 VPN 权限'
+	String get vpnPermissionDenied => 'VPN 权限被拒绝，请重试并授予 VPN 权限';
 }
 
 // Path: mode
@@ -708,6 +711,7 @@ extension on Translations {
 			'home.copy' => '复制',
 			'home.vpnNotConnected' => 'VPN 未连接',
 			'home.connectVpnHint' => '代理功能仅在 VPN 连接后可用',
+			'home.vpnPermissionDenied' => 'VPN 权限被拒绝，请重试并授予 VPN 权限',
 			'mode.rule' => '规则',
 			'mode.global' => '全局',
 			'mode.direct' => '直连',

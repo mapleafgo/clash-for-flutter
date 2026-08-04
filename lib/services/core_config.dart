@@ -12,7 +12,7 @@ import 'package:singcast/domain/config.dart';
 import 'package:singcast/domain/enums.dart';
 import 'package:singcast/services/app_config.dart';
 import 'package:singcast/services/core_reload.dart'
-    show asyncProfile, lastMergedConfig;
+    show asyncProfile, cacheTunConfig;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/utils/log_file.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -207,7 +207,9 @@ Future<void> enableTun() async {
         ruleSetProxy: ruleSetProxy.value,
         ipv6: coreConfig.value.ipv6,
       );
-      lastMergedConfig.value = merged;
+      // 同步写 cache-tun.json：磁贴只读该 TUN 缓存，不落盘会拿到
+      // 上一份非 TUN 配置，导致建连后无网络、TUN fd 无人关闭。
+      cacheTunConfig(merged);
     } catch (e) {
       _applyTunConfig(false);
       rethrow;
@@ -318,7 +320,8 @@ String mergeProfileConfig(String jsonContent) {
   final config = coreConfig.value;
 
   const managedTypes = {'mixed', 'http', 'socks', 'tun', 'redirect', 'tproxy'};
-  final inbounds = (doc['inbounds'] as List?)
+  final inbounds =
+      (doc['inbounds'] as List?)
           ?.whereType<Map<String, dynamic>>()
           .where((e) => !managedTypes.contains(e['type']))
           .toList() ??
@@ -351,8 +354,7 @@ String mergeProfileConfig(String jsonContent) {
   }
 
   if (config.logLevel != null) {
-    final log =
-        (doc['log'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final log = (doc['log'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     log['level'] = config.logLevel!.singboxName;
     doc['log'] = log;
   }
@@ -375,8 +377,7 @@ String mergeProfileConfig(String jsonContent) {
   }
 
   if (config.ipv6 != null) {
-    final dns =
-        (doc['dns'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final dns = (doc['dns'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     dns['strategy'] = config.ipv6! ? 'prefer_ipv6' : 'ipv4_only';
     doc['dns'] = dns;
   }

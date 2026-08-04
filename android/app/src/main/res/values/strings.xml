@@ -6,4 +6,5 @@
     <string name="vpn_speed">Speed</string>
     <string name="vpn_traffic">Traffic</string>
     <string name="tile_label">Singcast VPN</string>
+    <string name="tile_no_config">VPN config unavailable, enable VPN in the app first</string>
 </resources>

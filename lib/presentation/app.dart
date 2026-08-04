@@ -14,7 +14,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-const _windowsCJKFallback = ['Microsoft YaHei', 'SimSun', 'NotoColorEmoji', 'Segoe UI Emoji'];
+const _windowsCJKFallback = [
+  'Microsoft YaHei',
+  'SimSun',
+  'NotoColorEmoji',
+  'Segoe UI Emoji',
+];
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -25,6 +30,7 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> with WidgetsBindingObserver {
   StreamSubscription<void>? _vpnDisconnectSub;
+  StreamSubscription<void>? _vpnConnectSub;
 
   @override
   void initState() {
@@ -35,11 +41,17 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       vpnConnected.value = false;
       ensureTunEnabled(false);
     });
+    _vpnConnectSub = vpnConnectedEvent.stream.listen((_) {
+      if (!mounted) return;
+      vpnConnected.value = true;
+      _syncVpnState();
+    });
   }
 
   @override
   void dispose() {
     _vpnDisconnectSub?.cancel();
+    _vpnConnectSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -76,38 +88,44 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return SignalBuilder(builder: (context) {
-      final ready = appReady.value;
-      return TranslationProvider(
-        child: MaterialApp.router(
-          title: 'Singcast',
-          debugShowCheckedModeBanner: false,
-          locale: LocaleSettings.currentLocale.flutterLocale,
-          supportedLocales: AppLocaleUtils.supportedLocales,
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: ThemeData(
-            colorSchemeSeed: Colors.blue,
-            useMaterial3: true,
-            brightness: Brightness.light,
-            fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
+    return SignalBuilder(
+      builder: (context) {
+        final ready = appReady.value;
+        return TranslationProvider(
+          child: MaterialApp.router(
+            title: 'Singcast',
+            debugShowCheckedModeBanner: false,
+            locale: LocaleSettings.currentLocale.flutterLocale,
+            supportedLocales: AppLocaleUtils.supportedLocales,
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            theme: ThemeData(
+              colorSchemeSeed: Colors.blue,
+              useMaterial3: true,
+              brightness: Brightness.light,
+              fontFamilyFallback: Platform.isWindows
+                  ? _windowsCJKFallback
+                  : null,
+            ),
+            darkTheme: ThemeData(
+              colorSchemeSeed: Colors.blue,
+              useMaterial3: true,
+              brightness: Brightness.dark,
+              fontFamilyFallback: Platform.isWindows
+                  ? _windowsCJKFallback
+                  : null,
+            ),
+            themeMode: resolvedThemeMode,
+            routerConfig: ready ? router : _splashRouter,
           ),
-          darkTheme: ThemeData(
-            colorSchemeSeed: Colors.blue,
-            useMaterial3: true,
-            brightness: Brightness.dark,
-            fontFamilyFallback: Platform.isWindows ? _windowsCJKFallback : null,
-          ),
-          themeMode: resolvedThemeMode,
-          routerConfig: ready ? router : _splashRouter,
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
-final _splashRouter = GoRouter(routes: [
-  GoRoute(path: '/', builder: (_, _) => const _SplashPage()),
-]);
+final _splashRouter = GoRouter(
+  routes: [GoRoute(path: '/', builder: (_, _) => const _SplashPage())],
+);
 
 class _SplashPage extends StatelessWidget {
   const _SplashPage();

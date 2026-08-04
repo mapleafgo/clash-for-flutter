@@ -17,6 +17,7 @@ class LibCoreChannel implements LibCorePlatform {
 
   void Function(int eventType, String payload)? onCallback;
   void Function()? onVpnDisconnected;
+  void Function()? onVpnConnected;
 
   @override
   Future<void> init() async {
@@ -32,10 +33,15 @@ class LibCoreChannel implements LibCorePlatform {
       onCallback?.call(eventType, payload);
     } else if (call.method == 'onVpnDisconnected') {
       onVpnDisconnected?.call();
+    } else if (call.method == 'onVpnConnected') {
+      onVpnConnected?.call();
     }
   }
 
-  Future<dynamic> _invokeJson(String method, [Map<String, dynamic>? args]) async {
+  Future<dynamic> _invokeJson(
+    String method, [
+    Map<String, dynamic>? args,
+  ]) async {
     final raw = await _channel.invokeMethod<String>(method, args);
     if (raw == null || raw.isEmpty) return null;
     try {
@@ -57,15 +63,16 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<void> initCore(String homeDir) async {
-    final optionsJSON = jsonEncode({
-      'home_dir': homeDir,
-      'debug': kDebugMode,
-    });
+    final optionsJSON = jsonEncode({'home_dir': homeDir, 'debug': kDebugMode});
     await _channel.invokeMethod('initCore', {'optionsJSON': optionsJSON});
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) async {
+  Future<void> startCoreWithContent(
+    String content, {
+    String? ruleSetProxy,
+    bool enabledVpn = false,
+  }) async {
     await _channel.invokeMethod('startCoreWithContent', {
       'content': content,
       'ruleSetProxy': ruleSetProxy ?? '',
@@ -98,15 +105,22 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<int> testDelay(String name, {int timeoutMs = 3000}) async {
-    final result = await _channel.invokeMethod(
-        'testDelay', {'name': name, 'timeoutMs': timeoutMs});
+    final result = await _channel.invokeMethod('testDelay', {
+      'name': name,
+      'timeoutMs': timeoutMs,
+    });
     return (result as num?)?.toInt() ?? -1;
   }
 
   @override
-  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) async {
-    final raw = await _channel.invokeMethod<String>(
-        'testGroupDelay', {'group': group, 'timeoutMs': timeoutMs});
+  Future<Map<String, int>> testGroupDelay(
+    String group, {
+    int timeoutMs = 3000,
+  }) async {
+    final raw = await _channel.invokeMethod<String>('testGroupDelay', {
+      'group': group,
+      'timeoutMs': timeoutMs,
+    });
     if (raw == null || raw.isEmpty) return {};
     return LibCore.parseGroupDelayJson(jsonDecode(raw));
   }
@@ -116,8 +130,8 @@ class LibCoreChannel implements LibCorePlatform {
       _channel.invokeMethod('setMode', {'mode': mode});
 
   @override
-  Future<void> setGroupExpand(String group, bool expand) =>
-      _channel.invokeMethod('setGroupExpand', {'group': group, 'expand': expand});
+  Future<void> setGroupExpand(String group, bool expand) => _channel
+      .invokeMethod('setGroupExpand', {'group': group, 'expand': expand});
 
   // --- Connection Management ---
 
@@ -167,14 +181,17 @@ class LibCoreChannel implements LibCorePlatform {
 
   @override
   Future<String> checkConfig(String content) async {
-    final result = await _channel
-        .invokeMethod<String>('checkConfig', {'content': content});
+    final result = await _channel.invokeMethod<String>('checkConfig', {
+      'content': content,
+    });
     return result ?? '';
   }
 
   @override
   Future<String> convert(String content) async {
-    final result = await _channel.invokeMethod<String>('convert', {'content': content});
+    final result = await _channel.invokeMethod<String>('convert', {
+      'content': content,
+    });
     if (result != null && result.isNotEmpty) return result;
     throw StateError('convert returned no json result');
   }
@@ -188,7 +205,11 @@ class LibCoreChannel implements LibCorePlatform {
   // --- VPN ---
 
   @override
-  Future<void> connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) async {
+  Future<void> connectVpn(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) async {
     await _channel.invokeMethod('connectVpn', {
       'configContent': configContent,
       'ruleSetProxy': ruleSetProxy ?? '',

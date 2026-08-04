@@ -15,6 +15,10 @@ void main() {
       expect(Constants.appSettings, 'settings.json');
     });
 
+    test('tunConfigCache is cache-tun.json', () {
+      expect(Constants.tunConfigCache, 'cache-tun.json');
+    });
+
     test('localhost is 127.0.0.1', () {
       expect(Constants.localhost, '127.0.0.1');
     });
