@@ -1,7 +1,7 @@
 name: singcast
 description: A multi-platform Clash client.
 publish_to: "none"
-version: 1.2.0-a
+version: 1.2.0
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
