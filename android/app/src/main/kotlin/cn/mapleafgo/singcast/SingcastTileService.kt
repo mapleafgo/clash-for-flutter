@@ -58,8 +58,7 @@ class SingcastTileService : TileService() {
 
     private fun toggleOn(): Boolean {
         val cfg = TileConfigReader.read(this)
-        val content = cfg.configContent
-        if (content.isNullOrEmpty() || !TileConfigReader.hasTunInbound(content)) {
+        if (!TileConfigReader.canConnectVpn(cfg)) {
             AppLog.w(TAG, "toggleOn: no tun config, prompting only")
             Toast.makeText(this, getString(R.string.tile_no_config), Toast.LENGTH_LONG).show()
             return false

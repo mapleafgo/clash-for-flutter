@@ -215,15 +215,30 @@ object Mobile {
 
     // --- Callbacks ---
 
-    fun registerCallbacks(owner: Any, onEvent: (Int, String) -> Unit) {
+    /// 主界面（MainActivity）专用：始终接管事件监听。
+    /// 磁贴/系统 always-on 冷启动时 VPN 服务可能已先注册兜底监听，App 打开后
+    /// 必须能接管，否则 Flutter 收不到统计/连接事件（网速、时长显示为空）。
+    fun registerPrimaryCallbacks(owner: Any, onEvent: (Int, String) -> Unit) {
+        val previous = callbackOwner
+        if (previous !== owner) {
+            AppLog.i(TAG, "registerPrimaryCallbacks: taking over from $previous")
+        }
+        callbackOwner = owner
+        singcast.setOnEvent(EventListener { eventType, json -> onEvent(eventType, json) })
+        AppLog.i(TAG, "registerPrimaryCallbacks: registered unified event listener owner=$owner")
+    }
+
+    /// 后台兜底（VPN 服务）专用：仅在没有其他占用者时才注册，
+    /// 避免覆盖主界面监听；主界面销毁后由 Activity 调回本方法。
+    fun registerFallbackCallbacks(owner: Any, onEvent: (Int, String) -> Unit) {
         val current = callbackOwner
         if (current != null && current !== owner) {
-            AppLog.d(TAG, "registerCallbacks: skipped, already owned by $current")
+            AppLog.d(TAG, "registerFallbackCallbacks: skipped, already owned by $current")
             return
         }
         callbackOwner = owner
         singcast.setOnEvent(EventListener { eventType, json -> onEvent(eventType, json) })
-        AppLog.i(TAG, "registerCallbacks: registered unified event listener owner=$owner")
+        AppLog.i(TAG, "registerFallbackCallbacks: registered unified event listener owner=$owner")
     }
 
     /// 注销事件监听。

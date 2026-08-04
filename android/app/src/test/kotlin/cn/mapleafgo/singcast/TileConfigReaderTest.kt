@@ -75,4 +75,16 @@ class TileConfigReaderTest {
     fun invalidJson_returnsFalse() {
         assertFalse(TileConfigReader.hasTunInbound("""{not json"""))
     }
+
+    @Test
+    fun canConnectVpn_noOrTunlessConfig_returnsFalse() {
+        assertFalse(TileConfigReader.canConnectVpn(TileConfigReader.parse(null, null)))
+        assertFalse(TileConfigReader.canConnectVpn(TileConfigReader.parse(mergedWithoutDns, null)))
+    }
+
+    @Test
+    fun canConnectVpn_tunConfig_returnsTrue() {
+        val cfg = TileConfigReader.parse("""{"inbounds":[{"type":"tun"}]}""", null)
+        assertTrue(TileConfigReader.canConnectVpn(cfg))
+    }
 }

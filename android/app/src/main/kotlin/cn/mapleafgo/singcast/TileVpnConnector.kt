@@ -8,11 +8,11 @@ object TileVpnConnector {
 
     fun startVpn(context: Context) {
         val cfg = TileConfigReader.read(context)
-        val content = cfg.configContent
-        if (content.isNullOrEmpty() || !TileConfigReader.hasTunInbound(content)) {
+        if (!TileConfigReader.canConnectVpn(cfg)) {
             AppLog.w(TAG, "no tun config, skipping vpn")
             return
         }
+        val content = cfg.configContent!!
         AppLog.i(
             TAG,
             "starting vpn (config=${content.length} chars, ipv6=${cfg.ipv6}, " +

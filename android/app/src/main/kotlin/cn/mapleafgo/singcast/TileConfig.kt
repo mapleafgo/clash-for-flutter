@@ -68,4 +68,8 @@ object TileConfigReader {
             false
         }
     }
+
+    /// 判定缓存配置是否足够直接建连，供磁贴与系统「始终开启 VPN」启动共用。
+    fun canConnectVpn(cfg: TileVpnConfig): Boolean =
+        !cfg.configContent.isNullOrEmpty() && hasTunInbound(cfg.configContent)
 }

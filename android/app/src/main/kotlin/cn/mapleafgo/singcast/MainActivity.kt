@@ -71,7 +71,7 @@ class MainActivity : FlutterFragmentActivity() {
             handleMethodCall(call.method, call.arguments as? Map<String, Any>, result)
         }
 
-        Mobile.registerCallbacks(this) { eventType, payload ->
+        Mobile.registerPrimaryCallbacks(this) { eventType, payload ->
             // Stats 事件：Native 端直接更新通知栏，不绕 Flutter
             if (eventType == Mobile.EVT_STATS) {
                 val svc = vpnService

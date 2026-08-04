@@ -48,6 +48,9 @@ class SingcastVpnService : VpnService() {
         /// 磁贴主动断开的 action：断开到完全直连（不复用 ACTION_DISCONNECT_NOTIFY
         /// 那条回退非 VPN 代理的逻辑）。
         const val ACTION_DISCONNECT_TILE = "cn.mapleafgo.singcast.DISCONNECT_TILE"
+        /// 系统「始终开启 VPN」启动本服务时使用的 action，与 manifest
+        /// intent-filter（android.net.VpnService）一致；intent 不带任何配置 extras。
+        const val ACTION_SYSTEM_ALWAYS_ON = "android.net.VpnService"
         private const val TAG = "SingcastVpn"
 
         @Volatile
@@ -133,6 +136,10 @@ class SingcastVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            ACTION_SYSTEM_ALWAYS_ON -> {
+                AppLog.i(TAG, "onStartCommand: SYSTEM_ALWAYS_ON start")
+                onSystemAlwaysOnStart()
+            }
             ACTION_CONNECT -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG) ?: ""
                 val proxy = intent.getStringExtra(EXTRA_PROXY) ?: ""
@@ -170,6 +177,33 @@ class SingcastVpnService : VpnService() {
             }
         }
         return START_NOT_STICKY
+    }
+
+    /// 处理系统「始终开启 VPN」启动：intent 只带 action、无配置 extras，
+    /// 复用磁贴的缓存读取（cache-tun.json + settings.json）直接建连。
+    /// 无 TUN 缓存配置时记录日志并优雅停止，避免空跑前台服务。
+    private fun onSystemAlwaysOnStart() {
+        if (running.get()) {
+            AppLog.d(TAG, "always-on: service already running, skip")
+            return
+        }
+        // 系统用 startService 拉起（非 startForegroundService），但 VPN 服务仍需
+        // 常驻指定类型前台通知，先满足 startForeground 窗口再做磁盘读取。
+        showNotification()
+        val cfg = TileConfigReader.read(this)
+        if (!TileConfigReader.canConnectVpn(cfg)) {
+            AppLog.w(TAG, "always-on: no cached tun config, stopping")
+            stopSelf()
+            return
+        }
+        val content = cfg.configContent!!
+        AppLog.i(
+            TAG,
+            "always-on: connecting from cached config " +
+                "(config=${content.length} chars, ipv6=${cfg.ipv6}, " +
+                "proxy=${cfg.ruleSetProxy.isNotEmpty()})",
+        )
+        connect(content, cfg.ruleSetProxy, cfg.ipv6)
     }
 
     private fun connect(configContent: String, ruleSetProxy: String, enableIpv6: Boolean = true) {
@@ -316,7 +350,7 @@ class SingcastVpnService : VpnService() {
     }
 
     private fun registerFallbackCallbacks() {
-        Mobile.registerCallbacks(this) { eventType, payload ->
+        Mobile.registerFallbackCallbacks(this) { eventType, payload ->
             if (eventType == Mobile.EVT_STATS && isRunning()) {
                 try {
                     val json = org.json.JSONObject(payload)
