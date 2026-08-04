@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>Multi-platform proxy client powered by <a href="https://github.com/SagerNet/sing-box">sing-box</a>, with Clash &amp; sing-box subscription support (unified to sing-box config on import)</strong></p>
+  <p><strong>Multi-platform proxy client powered by <a href="https://github.com/SagerNet/sing-box">sing-box</a>, with full Clash, sing-box &amp; v2ray subscription support (unified to sing-box config on import)</strong></p>
 </div>
 
 <p align="center">
@@ -14,7 +14,7 @@
   </a>
 </p>
 
-Singcast is an open-source multi-platform proxy client built with Flutter and powered by a customized [sing-box](https://github.com/SagerNet/sing-box) core. It supports Clash and sing-box subscriptions (unified to sing-box config on import) — just import and go.
+Singcast is an open-source multi-platform proxy client built with Flutter and powered by a customized [sing-box](https://github.com/SagerNet/sing-box) core. It fully supports Clash, sing-box and v2ray subscriptions — config files in yaml/yml/json/txt as well as v2ray base64/URI list subscriptions are all unified to sing-box config on import. Just import and go.
 
 Available on **Windows**, **Linux**, **macOS**, and **Android**. **iOS** is not supported.
 
@@ -31,7 +31,7 @@ Available on **Windows**, **Linux**, **macOS**, and **Android**. **iOS** is not 
 
 ## Features
 
-- Support Clash subscriptions and configuration files
+- Full support for Clash, sing-box and v2ray subscriptions and config files (yaml/yml/json/txt, unified to sing-box on import)
 - System proxy and TUN mode (transparent proxy)
 - Proxy node selection and latency testing
 - Real-time traffic statistics

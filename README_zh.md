@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/logo.svg" alt="Singcast" width="120" height="120">
   <h1>Singcast</h1>
-  <p><strong>基于 <a href="https://github.com/SagerNet/sing-box">sing-box</a> 高性能内核的多平台代理客户端，支持 Clash 与 sing-box 订阅（导入后统一转换为 sing-box 配置运行）</strong></p>
+  <p><strong>基于 <a href="https://github.com/SagerNet/sing-box">sing-box</a> 高性能内核的多平台代理客户端，全面支持 Clash、sing-box 与 v2ray 订阅（导入后统一转换为 sing-box 配置运行）</strong></p>
 </div>
 
 <p align="center">
@@ -14,7 +14,7 @@
   </a>
 </p>
 
-Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核的开源多平台代理客户端。支持 Clash 与 sing-box 订阅（导入后统一转换为 sing-box 配置运行），导入即用。
+Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://github.com/SagerNet/sing-box) 内核的开源多平台代理客户端。全面支持 Clash、sing-box 与 v2ray 订阅——无论是 yaml/yml/json/txt 配置文件，还是 v2ray base64/URI 列表订阅，导入后都会统一转换为 sing-box 配置运行，导入即用。
 
 支持 **Windows**、**Linux**、**macOS** 和 **Android**。
 
@@ -32,7 +32,7 @@ Singcast 是一个基于 Flutter 开发、使用定制版 [sing-box](https://git
 
 ## 功能
 
-- 支持 Clash 订阅和配置文件
+- 全面支持 Clash、sing-box 与 v2ray 订阅及配置文件（yaml/yml/json/txt，导入后统一转 sing-box）
 - 支持系统代理和 TUN 模式（全局透明代理）
 - 代理节点选择与延迟测速
 - 实时流量统计
