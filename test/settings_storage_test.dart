@@ -21,10 +21,10 @@ void main() {
       expect(json['auto-start'], true);
     });
 
-    test('toJson 在 autoStart=false 时省略 auto-start', () {
+    test('toJson 在 autoStart=false 时写入 auto-start', () {
       final config = AppStoredConfig.empty();
       final json = config.toJson();
-      expect(json.containsKey('auto-start'), false);
+      expect(json['auto-start'], false);
     });
 
     test('copyWith 保留原值', () {
@@ -63,10 +63,10 @@ void main() {
       expect(json['tun-stack'], 'gvisor');
     });
 
-    test('toJson 在默认 mixed 时省略 tun-stack', () {
+    test('toJson 在默认 mixed 时写入 tun-stack', () {
       final config = AppStoredConfig.empty();
       final json = config.toJson();
-      expect(json.containsKey('tun-stack'), false);
+      expect(json['tun-stack'], 'mixed');
     });
 
     test('copyWith 保留原值', () {
@@ -98,9 +98,14 @@ void main() {
       expect(config.toJson()['rule-set-proxy'], 'https://example.com');
     });
 
-    test('toJson 在默认值时省略 rule-set-proxy', () {
+    test('toJson 在默认值时也写入 rule-set-proxy', () {
       final config = AppStoredConfig.empty();
-      expect(config.toJson().containsKey('rule-set-proxy'), false);
+      expect(config.toJson()['rule-set-proxy'], Defaults.ruleSetProxy);
+    });
+
+    test('toJson 在清空直连时写入空串 rule-set-proxy', () {
+      final config = AppStoredConfig.empty().copyWith(ruleSetProxy: '');
+      expect(config.toJson()['rule-set-proxy'], '');
     });
 
     test('copyWith 保留原值', () {
@@ -109,6 +114,24 @@ void main() {
       );
       final copied = config.copyWith();
       expect(copied.ruleSetProxy, 'https://example.com');
+    });
+  });
+
+  group('AppStoredConfig toJson 默认配置', () {
+    test('默认配置时包含全部字段', () {
+      final json = AppStoredConfig.empty().toJson();
+      expect(json.containsKey('selected-file'), true);
+      expect(json.containsKey('profiles'), true);
+      expect(json['delay-test-url'], Defaults.delayTestUrl);
+      expect(json.containsKey('tun-if'), true);
+      expect(json['sub-ua'], Defaults.subUA);
+      expect(json.containsKey('theme-mode'), true);
+      expect(json.containsKey('ignored-version'), true);
+      expect(json['auto-check-update'], true);
+      expect(json.containsKey('locale'), true);
+      expect(json['auto-start'], false);
+      expect(json['tun-stack'], 'mixed');
+      expect(json['rule-set-proxy'], Defaults.ruleSetProxy);
     });
   });
 }
