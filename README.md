@@ -79,7 +79,7 @@ sudo apt-get install libayatana-appindicator3
    # Install dependencies
    flutter pub get
    # Generate code
-   dart run build_runner build --delete-conflicting-outputs
+   dart run build_runner build
    # Run
    flutter run -d linux
    ```

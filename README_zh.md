@@ -80,7 +80,7 @@ sudo apt-get install libayatana-appindicator3
    # 获取依赖
    flutter pub get
    # 生成代码
-   dart run build_runner build --delete-conflicting-outputs
+   dart run build_runner build
    # 运行
    flutter run -d linux
    ```

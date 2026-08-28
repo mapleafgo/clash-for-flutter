@@ -148,19 +148,20 @@ class _ProfilesPageState extends State<ProfilesPage> {
     );
   }
 
-
   Future<void> _addFromFile(BuildContext context) async {
-    final result = await FilePicker.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['yaml', 'yml', 'json', 'txt'],
     );
-    if (result == null || result.files.isEmpty) return;
-    final sourcePath = result.files.single.path;
+    if (files.isEmpty) return;
+    final sourcePath = files.single.path;
     if (sourcePath == null) return;
 
     final fileName = p.basename(sourcePath);
     if (profiles.value.any((e) => e.name == fileName)) {
-      if (context.mounted) showErrorDialog(context, t.profiles.configExists(name: fileName));
+      if (context.mounted) {
+        showErrorDialog(context, t.profiles.configExists(name: fileName));
+      }
       return;
     }
 
@@ -183,7 +184,9 @@ class _ProfilesPageState extends State<ProfilesPage> {
       profiles.value = [...profiles.value, profile];
       if (wasEmpty) selectedFile.value = savedName;
     } catch (e) {
-      if (context.mounted) showErrorDialog(context, t.profiles.fileCopyFailed(error: '$e'));
+      if (context.mounted) {
+        showErrorDialog(context, t.profiles.fileCopyFailed(error: '$e'));
+      }
       return;
     }
   }
@@ -262,7 +265,12 @@ class _ProfileCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    timeago.format(profile.time, locale: LocaleSettings.currentLocale == AppLocale.en ? 'en' : 'zh_cn'),
+                    timeago.format(
+                      profile.time,
+                      locale: LocaleSettings.currentLocale == AppLocale.en
+                          ? 'en'
+                          : 'zh_cn',
+                    ),
                     style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
                   ),
                   const Spacer(),
@@ -359,7 +367,9 @@ class _ProfileCard extends StatelessWidget {
           ),
         );
       } catch (e) {
-        if (context.mounted) showErrorDialog(context, t.profiles.urlValidationFailed(error: '$e'));
+        if (context.mounted) {
+          showErrorDialog(context, t.profiles.urlValidationFailed(error: '$e'));
+        }
       }
       return;
     }
@@ -465,7 +475,9 @@ class _AddFromUrlDialogState extends State<_AddFromUrlDialog> {
       await importSubscription(url);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) showErrorDialog(context, t.profiles.importFailed(error: '$e'));
+      if (mounted) {
+        showErrorDialog(context, t.profiles.importFailed(error: '$e'));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -593,8 +605,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         FilledButton(
           onPressed: () {
             final profile = widget.profile;
-            final newName =
-                _nameCtl.text.isEmpty ? profile.name : _nameCtl.text;
+            final newName = _nameCtl.text.isEmpty
+                ? profile.name
+                : _nameCtl.text;
             final newUrl = profile.type == ProfileType.url
                 ? _urlCtl.text.trim()
                 : profile.url;

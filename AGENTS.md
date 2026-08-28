@@ -11,7 +11,7 @@
 
 ```bash
 flutter pub get                                    # 安装依赖
-dart run build_runner build --delete-conflicting-outputs  # 生成 .g.dart 等代码
+dart run build_runner build                              # 生成 .g.dart 等代码
 flutter analyze                                   # 静态检查
 flutter test                                      # 运行全部测试
 dart format lib/ test/                            # 格式化 Dart 代码

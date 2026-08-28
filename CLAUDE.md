@@ -19,7 +19,7 @@ Singcast 是一个支持 Windows、Linux、macOS 和 Android 的多平台代理�
 flutter pub get
 
 # 生成 .g.dart 文件
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 
 # 在 Linux 上运行
 flutter run -d linux

@@ -4,7 +4,6 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
-  dart_ipc
   desktop_lifecycle
   desktop_tray
   local_notifier

@@ -12,6 +12,9 @@ targets:
           - no/files
 
       slang_build_runner:
+        enabled: false
+      slang_build_runner:legacy:
+        enabled: true
         options:
           base_locale: zh
           fallback_strategy: base_locale
