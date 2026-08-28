@@ -18,36 +18,43 @@ void main() {
 
   tearDown(() => tmp.deleteSync(recursive: true));
 
-  test('migrates settings and file profile, deletes config.yaml marker', () async {
-    File(p.join(tmp.path, 'config.yaml')).writeAsStringSync(
-      'mixed-port: 8080\nmode: global\n',
-    );
-    final oldProfile = '123.yaml';
-    File(p.join(tmp.path, 'profiles', oldProfile))
-        .writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
-    AppSettingsStorage.save({
-      'profiles': [
-        {
-          'file': oldProfile,
-          'name': 'legacy',
-          'type': 'file',
-          'time': '2026-08-02T00:00:00.000',
-        }
-      ],
-    });
+  test(
+    'migrates settings and file profile, deletes config.yaml marker',
+    () async {
+      File(
+        p.join(tmp.path, 'config.yaml'),
+      ).writeAsStringSync('mixed-port: 8080\nmode: global\n');
+      final oldProfile = '123.yaml';
+      File(
+        p.join(tmp.path, 'profiles', oldProfile),
+      ).writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
+      AppSettingsStorage.save({
+        'profiles': [
+          {
+            'file': oldProfile,
+            'name': 'legacy',
+            'type': 'file',
+            'time': '2026-08-02T00:00:00.000',
+          },
+        ],
+      });
 
-    await migrateLegacy(
-      convert: (_) async => '{"outbounds":[]}',
-      validate: (_) async {},
-    );
+      await migrateLegacy(
+        convert: (_) async => '{"outbounds":[]}',
+        validate: (_) async {},
+      );
 
-    expect(File(p.join(tmp.path, 'config.yaml')).existsSync(), isFalse);
-    expect(File(p.join(tmp.path, 'config.json')).existsSync(), isTrue);
-    final stored = AppSettingsStorage.load()['profiles'] as List;
-    final saved = stored.single as Map<String, dynamic>;
-    expect((saved['file'] as String).endsWith('.json'), isTrue);
-    expect(File(p.join(tmp.path, 'profiles', oldProfile)).existsSync(), isFalse);
-  });
+      expect(File(p.join(tmp.path, 'config.yaml')).existsSync(), isFalse);
+      expect(File(p.join(tmp.path, 'config.json')).existsSync(), isTrue);
+      final stored = AppSettingsStorage.load()['profiles'] as List;
+      final saved = stored.single as Map<String, dynamic>;
+      expect((saved['file'] as String).endsWith('.json'), isTrue);
+      expect(
+        File(p.join(tmp.path, 'profiles', oldProfile)).existsSync(),
+        isFalse,
+      );
+    },
+  );
 
   test('skips when config.yaml missing', () async {
     AppSettingsStorage.save({'profiles': []});
@@ -56,10 +63,13 @@ void main() {
   });
 
   test('url profile converts local file without refreshing', () async {
-    File(p.join(tmp.path, 'config.yaml')).writeAsStringSync('mixed-port: 7890\n');
+    File(
+      p.join(tmp.path, 'config.yaml'),
+    ).writeAsStringSync('mixed-port: 7890\n');
     final oldProfile = '456.yaml';
-    File(p.join(tmp.path, 'profiles', oldProfile))
-        .writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
+    File(
+      p.join(tmp.path, 'profiles', oldProfile),
+    ).writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
     AppSettingsStorage.save({
       'profiles': [
         {
@@ -69,7 +79,7 @@ void main() {
           'time': '2026-08-02T00:00:00.000',
           'url': 'https://example.com/sub',
           'interval': 24,
-        }
+        },
       ],
     });
 
@@ -91,10 +101,13 @@ void main() {
   });
 
   test('keeps config.yaml marker when a profile fails to migrate', () async {
-    File(p.join(tmp.path, 'config.yaml')).writeAsStringSync('mixed-port: 7890\n');
+    File(
+      p.join(tmp.path, 'config.yaml'),
+    ).writeAsStringSync('mixed-port: 7890\n');
     final oldProfile = '789.yaml';
-    File(p.join(tmp.path, 'profiles', oldProfile))
-        .writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
+    File(
+      p.join(tmp.path, 'profiles', oldProfile),
+    ).writeAsStringSync('proxies:\n  - name: p\n    type: ss\n');
     AppSettingsStorage.save({
       'profiles': [
         {
@@ -102,7 +115,7 @@ void main() {
           'name': 'legacy',
           'type': 'file',
           'time': '2026-08-02T00:00:00.000',
-        }
+        },
       ],
     });
 

@@ -1,7 +1,8 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:singcast/i18n/strings.g.dart';
-import 'package:singcast/presentation/router.dart' show Routes, navigatorKey, router;
+import 'package:singcast/presentation/router.dart'
+    show Routes, navigatorKey, router;
 import 'package:singcast/services/subscription.dart';
 import 'package:singcast/utils/log_file.dart';
 
@@ -55,7 +56,6 @@ Future<void> _processDeepLink(Uri uri) async {
 }
 
 Future<void> _handleDeepLink(Uri uri) async {
-
   final url = uri.queryParameters['url'];
   _log('[deeplink] host=${uri.host}, url=$url');
   if (!const {'install-sub', 'install-config'}.contains(uri.host)) return;
@@ -74,7 +74,12 @@ Future<void> _handleDeepLink(Uri uri) async {
     context: navContext,
     builder: (ctx) => AlertDialog(
       title: Text(t.deepLink.importSubscription),
-      content: Text(name != null ? t.deepLink.confirmImport(name: name) : t.deepLink.confirmImportNoName, softWrap: true),
+      content: Text(
+        name != null
+            ? t.deepLink.confirmImport(name: name)
+            : t.deepLink.confirmImportNoName,
+        softWrap: true,
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
@@ -95,9 +100,9 @@ Future<void> _handleDeepLink(Uri uri) async {
     router.go(Routes.profiles);
     if (navContext.mounted) {
       ScaffoldMessenger.of(navContext).clearSnackBars();
-      ScaffoldMessenger.of(navContext).showSnackBar(
-        SnackBar(content: Text(t.deepLink.importSuccess)),
-      );
+      ScaffoldMessenger.of(
+        navContext,
+      ).showSnackBar(SnackBar(content: Text(t.deepLink.importSuccess)));
     }
   } catch (e) {
     _log('[deeplink] import failed: $e');

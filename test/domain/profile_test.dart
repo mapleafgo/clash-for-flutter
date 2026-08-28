@@ -5,8 +5,11 @@ import 'package:singcast/domain/profile.dart';
 import 'package:singcast/domain/subscription_info.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-T _roundtrip<T>(T obj, T Function(Map<String, dynamic>) fromJson,
-    Map<String, dynamic> Function(T) toJson) {
+T _roundtrip<T>(
+  T obj,
+  T Function(Map<String, dynamic>) fromJson,
+  Map<String, dynamic> Function(T) toJson,
+) {
   return fromJson(jsonDecode(jsonEncode(toJson(obj))) as Map<String, dynamic>);
 }
 
@@ -55,8 +58,7 @@ void main() {
         url: 'https://example.com/sub',
         interval: 12,
       );
-      final restored =
-          _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
+      final restored = _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
 
       expect(restored.file, profile.file);
       expect(restored.name, profile.name);
@@ -72,8 +74,7 @@ void main() {
         type: ProfileType.file,
         time: testTime,
       );
-      final restored =
-          _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
+      final restored = _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
 
       expect(restored.type, ProfileType.file);
       expect(restored.url, isNull);
@@ -94,8 +95,7 @@ void main() {
         time: testTime,
         userinfo: info,
       );
-      final restored =
-          _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
+      final restored = _roundtrip(profile, Profile.fromJson, (p) => p.toJson());
 
       expect(restored.userinfo, isNotNull);
       expect(restored.userinfo!.upload, 1024);

@@ -5,10 +5,11 @@ class ConnectionEvent {
 
   ConnectionEvent({required this.eventType, required this.id});
 
-  factory ConnectionEvent.fromJson(Map<String, dynamic> json) => ConnectionEvent(
-    eventType: (json['event_type'] as num?)?.toInt() ?? 0,
-    id: json['id'] as String? ?? '',
-  );
+  factory ConnectionEvent.fromJson(Map<String, dynamic> json) =>
+      ConnectionEvent(
+        eventType: (json['event_type'] as num?)?.toInt() ?? 0,
+        id: json['id'] as String? ?? '',
+      );
 }
 
 /// singcast-cli connection events payload:
@@ -22,8 +23,12 @@ class ConnectionEventsPayload {
   factory ConnectionEventsPayload.fromJson(Map<String, dynamic> json) =>
       ConnectionEventsPayload(
         reset: json['reset'] as bool? ?? false,
-        items: (json['items'] as List?)
-            ?.map((e) => ConnectionEvent.fromJson(e as Map<String, dynamic>))
-            .toList() ?? [],
+        items:
+            (json['items'] as List?)
+                ?.map(
+                  (e) => ConnectionEvent.fromJson(e as Map<String, dynamic>),
+                )
+                .toList() ??
+            [],
       );
 }

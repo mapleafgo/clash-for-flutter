@@ -35,8 +35,7 @@ class CoreConfigStorage {
             ? null
             : dns!['strategy'] == 'prefer_ipv6',
         externalController: json['api_enabled'] as bool?,
-        externalControllerAddr:
-            clashApi?['external_controller'] as String?,
+        externalControllerAddr: clashApi?['external_controller'] as String?,
         portEnabled: json['port_enabled'] as bool?,
         systemProxy: (inbound?['set_system_proxy'] as bool?) ?? false,
       );
@@ -78,8 +77,9 @@ class CoreConfigStorage {
     json['port_enabled'] = config.portEnabled ?? false;
     json['api_enabled'] = config.externalController ?? false;
 
-    File(_path)
-        .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
+    File(
+      _path,
+    ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
   }
 
   static void createDefault() {
@@ -111,6 +111,7 @@ class CoreConfigStorage {
     if (level == 'warn') return 'warning';
     return level;
   }
+
   static T? _parseEnum<T extends Enum>(dynamic value, List<T> values) {
     if (value is! String) return null;
     return values.where((e) => e.name == value).firstOrNull;

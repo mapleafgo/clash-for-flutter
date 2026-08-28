@@ -25,10 +25,7 @@ void main() {
     test('IpcWorker disconnectVpn throws when hook not set', () async {
       final worker = IpcWorker(ipcPath: '/tmp/test.sock');
 
-      expect(
-        () => worker.disconnectVpn(),
-        throwsA(isA<UnsupportedError>()),
-      );
+      expect(() => worker.disconnectVpn(), throwsA(isA<UnsupportedError>()));
     });
 
     test('IpcWorker isVpnRunning returns false when hook not set', () async {
@@ -57,14 +54,19 @@ void main() {
       final worker = IpcWorker(ipcPath: '/tmp/test.sock');
       var called = false;
 
-    worker.startCoreWithContentImpl = (content, {ruleSetProxy, enabledVpn = false}) async {
-      called = true;
-      expect(content, equals('new-config'));
-      expect(ruleSetProxy, equals('proxy'));
-      // enabledVpn is not forwarded to the iOS hook (Extension handles VPN internally)
-    };
+      worker.startCoreWithContentImpl =
+          (content, {ruleSetProxy, enabledVpn = false}) async {
+            called = true;
+            expect(content, equals('new-config'));
+            expect(ruleSetProxy, equals('proxy'));
+            // enabledVpn is not forwarded to the iOS hook (Extension handles VPN internally)
+          };
 
-      await worker.startCoreWithContent('new-config', ruleSetProxy: 'proxy', enabledVpn: true);
+      await worker.startCoreWithContent(
+        'new-config',
+        ruleSetProxy: 'proxy',
+        enabledVpn: true,
+      );
       expect(called, isTrue);
     });
 
@@ -79,12 +81,16 @@ void main() {
 
       expect(
         buildSocketPath('/var/mobile/Containers/Shared/AppGroup/group.test/'),
-        equals('/var/mobile/Containers/Shared/AppGroup/group.test/command.sock'),
+        equals(
+          '/var/mobile/Containers/Shared/AppGroup/group.test/command.sock',
+        ),
       );
 
       expect(
         buildSocketPath('/var/mobile/Containers/Shared/AppGroup/group.test'),
-        equals('/var/mobile/Containers/Shared/AppGroup/group.test/command.sock'),
+        equals(
+          '/var/mobile/Containers/Shared/AppGroup/group.test/command.sock',
+        ),
       );
     });
   });

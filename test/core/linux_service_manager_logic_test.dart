@@ -11,20 +11,23 @@ void main() {
     expect(ServiceManager.defaultIpcPath('/tmp/h'), '/tmp/h/command.sock');
   });
 
-  test('LinuxServiceManager starts degraded sticky semantics via public API', () {
-    // 纯逻辑：构造后未探测 unit，isUnitInstalled 为 false，isDegradedRun 为 false
-    final sm = LinuxServiceManager('/tmp/home');
-    expect(sm.isUnitInstalled, isFalse);
-    expect(sm.isDegradedRun, isFalse);
-    expect(sm.ipcPath, '/tmp/home/command.sock');
+  test(
+    'LinuxServiceManager starts degraded sticky semantics via public API',
+    () {
+      // 纯逻辑：构造后未探测 unit，isUnitInstalled 为 false，isDegradedRun 为 false
+      final sm = LinuxServiceManager('/tmp/home');
+      expect(sm.isUnitInstalled, isFalse);
+      expect(sm.isDegradedRun, isFalse);
+      expect(sm.ipcPath, '/tmp/home/command.sock');
 
-    sm.markDirectRun();
-    // unit 未装时 direct 不算 degraded
-    expect(sm.isDegradedRun, isFalse);
+      sm.markDirectRun();
+      // unit 未装时 direct 不算 degraded
+      expect(sm.isDegradedRun, isFalse);
 
-    sm.markSystemRun();
-    expect(sm.ipcPath, kLinuxSystemIpcPath);
-  });
+      sm.markSystemRun();
+      expect(sm.ipcPath, kLinuxSystemIpcPath);
+    },
+  );
 
   test('linuxRunChannelFor maps TUN to system and system proxy to direct', () {
     expect(linuxRunChannelFor(tunMode: true), LinuxCoreRunMode.system);

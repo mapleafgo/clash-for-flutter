@@ -51,8 +51,7 @@ class _KernelStateIcon extends StatelessWidget {
   const _KernelStateIcon();
 
   bool _isDisconnected(String state) =>
-      state == LibCore.kStateDestroyed ||
-      state == LibCore.kStateCreated;
+      state == LibCore.kStateDestroyed || state == LibCore.kStateCreated;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +61,9 @@ class _KernelStateIcon extends StatelessWidget {
       final cs = Theme.of(context).colorScheme;
 
       final icon = switch (state) {
-        LibCore.kStateCreated || LibCore.kStateStarting || LibCore.kStateStopping => const SizedBox(
+        LibCore.kStateCreated ||
+        LibCore.kStateStarting ||
+        LibCore.kStateStopping => const SizedBox(
           width: 16,
           height: 16,
           child: CircularProgressIndicator(strokeWidth: 2),
@@ -72,11 +73,7 @@ class _KernelStateIcon extends StatelessWidget {
           size: 12,
           color: Colors.grey.shade400,
         ),
-        LibCore.kStateDestroyed => Icon(
-          Icons.error,
-          size: 16,
-          color: cs.error,
-        ),
+        LibCore.kStateDestroyed => Icon(Icons.error, size: 16, color: cs.error),
         _ => Icon(Icons.circle, size: 12, color: Colors.green),
       };
 
@@ -98,7 +95,9 @@ class _KernelStateIcon extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(disconnected ? t.core.reconnectCore : t.core.restartCore),
-        content: Text(disconnected ? t.core.reconnectMessage : t.core.restartMessage),
+        content: Text(
+          disconnected ? t.core.reconnectMessage : t.core.restartMessage,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

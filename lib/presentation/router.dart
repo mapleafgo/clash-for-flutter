@@ -9,6 +9,7 @@ import 'package:singcast/presentation/pages/settings_page.dart';
 import 'package:singcast/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 class Routes {
   static const home = '/home';
   static const proxies = '/proxies';
@@ -17,8 +18,12 @@ class Routes {
 }
 
 Widget _shellBuilder(
-        BuildContext context, GoRouterState state, StatefulNavigationShell shell) =>
-    Constants.isDesktop ? DesktopShell(shell: shell) : MobileShell(shell: shell);
+  BuildContext context,
+  GoRouterState state,
+  StatefulNavigationShell shell,
+) => Constants.isDesktop
+    ? DesktopShell(shell: shell)
+    : MobileShell(shell: shell);
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -27,39 +32,54 @@ final router = GoRouter(
   initialLocation: Routes.home,
   errorBuilder: (context, state) => Scaffold(
     body: Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline, size: 48),
-        const SizedBox(height: 16),
-        SelectableText('页面未找到: ${state.error?.message ?? state.uri.path}'), // keep raw for debugging
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => context.go(Routes.home),
-          child: Text(t.nav.home),
-        ),
-      ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 48),
+          const SizedBox(height: 16),
+          SelectableText(
+            '页面未找到: ${state.error?.message ?? state.uri.path}',
+          ), // keep raw for debugging
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => context.go(Routes.home),
+            child: Text(t.nav.home),
+          ),
+        ],
+      ),
     ),
   ),
   routes: [
     StatefulShellRoute.indexedStack(
       builder: _shellBuilder,
       branches: [
-        StatefulShellBranch(routes: [
-          GoRoute(
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: Routes.home,
-              builder: (context, state) => const HomePage()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(
+              builder: (context, state) => const HomePage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: Routes.proxies,
-              builder: (context, state) => const ProxiesPage()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(
+              builder: (context, state) => const ProxiesPage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: Routes.profiles,
-              builder: (context, state) => const ProfilesPage()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(
+              builder: (context, state) => const ProfilesPage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: Routes.settings,
               builder: (context, state) => const SettingsPage(),
               routes: [
@@ -67,8 +87,10 @@ final router = GoRouter(
                   path: 'about',
                   builder: (context, state) => const AboutPage(),
                 ),
-              ]),
-        ]),
+              ],
+            ),
+          ],
+        ),
       ],
     ),
   ],

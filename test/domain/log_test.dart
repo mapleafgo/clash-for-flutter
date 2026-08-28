@@ -19,14 +19,34 @@ void main() {
 
     test('fromJson maps level correctly', () {
       // sing-box levels: 0=Panic,1=Fatal,2=Error → error, 3→warning, 4→info, 5,6→debug
-      expect(LogEntry.fromJson({'level': 0, 'message': ''}).type, LogLevel.error);
-      expect(LogEntry.fromJson({'level': 1, 'message': ''}).type, LogLevel.error);
-      expect(LogEntry.fromJson({'level': 2, 'message': ''}).type, LogLevel.error);
-      expect(LogEntry.fromJson({'level': 3, 'message': ''}).type, LogLevel.warning);
-      expect(LogEntry.fromJson({'level': 4, 'message': ''}).type, LogLevel.info);
-      expect(LogEntry.fromJson({'level': 5, 'message': ''}).type, LogLevel.debug);
-      expect(LogEntry.fromJson({'level': 6, 'message': ''}).type, LogLevel.debug);
+      expect(
+        LogEntry.fromJson({'level': 0, 'message': ''}).type,
+        LogLevel.error,
+      );
+      expect(
+        LogEntry.fromJson({'level': 1, 'message': ''}).type,
+        LogLevel.error,
+      );
+      expect(
+        LogEntry.fromJson({'level': 2, 'message': ''}).type,
+        LogLevel.error,
+      );
+      expect(
+        LogEntry.fromJson({'level': 3, 'message': ''}).type,
+        LogLevel.warning,
+      );
+      expect(
+        LogEntry.fromJson({'level': 4, 'message': ''}).type,
+        LogLevel.info,
+      );
+      expect(
+        LogEntry.fromJson({'level': 5, 'message': ''}).type,
+        LogLevel.debug,
+      );
+      expect(
+        LogEntry.fromJson({'level': 6, 'message': ''}).type,
+        LogLevel.debug,
+      );
     });
-
   });
 }

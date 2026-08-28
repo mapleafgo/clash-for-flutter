@@ -62,8 +62,7 @@ void main() {
 
   group('SubscriptionInfo.fromHeader', () {
     test('parses full header string', () {
-      const header =
-          'upload=100; download=200; total=1000; expire=1700000000';
+      const header = 'upload=100; download=200; total=1000; expire=1700000000';
       final info = SubscriptionInfo.fromHeader(header);
 
       expect(info.upload, 100);

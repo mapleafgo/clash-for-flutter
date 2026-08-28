@@ -30,7 +30,8 @@ void main() {
         portEnabled: true,
       );
       final result = jsonDecode(mergeProfileConfig(_profileJson));
-      final inbounds = (result['inbounds'] as List).cast<Map<String, dynamic>>();
+      final inbounds = (result['inbounds'] as List)
+          .cast<Map<String, dynamic>>();
       expect(inbounds.single['listen_port'], 8080);
       expect(result['log']['level'], 'warn');
     });

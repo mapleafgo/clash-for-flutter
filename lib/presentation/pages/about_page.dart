@@ -25,29 +25,31 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return l10nBuilder((context) {
-    return Scaffold(
-      appBar: SysAppBar(title: t.about.title),
-      body: ListView(children: [
-        const _AboutHeader(),
-        const _CheckUpdateTile(),
-        ListTile(
-          title: Text(t.about.officialWebsite),
-          subtitle: const Text(Constants.homeUrl),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () => launchUrl(Uri.parse(Constants.homeUrl)),
+      return Scaffold(
+        appBar: SysAppBar(title: t.about.title),
+        body: ListView(
+          children: [
+            const _AboutHeader(),
+            const _CheckUpdateTile(),
+            ListTile(
+              title: Text(t.about.officialWebsite),
+              subtitle: const Text(Constants.homeUrl),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(Uri.parse(Constants.homeUrl)),
+            ),
+            ListTile(
+              title: Text(t.about.sourceRepo),
+              subtitle: const Text(Constants.sourceUrl),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
+            ),
+            const _KernelVersionTile(),
+            const _ExportLogTile(),
+            if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
+              const _UninstallServiceTile(),
+          ],
         ),
-        ListTile(
-          title: Text(t.about.sourceRepo),
-          subtitle: const Text(Constants.sourceUrl),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () => launchUrl(Uri.parse(Constants.sourceUrl)),
-        ),
-        const _KernelVersionTile(),
-        const _ExportLogTile(),
-        if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
-          const _UninstallServiceTile(),
-      ]),
-    );
+      );
     });
   }
 }
@@ -115,14 +117,18 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
   Widget _trailing() {
     return switch (_state) {
       _CheckState.checking => const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      _CheckState.upToDate =>
-        const Icon(Icons.check_circle_outline, color: Colors.green),
-      _CheckState.hasUpdate =>
-        const Icon(Icons.system_update, color: Colors.blue),
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      _CheckState.upToDate => const Icon(
+        Icons.check_circle_outline,
+        color: Colors.green,
+      ),
+      _CheckState.hasUpdate => const Icon(
+        Icons.system_update,
+        color: Colors.blue,
+      ),
       _CheckState.failed => const Icon(Icons.error_outline, color: Colors.red),
       _CheckState.idle => const Icon(Icons.refresh),
     };
@@ -150,7 +156,9 @@ class _CheckUpdateTileState extends State<_CheckUpdateTile> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(t.about.newVersionFound),
-        content: Text(t.about.versionInfo(current: _currentVersion, latest: _latestVersion)),
+        content: Text(
+          t.about.versionInfo(current: _currentVersion, latest: _latestVersion),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -204,9 +212,9 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
       await LibCore.instance.uninstallServiceAndRestart();
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.about.elevationRemoved)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.about.elevationRemoved)));
       }
     } catch (e) {
       LogFileWriter.instance?.log(
@@ -216,9 +224,9 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(t.about.operationFailed)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.about.operationFailed)));
       }
     }
     if (mounted) setState(() => _loading = false);
@@ -228,9 +236,11 @@ class _UninstallServiceTileState extends State<_UninstallServiceTile> {
   Widget build(BuildContext context) {
     return ListTile(
       title: Text(t.about.removeElevation),
-      subtitle: Text(Platform.isWindows
-          ? t.about.removeElevationWinDesc
-          : t.about.removeElevationMacDesc),
+      subtitle: Text(
+        Platform.isWindows
+            ? t.about.removeElevationWinDesc
+            : t.about.removeElevationMacDesc,
+      ),
       trailing: _loading
           ? const SizedBox(
               width: 20,
@@ -305,14 +315,13 @@ class _AboutHeaderState extends State<_AboutHeader>
         onTap: _onLogoTap,
         child: ShakeBuilder(
           controller: _shakeController,
-          child: Column(children: [
-            SvgPicture.asset('assets/logo.svg', width: 64, height: 64),
-            const SizedBox(height: 8),
-            Text(
-              'Singcast',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ]),
+          child: Column(
+            children: [
+              SvgPicture.asset('assets/logo.svg', width: 64, height: 64),
+              const SizedBox(height: 8),
+              Text('Singcast', style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
         ),
       ),
     );

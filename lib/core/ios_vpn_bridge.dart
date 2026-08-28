@@ -32,7 +32,10 @@ class IosVpnBridge {
   /// connectVpn/disconnectVpn/isVpnRunning 走 MethodChannel,reload 经
   /// startCoreWithContent 转发到 Extension 本地(见下方)。[onVpnDisconnected]
   /// 在系统停止隧道时触发。
-  void wireInto(IpcWorker worker, {required void Function() onVpnDisconnected}) {
+  void wireInto(
+    IpcWorker worker, {
+    required void Function() onVpnDisconnected,
+  }) {
     worker.connectVpnImpl = _connectVpn;
     worker.disconnectVpnImpl = _disconnectVpn;
     worker.isVpnRunningImpl = _isVpnRunning;
@@ -51,17 +54,22 @@ class IosVpnBridge {
 
   /// 本地转换订阅（iOS）：主 App 通过 Runner 本地 FFI 调用，不依赖 VPN/RPC。
   Future<String> _convert(String content) async {
-    final result = await _channel.invokeMethod<String>('convert', {'content': content});
+    final result = await _channel.invokeMethod<String>('convert', {
+      'content': content,
+    });
     if (result != null && result.isNotEmpty) return result;
     throw StateError('iOS convert returned no json result');
   }
 
-  Future<void> _connectVpn(String configContent, {String? ruleSetProxy, bool? ipv6}) =>
-      _channel.invokeMethod('connectVpn', {
-        'configContent': configContent,
-        'ruleSetProxy': ruleSetProxy ?? '',
-        'ipv6': ipv6,
-      });
+  Future<void> _connectVpn(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  }) => _channel.invokeMethod('connectVpn', {
+    'configContent': configContent,
+    'ruleSetProxy': ruleSetProxy ?? '',
+    'ipv6': ipv6,
+  });
 
   Future<void> _disconnectVpn() => _channel.invokeMethod('disconnectVpn');
 

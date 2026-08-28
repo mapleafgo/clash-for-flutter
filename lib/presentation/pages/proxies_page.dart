@@ -73,7 +73,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
   @override
   Widget build(BuildContext context) {
     localeVersion.value; // rebuild on locale change
-    
+
     // iOS: 内核只在 VPN 开启时运行，未开启时显示提示
     if (Platform.isIOS) {
       final vpnRunning = vpnConnected.value;
@@ -88,7 +88,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
         );
       }
     }
-    
+
     return Scaffold(
       appBar: SysAppBar(title: t.proxies.title),
       floatingActionButton: ValueListenableBuilder<bool>(
@@ -168,9 +168,7 @@ class _ProxiesPageState extends State<ProxiesPage> {
     if (index >= groups.length) return;
     final group = groups[index];
 
-    final tags = group.items
-        .map((item) => item.tag)
-        .toSet();
+    final tags = group.items.map((item) => item.tag).toSet();
     if (tags.isEmpty) return;
 
     _groupTesting.value = true;
@@ -338,7 +336,12 @@ class _ProxiesTabViewState extends State<_ProxiesTabView>
           child: TabBarView(
             controller: _tabController,
             children: widget.tags
-                .map((tag) => _ProxyList(groupTag: tag, testingTags: widget.testingTags))
+                .map(
+                  (tag) => _ProxyList(
+                    groupTag: tag,
+                    testingTags: widget.testingTags,
+                  ),
+                )
                 .toList(),
           ),
         ),
@@ -431,8 +434,8 @@ class _ProxyTile extends StatelessWidget {
     final subGroup = groupsByTag[item.tag];
     final urlTestSelected =
         subGroup?.type == kGroupTypeUrlTest && subGroup!.selected.isNotEmpty
-            ? subGroup.selected
-            : null;
+        ? subGroup.selected
+        : null;
 
     final cs = Theme.of(context).colorScheme;
     return Padding(
@@ -472,8 +475,7 @@ class _ProxyTile extends StatelessWidget {
                 await LibCore.instance.selectProxy(groupName, item.tag);
               } catch (e) {
                 if (context.mounted) {
-                  showErrorDialog(
-                      context, t.proxies.switchFailed(error: '$e'));
+                  showErrorDialog(context, t.proxies.switchFailed(error: '$e'));
                 }
               }
             },
@@ -484,7 +486,12 @@ class _ProxyTile extends StatelessWidget {
   }
 }
 
-Widget _delayWidget(int delay, bool testing, String tag, Signal<Set<String>> testingTags) {
+Widget _delayWidget(
+  int delay,
+  bool testing,
+  String tag,
+  Signal<Set<String>> testingTags,
+) {
   if (testing) {
     return const SizedBox(
       width: 16,
@@ -511,7 +518,10 @@ Widget _delayWidget(int delay, bool testing, String tag, Signal<Set<String>> tes
   );
 }
 
-Future<void> _testSingleDelay(String tag, Signal<Set<String>> testingTags) async {
+Future<void> _testSingleDelay(
+  String tag,
+  Signal<Set<String>> testingTags,
+) async {
   if (!testingTags.value.contains(tag)) {
     testingTags.value = Set<String>.from(testingTags.value)..add(tag);
   }
@@ -547,6 +557,7 @@ Widget _delayText(int delay, BuildContext context) {
 
 void _showHint(BuildContext context, String message) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context)..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(SnackBar(content: Text(message)));
 }

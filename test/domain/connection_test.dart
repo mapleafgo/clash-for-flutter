@@ -15,7 +15,6 @@ void main() {
       expect(event.eventType, 0);
       expect(event.id, '');
     });
-
   });
 
   group('ConnectionEventsPayload', () {

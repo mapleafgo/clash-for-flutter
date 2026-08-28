@@ -66,11 +66,17 @@ Future<Profile> downloadSubscription({
 
     return Profile(
       file: file,
-      name: name ?? extractFilename(resp.headers.value('content-disposition')) ?? file,
+      name:
+          name ??
+          extractFilename(resp.headers.value('content-disposition')) ??
+          file,
       type: ProfileType.url,
       time: DateTime.now(),
       url: url,
-      interval: interval ?? int.tryParse(resp.headers.value('profile-update-interval') ?? '') ?? 24,
+      interval:
+          interval ??
+          int.tryParse(resp.headers.value('profile-update-interval') ?? '') ??
+          24,
       userinfo: parseSubInfo(resp.headers.value('subscription-userinfo')),
     );
   } finally {

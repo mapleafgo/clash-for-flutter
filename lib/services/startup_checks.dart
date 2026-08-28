@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:singcast/i18n/strings.g.dart';
 import 'package:singcast/presentation/router.dart' show navigatorKey;
-import 'package:singcast/services/app_config.dart' show checkSubUpdates, autoCheckUpdate;
+import 'package:singcast/services/app_config.dart'
+    show checkSubUpdates, autoCheckUpdate;
 import 'package:singcast/utils/constants.dart';
 import 'package:singcast/domain/enums.dart' show LogLevel;
 import 'package:singcast/utils/log_file.dart';
@@ -42,7 +43,12 @@ void _showUpdateDialog(String latest) {
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(t.startup.newVersionFound),
-      content: Text(t.startup.currentAndLatest(current: Defaults.appVersion, latest: latest)),
+      content: Text(
+        t.startup.currentAndLatest(
+          current: Defaults.appVersion,
+          latest: latest,
+        ),
+      ),
       actions: [
         TextButton(
           onPressed: () {

@@ -77,8 +77,8 @@ class SettingsPage extends StatelessWidget {
               title: Text(t.settings.ipv6),
               subtitle: Text(t.settings.ipv6Desc),
               value: config.ipv6 ?? false,
-             onChanged: (v) => updateCoreConfig(ipv6: v),
-           ),
+              onChanged: (v) => updateCoreConfig(ipv6: v),
+            ),
             if (Constants.isDesktop)
               l10nBuilder((context) {
                 return _ChoiceTile<TunStack>(
@@ -292,6 +292,7 @@ class _UrlTile extends StatelessWidget {
   final String? description;
   final String value;
   final ValueChanged<String> onChanged;
+
   /// 是否允许清空为空白，空值语义由调用方定义（如 ruleSetProxy 空 = 直连）。
   final bool allowEmpty;
   const _UrlTile({
@@ -314,7 +315,9 @@ class _UrlTile extends StatelessWidget {
           description: description,
           initialValue: value,
         );
-        if (result != null && (result.isNotEmpty || allowEmpty)) onChanged(result);
+        if (result != null && (result.isNotEmpty || allowEmpty)) {
+          onChanged(result);
+        }
       },
     );
   }

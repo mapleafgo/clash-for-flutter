@@ -51,9 +51,7 @@ bool isVersionIgnored(String version) {
 void ignoreVersion(String version) {
   final config = AppSettingsStorage.load();
   final stored = AppStoredConfig.fromJson(config);
-  AppSettingsStorage.save(
-    stored.copyWith(ignoredVersion: version).toJson(),
-  );
+  AppSettingsStorage.save(stored.copyWith(ignoredVersion: version).toJson());
 }
 
 /// 清除已忽略的版本号（发现新版本时调用）。
@@ -61,7 +59,5 @@ void clearIgnoredVersion() {
   final config = AppSettingsStorage.load();
   final stored = AppStoredConfig.fromJson(config);
   if (stored.ignoredVersion == null) return;
-  AppSettingsStorage.save(
-    stored.copyWith(ignoredVersion: null).toJson(),
-  );
+  AppSettingsStorage.save(stored.copyWith(ignoredVersion: null).toJson());
 }

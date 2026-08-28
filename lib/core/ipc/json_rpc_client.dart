@@ -48,7 +48,8 @@ class JsonRpcClient {
 
   /// Stream of notifications for a given method.
   Stream<RpcNotification> notifications(String method) {
-    return (_notifiers[method] ??= StreamController<RpcNotification>.broadcast())
+    return (_notifiers[method] ??=
+            StreamController<RpcNotification>.broadcast())
         .stream;
   }
 
@@ -98,18 +99,27 @@ class JsonRpcClient {
 
     _send(request);
 
-    final timeoutDuration =
-        heavyMethods.contains(method) ? heavyTimeout : normalTimeout;
+    final timeoutDuration = heavyMethods.contains(method)
+        ? heavyTimeout
+        : normalTimeout;
 
-    return completer.future.timeout(timeoutDuration, onTimeout: () {
-      _pending.remove(id);
-      throw TimeoutException('Request $method timed out', timeoutDuration);
-    }).then((resp) {
-      if (resp.error != null) {
-        throw JsonRpcException(resp.error!);
-      }
-      return resp.result;
-    });
+    return completer.future
+        .timeout(
+          timeoutDuration,
+          onTimeout: () {
+            _pending.remove(id);
+            throw TimeoutException(
+              'Request $method timed out',
+              timeoutDuration,
+            );
+          },
+        )
+        .then((resp) {
+          if (resp.error != null) {
+            throw JsonRpcException(resp.error!);
+          }
+          return resp.result;
+        });
   }
 
   /// Send a JSON-RPC notification (no response expected).
@@ -156,17 +166,19 @@ class JsonRpcClient {
     // back-to-back _send() calls.
     // 写失败必须在链尾捕获：否则 _writeQueue 变为失败态 Future，
     // 后续所有 .then 永不执行，每个请求只能等超时。
-    _writeQueue = _writeQueue.then((_) async {
-      if (!_connected || _socket == null) return;
-      _socket!.add(data);
-      await _socket!.flush();
-    }).catchError((Object e) {
-      LogFileWriter.instance?.log(
-        'IPC write failed: $e',
-        level: LogLevel.warning,
-        name: 'ipc',
-      );
-    });
+    _writeQueue = _writeQueue
+        .then((_) async {
+          if (!_connected || _socket == null) return;
+          _socket!.add(data);
+          await _socket!.flush();
+        })
+        .catchError((Object e) {
+          LogFileWriter.instance?.log(
+            'IPC write failed: $e',
+            level: LogLevel.warning,
+            name: 'ipc',
+          );
+        });
   }
 
   void _onData(List<int> data) {
@@ -203,15 +215,17 @@ class JsonRpcClient {
         final completer = _pending.remove(id);
         if (completer != null) {
           final error = msg['error'] as Map<String, dynamic>?;
-          completer.complete(_Response(
-            result: msg['result'],
-            error: error != null
-                ? RpcError(
-                    code: error['code'] as int,
-                    message: error['message'] as String,
-                  )
-                : null,
-          ));
+          completer.complete(
+            _Response(
+              result: msg['result'],
+              error: error != null
+                  ? RpcError(
+                      code: error['code'] as int,
+                      message: error['message'] as String,
+                    )
+                  : null,
+            ),
+          );
         }
       }
       return;

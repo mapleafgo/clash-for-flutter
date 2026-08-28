@@ -49,24 +49,25 @@ Future<void> _disableWindows() async {
 const _macChannel = MethodChannel('launch_at_startup');
 
 Future<void> _enableMacOS() async {
-  await _macChannel.invokeMethod(
-    'launchAtStartupSetEnabled',
-    {'setEnabledValue': true},
-  );
+  await _macChannel.invokeMethod('launchAtStartupSetEnabled', {
+    'setEnabledValue': true,
+  });
 }
 
 Future<void> _disableMacOS() async {
-  await _macChannel.invokeMethod(
-    'launchAtStartupSetEnabled',
-    {'setEnabledValue': false},
-  );
+  await _macChannel.invokeMethod('launchAtStartupSetEnabled', {
+    'setEnabledValue': false,
+  });
 }
 
 // --- Linux ---
 
-String get _linuxAutostartPath =>
-    p.join(Platform.environment['HOME'] ?? '', '.config', 'autostart',
-        '$_appName.desktop');
+String get _linuxAutostartPath => p.join(
+  Platform.environment['HOME'] ?? '',
+  '.config',
+  'autostart',
+  '$_appName.desktop',
+);
 
 Future<void> _enableLinux() async {
   final file = File(_linuxAutostartPath);

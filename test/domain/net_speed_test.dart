@@ -14,7 +14,12 @@ void main() {
     });
 
     test('creates with values', () {
-      final stats = CoreStats(up: 1024, down: 2048, upTotal: 5000, downTotal: 15000);
+      final stats = CoreStats(
+        up: 1024,
+        down: 2048,
+        upTotal: 5000,
+        downTotal: 15000,
+      );
       expect(stats.up, 1024);
       expect(stats.down, 2048);
       expect(stats.upTotal, 5000);
@@ -42,6 +47,5 @@ void main() {
       expect(stats.connections, 16);
       expect(stats.startedAt, 1234567890);
     });
-
   });
 }

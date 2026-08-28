@@ -30,14 +30,20 @@ class IpcWorker implements LibCorePlatform {
   /// VPN lifecycle hooks, injected on mobile RPC platforms (iOS) where the
   /// kernel runs in a Network Extension and VPN is driven via MethodChannel.
   /// Null on desktop → connectVpn/disconnectVpn throw UnsupportedError.
-  Future<void> Function(String configContent, {String? ruleSetProxy, bool? ipv6})? connectVpnImpl;
+  Future<void> Function(
+    String configContent, {
+    String? ruleSetProxy,
+    bool? ipv6,
+  })?
+  connectVpnImpl;
   Future<void> Function()? disconnectVpnImpl;
   Future<bool> Function()? isVpnRunningImpl;
 
   /// 内核启动/重启钩子,注入于内核需重新 SetTunFd 的平台(iOS)。
   /// iOS 上裸 RPC core.startWithContent 会因 tunFd 已被消费而失败,故走
   /// MethodChannel 让 Extension 本地 SetTunFd + StartWithContent。null → RPC。
-  Future<void> Function(String content, {String? ruleSetProxy})? startCoreWithContentImpl;
+  Future<void> Function(String content, {String? ruleSetProxy})?
+  startCoreWithContentImpl;
 
   /// 移动端本地转换钩子（iOS）：主 App 无 RPC 连接时也能转订阅。
   Future<String> Function(String content)? convertImpl;
@@ -66,7 +72,8 @@ class IpcWorker implements LibCorePlatform {
     });
 
     _modeUpdateSub = c.notifications('event.modeUpdate').listen((n) {
-      final mode = (n.params as Map<String, dynamic>?)?['mode'] as String? ?? '';
+      final mode =
+          (n.params as Map<String, dynamic>?)?['mode'] as String? ?? '';
       onCallback?.call(CoreEventType.modeUpdate, mode);
     });
 
@@ -75,7 +82,8 @@ class IpcWorker implements LibCorePlatform {
     });
 
     _stateUpdateSub = c.notifications('event.stateUpdate').listen((n) {
-      final state = (n.params as Map<String, dynamic>?)?['state'] as String? ?? '';
+      final state =
+          (n.params as Map<String, dynamic>?)?['state'] as String? ?? '';
       onCallback?.call(CoreEventType.stateUpdate, state);
     });
 
@@ -124,7 +132,11 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<void> startCoreWithContent(String content, {String? ruleSetProxy, bool enabledVpn = false}) {
+  Future<void> startCoreWithContent(
+    String content, {
+    String? ruleSetProxy,
+    bool enabledVpn = false,
+  }) {
     final impl = startCoreWithContentImpl;
     if (impl != null) {
       return impl(content, ruleSetProxy: ruleSetProxy);
@@ -164,7 +176,10 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<Map<String, int>> testGroupDelay(String group, {int timeoutMs = 3000}) async {
+  Future<Map<String, int>> testGroupDelay(
+    String group, {
+    int timeoutMs = 3000,
+  }) async {
     final json = await _call('core.testGroupDelay', {
       'group_tag': group,
       'timeout_ms': timeoutMs,
@@ -173,8 +188,7 @@ class IpcWorker implements LibCorePlatform {
   }
 
   @override
-  Future<void> setMode(String mode) =>
-      _call('core.setMode', {'mode': mode});
+  Future<void> setMode(String mode) => _call('core.setMode', {'mode': mode});
 
   @override
   Future<void> setGroupExpand(String group, bool expand) =>
@@ -272,7 +286,9 @@ class IpcWorker implements LibCorePlatform {
   Future<void> disconnectVpn() {
     final impl = disconnectVpnImpl;
     if (impl != null) return impl();
-    throw UnsupportedError('disconnectVpn is only available on mobile platforms');
+    throw UnsupportedError(
+      'disconnectVpn is only available on mobile platforms',
+    );
   }
 
   @override

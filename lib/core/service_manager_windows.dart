@@ -33,7 +33,6 @@ class WindowsServiceManager extends ServiceManager with ServiceManagerLogging {
   @override
   String get ipcPath => ServiceManager.defaultIpcPath(homeDir);
 
-
   /// Open a handle to the installed service with [access] rights.
   /// Returns the service handle, or null if not installed or no permission.
   SC_HANDLE? _openService(int access) {

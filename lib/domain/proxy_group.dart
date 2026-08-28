@@ -34,8 +34,10 @@ class ProxyGroup {
     type: json['type'] as String? ?? '',
     selectable: json['selectable'] as bool? ?? false,
     selected: json['selected'] as String? ?? '',
-    items: (json['items'] as List?)
-        ?.map((e) => ProxyGroupItem.fromJson(e as Map<String, dynamic>))
-        .toList() ?? [],
+    items:
+        (json['items'] as List?)
+            ?.map((e) => ProxyGroupItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
   );
 }

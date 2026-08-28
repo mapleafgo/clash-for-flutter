@@ -18,42 +18,50 @@ class DesktopShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return l10nBuilder((context) {
-    return Scaffold(
-      body: Row(children: [
-        NavigationRail(
-          selectedIndex: shell.currentIndex,
-          onDestinationSelected: (i) => _navigate(context, i),
-          labelType: NavigationRailLabelType.all,
-          leading: Padding(
-            padding: EdgeInsets.only(
-              top: Platform.isMacOS
-                  ? _macOSTitleBarPadding
-                  : _defaultLeadingPadding,
-              bottom: _defaultLeadingPadding,
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: shell.currentIndex,
+              onDestinationSelected: (i) => _navigate(context, i),
+              labelType: NavigationRailLabelType.all,
+              leading: Padding(
+                padding: EdgeInsets.only(
+                  top: Platform.isMacOS
+                      ? _macOSTitleBarPadding
+                      : _defaultLeadingPadding,
+                  bottom: _defaultLeadingPadding,
+                ),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: (_) => windowManager.startDragging(),
+                  onDoubleTap: () async {
+                    if (await windowManager.isMaximized()) {
+                      windowManager.unmaximize();
+                    } else {
+                      windowManager.maximize();
+                    }
+                  },
+                  child: SvgPicture.asset(
+                    'assets/logo.svg',
+                    width: 48,
+                    height: 48,
+                  ),
+                ),
+              ),
+              destinations: navItems
+                  .map(
+                    (e) => NavigationRailDestination(
+                      icon: Icon(e.icon),
+                      label: Text(e.label),
+                    ),
+                  )
+                  .toList(),
             ),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanStart: (_) => windowManager.startDragging(),
-              onDoubleTap: () async {
-                if (await windowManager.isMaximized()) {
-                  windowManager.unmaximize();
-                } else {
-                  windowManager.maximize();
-                }
-              },
-              child: SvgPicture.asset('assets/logo.svg', width: 48, height: 48),
-            ),
-          ),
-          destinations: navItems
-              .map((e) => NavigationRailDestination(
-                    icon: Icon(e.icon),
-                    label: Text(e.label),
-                  ))
-              .toList(),
+            Expanded(child: shell),
+          ],
         ),
-        Expanded(child: shell),
-      ]),
-    );
+      );
     });
   }
 

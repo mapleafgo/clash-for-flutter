@@ -100,6 +100,5 @@ void main() {
       coreConfig.value = SingboxConfig(tun: TunConfig(enable: true));
       expect(coreConfig.value.tunEnabled, true);
     });
-
   });
 }

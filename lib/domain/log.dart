@@ -10,7 +10,11 @@ class LogEntry {
   final String payload;
   final DateTime timestamp;
 
-  LogEntry({required this.type, required this.payload, required this.timestamp});
+  LogEntry({
+    required this.type,
+    required this.payload,
+    required this.timestamp,
+  });
 
   factory LogEntry.fromJson(Map<String, dynamic> json) {
     final rawMessage = json['message'] as String? ?? '';

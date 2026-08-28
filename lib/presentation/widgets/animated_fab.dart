@@ -46,28 +46,38 @@ class _ShakeBuilderState extends State<ShakeBuilder> {
   static Animation<double> _createAnimation(AnimationController controller) {
     return TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0, end: 0.2)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: 0,
+          end: 0.2,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 1,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.2, end: -0.18)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 0.2,
+          end: -0.18,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 1.5,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -0.18, end: 0.12)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: -0.18,
+          end: 0.12,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 1.5,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.12, end: -0.07)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 0.12,
+          end: -0.07,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 1.5,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -0.07, end: 0)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween<double>(
+          begin: -0.07,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 1,
       ),
     ]).animate(controller);
@@ -117,10 +127,7 @@ class AnimatedIconSwitcher extends StatelessWidget {
           child: child,
         ),
       ),
-      child: Icon(
-        value ? onIcon : offIcon,
-        key: ValueKey(value),
-      ),
+      child: Icon(value ? onIcon : offIcon, key: ValueKey(value)),
     );
   }
 }

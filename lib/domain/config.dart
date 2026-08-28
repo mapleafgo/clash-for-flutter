@@ -28,10 +28,11 @@ class SingboxConfig {
   });
 
   factory SingboxConfig.defaults() => SingboxConfig(
-      mixedPort: Constants.defaultMixedPort,
-      logLevel: LogLevel.info,
-      externalControllerAddr: Constants.defaultApiAddr,
-      portEnabled: false);
+    mixedPort: Constants.defaultMixedPort,
+    logLevel: LogLevel.info,
+    externalControllerAddr: Constants.defaultApiAddr,
+    portEnabled: false,
+  );
 
   SingboxConfig copyWith({
     int? mixedPort,
@@ -44,20 +45,19 @@ class SingboxConfig {
     String? externalControllerAddr,
     bool? portEnabled,
     bool? systemProxy,
-  }) =>
-      SingboxConfig(
-        mixedPort: mixedPort ?? this.mixedPort,
-        allowLan: allowLan ?? this.allowLan,
-        mode: mode ?? this.mode,
-        logLevel: logLevel ?? this.logLevel,
-        ipv6: ipv6 ?? this.ipv6,
-        tun: tun ?? this.tun,
-        externalController: externalController ?? this.externalController,
-        externalControllerAddr:
-            externalControllerAddr ?? this.externalControllerAddr,
-        portEnabled: portEnabled ?? this.portEnabled,
-        systemProxy: systemProxy ?? this.systemProxy,
-      );
+  }) => SingboxConfig(
+    mixedPort: mixedPort ?? this.mixedPort,
+    allowLan: allowLan ?? this.allowLan,
+    mode: mode ?? this.mode,
+    logLevel: logLevel ?? this.logLevel,
+    ipv6: ipv6 ?? this.ipv6,
+    tun: tun ?? this.tun,
+    externalController: externalController ?? this.externalController,
+    externalControllerAddr:
+        externalControllerAddr ?? this.externalControllerAddr,
+    portEnabled: portEnabled ?? this.portEnabled,
+    systemProxy: systemProxy ?? this.systemProxy,
+  );
 
   bool get tunEnabled => tun?.enable ?? false;
   bool get apiEnabled => externalController ?? false;
@@ -68,16 +68,15 @@ class SingboxConfig {
   /// 构建 sing-box mixed inbound（listen/listen_port/set_system_proxy）。
   /// 供 storage 写盘与 mergeProfileConfig 下发共用。
   Map<String, dynamic> toMixedInbound() => {
-        'type': 'mixed',
-        'tag': 'mixed-in',
-        'listen': allowLan == true ? '0.0.0.0' : '127.0.0.1',
-        'listen_port': mixedPort ?? Constants.defaultMixedPort,
-        if (systemProxy == true) 'set_system_proxy': true,
-      };
+    'type': 'mixed',
+    'tag': 'mixed-in',
+    'listen': allowLan == true ? '0.0.0.0' : '127.0.0.1',
+    'listen_port': mixedPort ?? Constants.defaultMixedPort,
+    if (systemProxy == true) 'set_system_proxy': true,
+  };
 }
 
 class TunConfig {
   final bool? enable;
   TunConfig({this.enable});
-
 }

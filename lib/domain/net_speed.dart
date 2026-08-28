@@ -38,5 +38,4 @@ class CoreStats {
     connections: raw.connections,
     startedAt: raw.startedAt,
   );
-
 }

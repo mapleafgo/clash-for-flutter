@@ -23,11 +23,13 @@ Future<void> initTray() async {
 
   desktopTray.addListener(_TrayHandler());
 
-  effect(() => _rebuildMenu(
-    _proxyEnabled,
-    LibCore.instance.availableModesSignal.value,
-    LibCore.instance.modeSignal.value,
-  ));
+  effect(
+    () => _rebuildMenu(
+      _proxyEnabled,
+      LibCore.instance.availableModesSignal.value,
+      LibCore.instance.modeSignal.value,
+    ),
+  );
 
   // rebuild tray labels when locale changes
   effect(() {
@@ -40,11 +42,15 @@ Future<void> initTray() async {
   });
 }
 
-bool get _proxyEnabled =>
-    tunIf.value == true ? coreConfig.value.tunEnabled : coreConfig.value.systemProxyEnabled;
+bool get _proxyEnabled => tunIf.value == true
+    ? coreConfig.value.tunEnabled
+    : coreConfig.value.systemProxyEnabled;
 
-
-Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) async {
+Future<void> _rebuildMenu(
+  bool proxyOn,
+  List<String> modes,
+  String current,
+) async {
   final ready = appReady.value;
   final menu = TrayMenu(
     items: [
@@ -58,11 +64,13 @@ Future<void> _rebuildMenu(bool proxyOn, List<String> modes, String current) asyn
         ),
         if (modes.isNotEmpty) ...[
           TrayMenuItem.separator(),
-          ...modes.map((m) => TrayMenuItem.checkbox(
-            label: modeLabel(m),
-            key: m,
-            checked: m == current,
-          )),
+          ...modes.map(
+            (m) => TrayMenuItem.checkbox(
+              label: modeLabel(m),
+              key: m,
+              checked: m == current,
+            ),
+          ),
         ],
       ],
       TrayMenuItem.separator(),

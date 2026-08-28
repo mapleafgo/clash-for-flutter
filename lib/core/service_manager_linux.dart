@@ -231,7 +231,9 @@ class LinuxServiceManager extends ServiceManager with ServiceManagerLogging {
     }
     await Process.run('pkill', [
       '-u',
-      Platform.environment['USER'] ?? Platform.environment['LOGNAME'] ?? 'nobody',
+      Platform.environment['USER'] ??
+          Platform.environment['LOGNAME'] ??
+          'nobody',
       '-f',
       'singcast-core ipc --home $homeDir',
     ]);

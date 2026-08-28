@@ -18,20 +18,22 @@ void main() {
   tearDown(() => tmp.deleteSync(recursive: true));
 
   test('save/load roundtrip with sing-box keys', () {
-    CoreConfigStorage.save(SingboxConfig(
-      mixedPort: 8080,
-      allowLan: true,
-      mode: Mode.global,
-      logLevel: LogLevel.warning,
-      ipv6: true,
-      externalController: true,
-      externalControllerAddr: '127.0.0.1:9091',
-      portEnabled: true,
-    ));
+    CoreConfigStorage.save(
+      SingboxConfig(
+        mixedPort: 8080,
+        allowLan: true,
+        mode: Mode.global,
+        logLevel: LogLevel.warning,
+        ipv6: true,
+        externalController: true,
+        externalControllerAddr: '127.0.0.1:9091',
+        portEnabled: true,
+      ),
+    );
 
-    final raw = jsonDecode(
-      File('${tmp.path}/config.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final raw =
+        jsonDecode(File('${tmp.path}/config.json').readAsStringSync())
+            as Map<String, dynamic>;
     expect((raw['inbounds'] as List).first['listen_port'], 8080);
     expect(raw['log']['level'], 'warn');
     expect(raw['experimental']['clash_api']['default_mode'], 'Global');
@@ -47,13 +49,10 @@ void main() {
   });
 
   test('set_system_proxy stored natively in mixed inbound', () {
-    CoreConfigStorage.save(SingboxConfig(
-      mixedPort: 7890,
-      systemProxy: true,
-    ));
-    final raw = jsonDecode(
-      File('${tmp.path}/config.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    CoreConfigStorage.save(SingboxConfig(mixedPort: 7890, systemProxy: true));
+    final raw =
+        jsonDecode(File('${tmp.path}/config.json').readAsStringSync())
+            as Map<String, dynamic>;
     // set_system_proxy 是 sing-box 原生字段，存在 mixed inbound 中
     final inbound = (raw['inbounds'] as List).first as Map<String, dynamic>;
     expect(inbound['set_system_proxy'], isTrue);
@@ -66,9 +65,9 @@ void main() {
 
   test('save with all-null sing-box fields produces no empty sections', () {
     CoreConfigStorage.save(SingboxConfig());
-    final raw = jsonDecode(
-      File('${tmp.path}/config.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final raw =
+        jsonDecode(File('${tmp.path}/config.json').readAsStringSync())
+            as Map<String, dynamic>;
     expect(raw.containsKey('inbounds'), isFalse);
     expect(raw.containsKey('experimental'), isFalse);
     expect(raw.containsKey('log'), isFalse);
@@ -79,25 +78,26 @@ void main() {
 
   test('clash_api only written when API enabled', () {
     // API 关闭但 mode 有值时，不应产出 clash_api 段
-    CoreConfigStorage.save(SingboxConfig(
-      mode: Mode.global,
-      externalController: false,
-    ));
-    final raw = jsonDecode(
-      File('${tmp.path}/config.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    CoreConfigStorage.save(
+      SingboxConfig(mode: Mode.global, externalController: false),
+    );
+    final raw =
+        jsonDecode(File('${tmp.path}/config.json').readAsStringSync())
+            as Map<String, dynamic>;
     expect(raw.containsKey('experimental'), isFalse);
     expect(raw['api_enabled'], isFalse);
 
     // API 开启时才写 clash_api（含 external_controller）
-    CoreConfigStorage.save(SingboxConfig(
-      mode: Mode.global,
-      externalController: true,
-      externalControllerAddr: '127.0.0.1:9090',
-    ));
-    final raw2 = jsonDecode(
-      File('${tmp.path}/config.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    CoreConfigStorage.save(
+      SingboxConfig(
+        mode: Mode.global,
+        externalController: true,
+        externalControllerAddr: '127.0.0.1:9090',
+      ),
+    );
+    final raw2 =
+        jsonDecode(File('${tmp.path}/config.json').readAsStringSync())
+            as Map<String, dynamic>;
     final clashApi = raw2['experimental']['clash_api'] as Map<String, dynamic>;
     expect(clashApi['default_mode'], 'Global');
     expect(clashApi['external_controller'], '127.0.0.1:9090');
